@@ -1,4 +1,5 @@
 import MainLayout from '@/components/layout/MainLayout';
+import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
 
 export const metadata = {
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <MainLayout>{children}</MainLayout>
+        <AuthGate><MainLayout>{children}</MainLayout></AuthGate>
       </body>
     </html>
   );
