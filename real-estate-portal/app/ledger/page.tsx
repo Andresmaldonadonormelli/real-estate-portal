@@ -70,7 +70,7 @@ export default function LedgerPage() {
   }
   async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const {error:e}=await supabase.from('transactions').delete().eq('id',tx.id);if(e)setError(e.message);else await loadData();}
 
-  function exportCsv(){const rows=[['Date','Property','Unit','Description','Category','Payee','Type','Amount'],...filtered.map(tx=>[tx.transaction_date,propertyName(tx.property_id),unitName(tx.unit_id),tx.description,tx.category,tx.payee_source||'',tx.type,String(tx.amount)])];const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ledger.csv';a.click();URL.revokeObjectURL(url);}
+  function exportCsv(){const rows=[['Date','Property','Unit','Description','Category','Payee','Type','Amount'],...filtered.map(tx=>[tx.transaction_date,propertyName(tx.property_id),unitName(tx.unit_id),tx.description,tx.category,tx.payee_source||'',tx.type,String(tx.amount)])];const csv=rows.map(r=>r.map(v=>`"${String(v).split('\"').join('\"\"')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ledger.csv';a.click();URL.revokeObjectURL(url);}
 
   return <div style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:20}}><h1 style={{fontSize:28,fontWeight:500}}>Ledger</h1><button onClick={openAdd} disabled={!properties.length} style={primaryButton}>+ Add transaction</button></div>
