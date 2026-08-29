@@ -1,0 +1,10 @@
+V2.1.9 — ACTIVITY + UTILITY SURFACE POLISH
+
+- Recent Activity now includes each property thumbnail for immediate visual context.
+- Activity rows show property address first, then transaction description/unit/date, with amount aligned right.
+- Activity rows are clickable and open Ledger.
+- Restores the visible card/surface treatment on Utilities.
+- Utility cards keep their hover/edit behavior from V2.1.8.
+- Preserves V2.1.8 auth cold-load, destructive-action safety, favicon, and recovery work.
+
+No Supabase SQL changes required.
