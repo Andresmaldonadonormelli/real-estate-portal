@@ -23,24 +23,24 @@ export default function SideNav() {
         left: 0,
         top: 0,
         bottom: 0,
-        width: '280px',
+        width: '260px',
         background: 'var(--bg-secondary)',
         borderRight: '1px solid var(--border-color)',
-        padding: '24px 0',
+        padding: '18px 0',
         overflowY: 'auto',
         zIndex: 40,
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ padding: '0 24px', marginBottom: '32px' }}>
+      <div style={{ padding: '0 18px', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '18px', marginBottom: '12px', fontWeight: 500 }}>RE Portal</h1>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
           Your property dashboard
         </p>
       </div>
 
-      <div style={{ marginBottom: '32px', flex: 1 }}>
+      <div style={{ marginBottom: '24px', flex: 1 }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
@@ -57,7 +57,7 @@ export default function SideNav() {
         })}
       </div>
 
-      <div style={{ padding: '0 24px', borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
+      <div style={{ padding: '0 18px', borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
         <ThemeToggle />
       </div>
     </nav>

@@ -227,8 +227,8 @@ export default function PropertiesPage() {
                   {propertyUnits.length === 0 ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>No units yet.</div> : (
                     <div style={{ display: 'grid', gap: 10 }}>
                       {propertyUnits.map((unit) => (
-                        <div key={unit.id} style={{ padding: 14, border: '1px solid var(--border-color)', borderRadius: 8, display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}>
-                          <div>
+                        <button key={unit.id} type="button" className="unit-card interactive-card" onClick={() => startEditUnit(unit)} aria-label={`Edit ${unit.unit_number || 'unit'}`}>
+                          <div style={{ textAlign: 'left' }}>
                             <strong>{unit.unit_number}</strong>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
                               {unit.bedroom_count} bd · {unit.bathroom_count} ba · {unit.sqft || 0} sqft · {unit.tenant_name || 'No tenant'}
@@ -237,9 +237,9 @@ export default function PropertiesPage() {
                           <div style={{ textAlign: 'right', display: 'grid', justifyItems: 'end', gap: 6 }}>
                             <div style={{ fontWeight: 600 }}>{formatCurrency(unit.current_rent || 0)}/mo</div>
                             <div style={{ fontSize: 12, color: unit.occupied ? 'var(--accent)' : 'var(--danger)' }}>{unit.occupied ? 'Occupied' : 'Vacant'}</div>
-                            <button onClick={() => startEditUnit(unit)} style={{ ...secondaryButton, padding: '6px 9px', fontSize: 12 }}>Edit</button>
+                            <div className="unit-edit-hint">Edit unit</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}

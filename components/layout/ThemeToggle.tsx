@@ -1,63 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
-    if (saved) {
-      setTheme(saved);
-      applyTheme(saved);
-    } else {
-      applyTheme('system');
-    }
+    const saved = localStorage.getItem('theme');
+    const initial = saved === 'light' || saved === 'dark'
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(initial);
+    document.documentElement.setAttribute('data-theme', initial);
   }, []);
 
-  const applyTheme = (newTheme: 'light' | 'dark' | 'system') => {
-    const html = document.documentElement;
-    if (newTheme === 'system') {
-      html.removeAttribute('data-theme');
-    } else {
-      html.setAttribute('data-theme', newTheme);
-    }
-  };
-
   const toggleTheme = () => {
-    const themes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
-    const current = themes.indexOf(theme);
-    const next = themes[(current + 1) % themes.length];
+    const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
     localStorage.setItem('theme', next);
-    applyTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
   };
 
   if (!mounted) return null;
 
+  const Icon = theme === 'dark' ? Sun : Moon;
+  const label = theme === 'dark' ? 'Light mode' : 'Dark mode';
+
   return (
-    <button
-      onClick={toggleTheme}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '8px 12px',
-        background: 'var(--bg-primary)',
-        border: '1px solid var(--border-color)',
-        borderRadius: 'var(--radius)',
-        cursor: 'pointer',
-        fontSize: '14px',
-        color: 'var(--text-primary)',
-        width: '100%',
-      }}
-    >
-      {theme === 'light' && '☀️'}
-      {theme === 'dark' && '🌙'}
-      {theme === 'system' && '⚙️'}
-      <span style={{ textTransform: 'capitalize' }}>{theme}</span>
+    <button onClick={toggleTheme} className="theme-toggle" type="button" aria-label={label}>
+      <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+      <span>{label}</span>
     </button>
   );
 }

@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [reviewPropertyId, setReviewPropertyId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [testPreview, setTestPreview] = useState(false);
+  const [testModeActive, setTestModeActive] = useState(false);
   const [testResolvedUnitIds, setTestResolvedUnitIds] = useState<string[]>([]);
 
   const refreshTransactions = useCallback(async () => {
@@ -93,8 +94,18 @@ export default function Dashboard() {
     const eligible=units.filter(unit=>unit.occupied&&unit.recurring_rent_enabled!==false&&Number(unit.current_rent||0)>0);
     if(!eligible.length){ setError('No occupied units with recurring rent are available to test.'); return; }
     setTestResolvedUnitIds([]);
-    setTestPreview(true);
-    setReviewPropertyId(eligible[0].property_id);
+    setTestPreview(false);
+    setReviewPropertyId(null);
+    setTestModeActive(true);
+  }
+
+  function resolveTestUnit(unitId:string){
+    const remainingForProperty=testReviewUnits.filter(unit=>unit.id!==unitId);
+    setTestResolvedUnitIds(ids=>[...ids,unitId]);
+    if(remainingForProperty.length===0){
+      setReviewPropertyId(null);
+      setTestPreview(false);
+    }
   }
 
   async function confirmRent(tx:Transaction){
@@ -120,6 +131,7 @@ export default function Dashboard() {
   const unitMap=useMemo(()=>Object.fromEntries(units.map(u=>[u.id,u])),[units]);
   const reviewRents=pendingRents.filter(t=>t.property_id===reviewPropertyId);
   const testReviewUnits=useMemo(()=>units.filter(u=>u.property_id===reviewPropertyId&&u.occupied&&u.recurring_rent_enabled!==false&&Number(u.current_rent||0)>0&&!testResolvedUnitIds.includes(u.id)),[units,reviewPropertyId,testResolvedUnitIds]);
+  const testPendingForProperty=(propertyId:string)=>testModeActive?units.filter(u=>u.property_id===propertyId&&u.occupied&&u.recurring_rent_enabled!==false&&Number(u.current_rent||0)>0&&!testResolvedUnitIds.includes(u.id)).length:0;
 
   return <div style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:24,flexWrap:'wrap'}}><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}><button className="primary-action" onClick={generateTestRentChecks} style={primaryButton}>Test rent check</button><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div></div>
@@ -134,12 +146,12 @@ export default function Dashboard() {
           <div><h3 style={{fontSize:17,marginBottom:4}}>{property.address}</h3><div style={{color:'var(--text-secondary)',fontSize:13}}>{property.city}, {property.state} · {pu.filter(u=>u.occupied).length}/{pu.length} occupied</div></div>
           <div style={{textAlign:'right'}}><div style={{fontSize:12,color:'var(--text-secondary)'}}>This month</div><strong style={{color:totals.net>=0?'var(--accent)':'var(--danger)'}}>{formatCurrency(totals.net)}</strong></div>
         </div>
-        {pending.length>0&&<div style={{marginTop:14,padding:'12px 14px',borderRadius:9,background:'rgba(219, 184, 74, .16)',border:'1px solid rgba(219, 184, 74, .35)',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><strong style={{fontSize:14}}>{monthLabel} rent check</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:2}}>{pending.length} occupied unit{pending.length===1?' is':'s are'} awaiting rent confirmation.</div></div><button className="primary-action" onClick={()=>{setTestPreview(false);setReviewPropertyId(property.id);}} style={primaryButton}>Review rents</button></div>}
+        {(()=>{const testPending=pending.length===0?testPendingForProperty(property.id):0;const actionCount=pending.length||testPending;if(!actionCount)return null;const isTest=testPending>0;return <div className="rent-attention-panel"><div><div className="rent-attention-kicker">{isTest?'TEST · ACTION NEEDED':'ACTION NEEDED'}</div><strong style={{fontSize:15}}>{monthLabel} rent confirmation</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{actionCount} occupied unit{actionCount===1?' is':'s are'} awaiting confirmation.</div></div><button className="primary-action" onClick={()=>{setTestPreview(isTest);setReviewPropertyId(property.id);}} style={primaryButton}>Review rents</button></div>;})()}
       </div>})}</div>
       <h2 style={{fontSize:19,marginBottom:14,fontWeight:600}}>Recent Activity</h2><div className="card" style={{overflowX:'auto'}}><table><thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead><tbody>{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,8).map(tx=><tr key={tx.id}><td>{tx.transaction_date}</td><td>{tx.description}</td><td style={{textAlign:'right',color:tx.type==='income'?'var(--accent)':tx.type==='expense'?'var(--danger)':'var(--text-secondary)'}}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</td></tr>)}</tbody></table></div>
     </>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:21}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:11,fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:13,marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
-      {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>setTestResolvedUnitIds(ids=>[...ids,unit.id])} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>setTestResolvedUnitIds(ids=>[...ids,unit.id])} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
+      {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
       {testPreview&&testReviewUnits.length===0&&<div style={{padding:18,textAlign:'center',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:10}}>Test complete. All occupied units were reviewed.</div>}
     </div></div></div>}
   </div>;

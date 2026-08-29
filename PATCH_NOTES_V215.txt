@@ -1,0 +1,14 @@
+V2.1.5 UI + WORKFLOW PATCH
+
+Included:
+- Rent test now creates an attention state inside the property card first. Review rents opens the modal.
+- Pending-rent action uses a green-tinted card extension with a hairline divider.
+- Mobile Menu now opens a working bottom sheet with Account and theme control.
+- Property unit cards are fully clickable and open Edit Unit; desktop hover/focus added.
+- Desktop sidebar tightened from 280px to 260px with more compact spacing.
+- Theme toggle now uses Lucide Sun/Moon icons and a simple light/dark toggle.
+- Account page width aligned with the other main pages.
+- Subtle hover/focus feedback added to clickable controls.
+- V2.1.4 loading/performance fixes preserved.
+
+No Supabase SQL changes are required.
