@@ -1,0 +1,15 @@
+V2.1.8 — auth reliability + destructive-action safety
+
+Included:
+- Cold-load AuthGate fix: session restoration is sequenced before the auth listener and has bounded timeouts, so the portal cannot sit on the startup skeleton forever.
+- Property deletion removed from property cards. It now lives only inside Edit Property and requires typing the exact property address before permanent deletion.
+- Property deletion warning now explicitly states that linked units, ledger transactions, document records and utilities are also deleted.
+- Utility cards are clickable with hover/focus feedback. Delete is removed from the normal Utilities view and lives only inside Edit Utility.
+- Document Delete is removed from the normal Documents list. Delete now lives inside Document Details with a confirmation step.
+- Added a proper house favicon/browser-tab icon and shortened the browser title to RE Portal.
+- Added V218_RESTORE_TRISKETT.sql, a one-time recovery script based on the Doorvest CSV available in this project. It restores 15334 Triskett Rd, its two known occupied units, and all 73 ledger rows from that export.
+
+Triskett recovery limitations:
+The prior hard delete cascaded in Supabase, so fields not present in the CSV cannot be reconstructed automatically. After running the recovery script, review purchase/mortgage details, image, utilities, and documents for Triskett and re-enter/re-upload anything that had been attached separately.
+
+No schema migration is required for V2.1.8. V218_RESTORE_TRISKETT.sql is only for restoring the deleted Triskett record/data.

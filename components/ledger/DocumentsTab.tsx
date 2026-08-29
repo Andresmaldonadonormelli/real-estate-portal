@@ -20,6 +20,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [form, setForm] = useState({ property_id:'', unit_id:'', category:'Lease', title:'', document_date:'', notes:'' });
+  const [selectedDoc, setSelectedDoc] = useState<PropertyDocument | null>(null);
 
   async function loadData() {
     setLoading(true); setError('');
@@ -102,7 +103,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
     const storage = await supabase.storage.from('property-documents').remove([doc.storage_path]);
     if (storage.error) { setError(storage.error.message); return; }
     const row = await supabase.from('documents').delete().eq('id', doc.id);
-    if (row.error) setError(row.error.message); else await loadData();
+    if (row.error) setError(row.error.message); else { setSelectedDoc(null); await loadData(); }
   }
 
   return <div>
@@ -121,9 +122,23 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
           <div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{doc.title}</div>
           <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:4}}>{doc.document_date || doc.file_name}</div>
         </div>
-        <div style={{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>openDocument(doc)} style={secondaryButton}>Open</button><button onClick={()=>deleteDocument(doc)} style={dangerButton}>Delete</button></div>
+        <div style={{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>openDocument(doc)} style={secondaryButton}>Open</button><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
       </div>)}</div>
     }
+
+    {selectedDoc && <Modal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
+      <div className="document-details-grid">
+        <DetailRow label="Title" value={selectedDoc.title}/>
+        <DetailRow label="Category" value={selectedDoc.category}/>
+        <DetailRow label="Property" value={propertyName(selectedDoc.property_id)}/>
+        {unitName(selectedDoc.unit_id)&&<DetailRow label="Unit" value={unitName(selectedDoc.unit_id)}/>} 
+        <DetailRow label="File" value={selectedDoc.file_name}/>
+        {selectedDoc.document_date&&<DetailRow label="Document date" value={selectedDoc.document_date}/>} 
+        {selectedDoc.notes&&<DetailRow label="Notes" value={selectedDoc.notes}/>} 
+      </div>
+      <button type="button" onClick={()=>openDocument(selectedDoc)} style={secondaryButton}>Open document</button>
+      <div className="danger-zone"><div><div style={{fontWeight:600,fontSize:14}}>Danger zone</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Delete is hidden from the normal document list to prevent accidental removal.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Delete document</button></div>
+    </div></Modal>}
 
     {showUpload && <Modal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
       <Field label="Property"><select required value={form.property_id} onChange={e=>setForm({...form,property_id:e.target.value,unit_id:''})} style={inputStyle}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></Field>
@@ -137,11 +152,12 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   </div>;
 }
 
+function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:12,fontSize:13}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'grid',placeItems:'center',padding:18,zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h2 style={{fontSize:21}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
-const inputStyle:React.CSSProperties={width:'100%',padding:'10px 11px',border:'1px solid var(--border-color)',borderRadius:8,background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16};
-const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:8,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
-const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:8,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
+const inputStyle:React.CSSProperties={width:'100%',padding:'10px 11px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16};
+const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
+const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
 const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:16,fontSize:13};

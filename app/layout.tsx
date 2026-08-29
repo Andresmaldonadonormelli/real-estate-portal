@@ -3,8 +3,9 @@ import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
 
 export const metadata = {
-  title: 'Real Estate Owner Portal',
+  title: 'RE Portal',
   description: 'Manage your rental properties',
+  icons: { icon: '/icon.svg' },
 };
 
 export default function RootLayout({

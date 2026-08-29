@@ -604,3 +604,39 @@ textarea {
   .ledger-tabs button { flex:1; padding:9px 11px !important; }
   .ledger-property-picker { min-width:0 !important; width:100%; }
 }
+
+/* V2.1.8 destructive-action safety and utility interactions */
+.utility-card {
+  display: block !important;
+  border-radius: 14px !important;
+}
+.utility-edit-hint {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+.danger-zone {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 32%, var(--border-color));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.document-details-grid {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-primary);
+}
+@media (hover:hover) and (pointer:fine) {
+  .utility-card:hover {
+    background: var(--surface-hover);
+    border-color: color-mix(in srgb, var(--accent) 32%, var(--border-color));
+  }
+}

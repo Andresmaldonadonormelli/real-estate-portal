@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { AuthSessionProvider } from '@/components/auth/AuthContext';
@@ -13,35 +13,49 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const initialized = useRef(false);
 
   useEffect(() => {
-    // Supabase emits INITIAL_SESSION when the listener is registered. Relying on
-    // that avoids racing getSession() against the auth listener on first load.
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      initialized.current = true;
-      setSession(nextSession);
-      setLoading(false);
-    });
+    let active = true;
+    let subscription: { unsubscribe: () => void } | null = null;
 
-    // Defensive fallback only. In normal operation INITIAL_SESSION fires first.
-    const fallback = window.setTimeout(async () => {
-      if (initialized.current) return;
+    async function bootstrapAuth() {
+      // Resolve the persisted session first, then attach the live listener.
+      // Sequencing these prevents the cold-load lock/race that could leave the
+      // portal skeleton visible until a hard refresh.
       try {
-        const { data } = await supabase.auth.getSession();
-        if (!initialized.current) {
-          initialized.current = true;
-          setSession(data.session);
-          setLoading(false);
-        }
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Auth session timed out.')), 3500)),
+        ]);
+        if (!active) return;
+        setSession(result.data.session);
       } catch {
-        if (!initialized.current) setLoading(false);
+        if (!active) return;
+        setSession(null);
+      } finally {
+        if (active) setLoading(false);
       }
-    }, 4000);
+
+      if (!active) return;
+      const listener = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        if (!active) return;
+        setSession(nextSession);
+        setLoading(false);
+      });
+      subscription = listener.data.subscription;
+    }
+
+    void bootstrapAuth();
+
+    // Absolute watchdog: never leave the app on a skeleton forever.
+    const watchdog = window.setTimeout(() => {
+      if (active) setLoading(false);
+    }, 6000);
 
     return () => {
-      window.clearTimeout(fallback);
-      listener.subscription.unsubscribe();
+      active = false;
+      window.clearTimeout(watchdog);
+      subscription?.unsubscribe();
     };
   }, []);
 

@@ -32,6 +32,9 @@ export default function PropertiesPage() {
   const [saving, setSaving] = useState(false);
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<Property | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingProperty, setDeletingProperty] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -172,10 +175,26 @@ export default function PropertiesPage() {
     if (deleteError) setError(deleteError.message); else { setShowUnitForm(false); setEditingUnit(null); await loadData(); }
   }
 
-  async function deleteProperty(property: Property) {
-    if (!confirm(`Delete ${property.address}? This should only be done if it has no records you need.`)) return;
-    const { error: deleteError } = await supabase.from('properties').delete().eq('id', property.id);
-    if (deleteError) setError(deleteError.message); else await loadData();
+  function requestDeleteProperty(property: Property) {
+    setDeleteTarget(property);
+    setDeleteConfirmText('');
+  }
+
+  async function deletePropertyPermanently() {
+    if (!deleteTarget || deleteConfirmText.trim() !== deleteTarget.address.trim()) return;
+    setDeletingProperty(true);
+    setError('');
+    const { error: deleteError } = await supabase.from('properties').delete().eq('id', deleteTarget.id);
+    if (deleteError) {
+      setError(deleteError.message);
+    } else {
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+      setShowPropertyForm(false);
+      setEditingProperty(null);
+      await loadData();
+    }
+    setDeletingProperty(false);
   }
 
   return (
@@ -209,7 +228,6 @@ export default function PropertiesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => startEditProperty(property)} style={secondaryButton}>Edit</button>
-                    <button onClick={() => deleteProperty(property)} style={dangerButton}>Delete</button>
                   </div>
                 </div>
 
@@ -264,10 +282,33 @@ export default function PropertiesPage() {
             <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
             <button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
+            {editingProperty && <div className="danger-zone">
+              <div>
+                <div style={{fontWeight:600,fontSize:14}}>Danger zone</div>
+                <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Permanent deletion also removes linked units, ledger transactions, documents and utilities.</div>
+              </div>
+              <button type="button" onClick={() => requestDeleteProperty(editingProperty)} style={dangerButton}>Delete property…</button>
+            </div>}
           </form>
         </Modal>
       )}
 
+
+      {deleteTarget && (
+        <Modal title="Permanently delete property?" onClose={() => { if (!deletingProperty) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
+          <div style={{display:'grid',gap:14}}>
+            <div style={{padding:14,border:'1px solid var(--danger)',borderRadius:12,background:'color-mix(in srgb, var(--danger) 8%, transparent)'}}>
+              <div style={{fontWeight:650,color:'var(--danger)',marginBottom:6}}>This cannot be undone.</div>
+              <div style={{fontSize:13,lineHeight:1.5,color:'var(--text-secondary)'}}>Deleting <strong style={{color:'var(--text-primary)'}}>{deleteTarget.address}</strong> also permanently deletes its units, ledger transactions, document records and utility accounts.</div>
+            </div>
+            <Field label={`Type “${deleteTarget.address}” to confirm`}><input autoFocus value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} style={inputStyle} /></Field>
+            <div style={{display:'flex',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
+              <button type="button" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }} style={secondaryButton}>Cancel</button>
+              <button type="button" disabled={deletingProperty || deleteConfirmText.trim() !== deleteTarget.address.trim()} onClick={deletePropertyPermanently} style={{...dangerButton,opacity:deleteConfirmText.trim() === deleteTarget.address.trim()?1:.45}}>{deletingProperty?'Deleting…':'Permanently delete'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {showUnitForm && (
         <Modal title={editingUnit ? 'Edit unit' : 'Add unit'} onClose={() => { setShowUnitForm(false); setEditingUnit(null); }}>
           <form onSubmit={saveUnit} style={{ display: 'grid', gap: 12 }}>
