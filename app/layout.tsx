@@ -1,11 +1,32 @@
+import type { Metadata, Viewport } from 'next';
 import MainLayout from '@/components/layout/MainLayout';
 import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'RE Portal',
   description: 'Manage your rental properties',
-  icons: { icon: '/icon.svg' },
+  applicationName: 'RE Portal',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'RE Portal',
+    statusBarStyle: 'default',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f6f6f2' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d0d0c' },
+  ],
 };
 
 export default function RootLayout({

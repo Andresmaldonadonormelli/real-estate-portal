@@ -413,7 +413,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .recent-ledger-button { margin-top:16px; width:max-content; }
 
 /* Buttons are pills. Navigation remains rounded rectangles. */
-button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control) { border-radius:999px !important; }
+button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row) { border-radius:999px !important; }
 
 @media (max-width: 767px) {
   .dashboard-page { padding:18px 16px 92px !important; }
@@ -647,7 +647,7 @@ textarea {
   width:100%;
   text-align:left;
   grid-template-columns:44px minmax(0,1fr) auto;
-  border-radius:0 !important;
+  border-radius:10px !important;
   background:transparent;
   color:var(--text-primary);
   transition:background .16s ease, border-color .16s ease;
@@ -666,7 +666,7 @@ textarea {
   box-shadow:var(--card-shadow);
 }
 @media (hover:hover) and (pointer:fine) {
-  .recent-activity-row:hover { background:var(--accent-soft); }
+  .recent-activity-row:hover { background:color-mix(in srgb, var(--accent-soft) 58%, transparent); }
   .utility-card:hover { background:color-mix(in srgb, var(--accent-soft) 45%, var(--bg-secondary)) !important; }
 }
 @media (max-width:767px) {

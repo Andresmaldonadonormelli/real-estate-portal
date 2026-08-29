@@ -1,0 +1,14 @@
+V2.1.10 POLISH + IPHONE HOME SCREEN
+
+- Fixes Recent Activity hover so rows no longer become pills.
+- Recent Activity keeps a normal 10px row radius with subtle hover tint.
+- Preserves the V2.1.9 property thumbnails and Utility card surfaces.
+- Adds iPhone / PWA metadata so Add to Home Screen launches RE Portal in standalone mode.
+- Adds dedicated 180px Apple Home Screen icon plus 192px and 512px web-app icons.
+- Keeps the existing browser house favicon.
+- No Supabase changes required.
+
+REPOSITORY CLEANUP
+The old nested /real-estate-portal folder is not required by the live root app and should be deleted from GitHub.
+Old PATCH_NOTES files, old setup SQL files, real-estate-portal.zip, and tsconfig.tsbuildinfo are optional cleanup only. They are not needed at runtime.
+Do not delete root /app, /components, /lib, package.json, next.config.js, or tsconfig.json.
