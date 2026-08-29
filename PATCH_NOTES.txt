@@ -1,6 +1,13 @@
-V2.1.3 PATCH
-- Centralizes Supabase auth/session state in AuthGate/AuthContext.
-- Removes repeated getSession/getUser calls from individual pages.
-- Adds pulsing skeleton loading states inspired by modern dashboard loading patterns.
-- No Supabase SQL changes required.
-- Upload these files to the ROOT of the GitHub repo, preserving folders.
+V2.1.4 PERFORMANCE PATCH
+
+What changed:
+- Removes the first-load auth race by relying on Supabase INITIAL_SESSION instead of calling getSession at the same time as the auth listener.
+- Adds an auth fallback after 4 seconds only if INITIAL_SESSION does not arrive.
+- Dashboard renders as soon as core property/unit/transaction data arrives.
+- Property images load in the background and no longer block Dashboard or Properties.
+- Recurring rent/mortgage generation runs after Dashboard renders and no longer blocks first paint.
+- Adds 8-second data timeouts so a failed request stops skeleton-loading instead of hanging forever.
+- Adds the same bounded loading behavior to Properties, Ledger, and Utilities.
+
+No Supabase SQL changes are required.
+Upload these files to the ROOT of the GitHub repo, preserving folders.

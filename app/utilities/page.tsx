@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import type { Property, UtilityAccount } from '@/lib/types';
+import { withTimeout } from '@/lib/async';
 
 const types=['Electric','Gas','Water','Sewer','Internet','Trash','Other'];
 const empty={property_id:'',utility_type:'Electric',provider:'',account_number:'',username_email:'',login_url:'',autopay:false,responsibility:'Owner' as const,billing_cycle:'',password_reference:'',notes:''};
@@ -12,7 +13,7 @@ export default function UtilitiesPage(){
   const { user } = useAuth();
   const [items,setItems]=useState<UtilityAccount[]>([]); const [properties,setProperties]=useState<Property[]>([]); const [selected,setSelected]=useState('');
   const [show,setShow]=useState(false); const [editing,setEditing]=useState<UtilityAccount|null>(null); const [form,setForm]=useState<any>(empty); const [error,setError]=useState(''); const [loading,setLoading]=useState(true);
-  async function load(){setLoading(true);const [u,p]=await Promise.all([supabase.from('utility_accounts').select('*').order('utility_type'),supabase.from('properties').select('*').order('address')]);if(u.error||p.error)setError((u.error||p.error)?.message||'Could not load utilities');else{setItems((u.data||[]) as UtilityAccount[]);setProperties((p.data||[]) as Property[]);}setLoading(false)}
+  async function load(){setLoading(true);setError('');try{const [u,p]=await withTimeout(Promise.all([supabase.from('utility_accounts').select('*').order('utility_type'),supabase.from('properties').select('*').order('address')]),8000,'Utilities took too long to load. Please retry.');if(u.error||p.error)throw(u.error||p.error);setItems((u.data||[]) as UtilityAccount[]);setProperties((p.data||[]) as Property[]);}catch(e){setError(e instanceof Error?e.message:'Could not load utilities');}finally{setLoading(false)}}
   useEffect(()=>{load()},[]);
   const filtered=useMemo(()=>items.filter(x=>!selected||x.property_id===selected),[items,selected]);
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';

@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
+import { withTimeout } from '@/lib/async';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -35,21 +36,25 @@ export default function PropertiesPage() {
   async function loadData() {
     setLoading(true);
     setError('');
-    const [{ data: props, error: propError }, { data: unitRows, error: unitError }] = await Promise.all([
-      supabase.from('properties').select('*').order('address'),
-      supabase.from('units').select('*').order('unit_number'),
-    ]);
-    if (propError || unitError) {
-      setError(propError?.message || unitError?.message || 'Could not load properties.');
-    } else {
+    try {
+      const [{ data: props, error: propError }, { data: unitRows, error: unitError }] = await withTimeout(Promise.all([
+        supabase.from('properties').select('*').order('address'),
+        supabase.from('units').select('*').order('unit_number'),
+      ]), 8000, 'Properties took too long to load. Please retry.');
+      if (propError || unitError) throw (propError || unitError);
       const propertyRows = (props || []) as Property[];
       setProperties(propertyRows);
       setUnits((unitRows || []) as Unit[]);
-      const urls: Record<string,string> = {};
-      await Promise.all(propertyRows.filter(p => p.image_path).map(async p => { const r = await supabase.storage.from('property-images').createSignedUrl(p.image_path!, 3600); if (r.data?.signedUrl) urls[p.id] = r.data.signedUrl; }));
-      setImageUrls(urls);
+      setLoading(false);
+      void (async()=>{
+        const urls: Record<string,string> = {};
+        await Promise.all(propertyRows.filter(p => p.image_path).map(async p => { try { const r = await supabase.storage.from('property-images').createSignedUrl(p.image_path!, 3600); if (r.data?.signedUrl) urls[p.id] = r.data.signedUrl; } catch {} }));
+        setImageUrls(urls);
+      })();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load properties.');
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => { loadData(); }, []);

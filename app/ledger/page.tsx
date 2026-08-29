@@ -6,6 +6,7 @@ import LedgerTab from '@/components/ledger/LedgerTab';
 import StatementsTab from '@/components/ledger/StatementsTab';
 import DocumentsTab from '@/components/ledger/DocumentsTab';
 import PageSkeleton from '@/components/common/PageSkeleton';
+import { withTimeout } from '@/lib/async';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
@@ -13,7 +14,7 @@ export default function LedgerDocsPage(){
   const [properties,setProperties]=useState<Property[]>([]);
   const [selectedPropertyId,setSelectedPropertyId]=useState('');
   const [loading,setLoading]=useState(true);
-  useEffect(()=>{(async()=>{const {data}=await supabase.from('properties').select('*').order('address'); const rows=(data||[]) as Property[]; setProperties(rows); setLoading(false);})();},[]);
+  useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(Promise.resolve(supabase.from('properties').select('*').order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
   return <div style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
     <div style={{marginBottom:24}}><h1 style={{fontSize:30,fontWeight:600}}>Ledger & Docs</h1><p style={{fontSize:14,color:'var(--text-secondary)',marginTop:5}}>Your money and property paperwork in one place.</p></div>
     <div style={{borderTop:'1px solid var(--border-color)',paddingTop:22}}>

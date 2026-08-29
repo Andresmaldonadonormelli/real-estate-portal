@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { AuthSessionProvider } from '@/components/auth/AuthContext';
@@ -13,19 +13,36 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
+    // Supabase emits INITIAL_SESSION when the listener is registered. Relying on
+    // that avoids racing getSession() against the auth listener on first load.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      initialized.current = true;
       setSession(nextSession);
       setLoading(false);
     });
 
-    return () => listener.subscription.unsubscribe();
+    // Defensive fallback only. In normal operation INITIAL_SESSION fires first.
+    const fallback = window.setTimeout(async () => {
+      if (initialized.current) return;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!initialized.current) {
+          initialized.current = true;
+          setSession(data.session);
+          setLoading(false);
+        }
+      } catch {
+        if (!initialized.current) setLoading(false);
+      }
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(fallback);
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -72,41 +89,21 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
             <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>
               Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                style={inputStyle}
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" style={inputStyle} />
             </label>
             <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>
               Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                style={inputStyle}
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} style={inputStyle} />
             </label>
 
-            {message && (
-              <div style={{ fontSize: 13, lineHeight: 1.45, padding: 12, borderRadius: 8, background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                {message}
-              </div>
-            )}
+            {message && <div style={{ fontSize: 13, lineHeight: 1.45, padding: 12, borderRadius: 8, background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>{message}</div>}
 
             <button type="submit" disabled={submitting} style={primaryButtonStyle}>
               {submitting ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }}
-            style={{ marginTop: 16, width: '100%', border: 0, background: 'transparent', color: 'var(--accent)', cursor: 'pointer', padding: 10 }}
-          >
+          <button type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }} style={{ marginTop: 16, width: '100%', border: 0, background: 'transparent', color: 'var(--accent)', cursor: 'pointer', padding: 10 }}>
             {mode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
           </button>
         </div>
@@ -117,23 +114,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   return <AuthSessionProvider session={session}>{children}</AuthSessionProvider>;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 13px',
-  border: '1px solid var(--border-color)',
-  borderRadius: 8,
-  background: 'var(--bg-primary)',
-  color: 'var(--text-primary)',
-  fontSize: 16,
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  border: 0,
-  borderRadius: 8,
-  background: 'var(--accent)',
-  color: 'var(--accent-contrast)',
-  fontSize: 15,
-  fontWeight: 600,
-  cursor: 'pointer',
-};
+const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 13px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
+const primaryButtonStyle: React.CSSProperties = { padding: '12px 16px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontSize: 15, fontWeight: 600, cursor: 'pointer' };

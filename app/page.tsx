@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit, Transaction } from '@/lib/types';
+import { withTimeout } from '@/lib/async';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -23,16 +24,16 @@ export default function Dashboard() {
   const [testPreview, setTestPreview] = useState(false);
   const [testResolvedUnitIds, setTestResolvedUnitIds] = useState<string[]>([]);
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    if (!user) { setError('You are not signed in.'); setLoading(false); return; }
-    const [p,u,t] = await Promise.all([
-      supabase.from('properties').select('*').order('address'),
-      supabase.from('units').select('*').order('unit_number'),
-      supabase.from('transactions').select('*').order('transaction_date',{ascending:false}),
-    ]);
-    const err=p.error||u.error||t.error; if(err){setError(err.message);setLoading(false);return;}
-    const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; let txRows=(t.data||[]) as Transaction[];
+  const refreshTransactions = useCallback(async () => {
+    try {
+      const r = await withTimeout(Promise.resolve(supabase.from('transactions').select('*').order('transaction_date',{ascending:false})), 8000, 'The ledger took too long to refresh.');
+      if (!r.error) setTransactions((r.data||[]) as Transaction[]);
+    } catch {
+      // Background refresh failure should never hide the dashboard.
+    }
+  }, []);
+
+  const ensureRecurring = useCallback(async (props: Property[], unitRows: Unit[], txRows: Transaction[]) => {
     const now=new Date(); const month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; const first=`${month}-01`;
     const inserts: Record<string,unknown>[]=[];
     for(const unit of unitRows){
@@ -47,14 +48,44 @@ export default function Dashboard() {
       const exists=txRows.some(tx=>tx.property_id===property.id&&tx.category==='Mortgage'&&tx.transaction_date.startsWith(month)&&(tx.status||'posted')==='posted');
       if(!exists) inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:first,type:'expense',category:'Mortgage',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`recurring-mortgage:${property.id}:${month}`});
     }
-    if(inserts.length){
-      const ins=await supabase.from('transactions').upsert(inserts,{onConflict:'user_id,import_key',ignoreDuplicates:true});
-      if(ins.error) setError(ins.error.message); else { const r=await supabase.from('transactions').select('*').order('transaction_date',{ascending:false}); if(!r.error) txRows=(r.data||[]) as Transaction[]; }
+    if(!inserts.length) return;
+    try {
+      const ins = await withTimeout(Promise.resolve(supabase.from('transactions').upsert(inserts,{onConflict:'user_id,import_key',ignoreDuplicates:true})), 8000, 'Recurring entries took too long.');
+      if(!ins.error) await refreshTransactions();
+    } catch {
+      // Recurring bookkeeping is intentionally non-blocking.
     }
-    const urls:Record<string,string>={};
-    await Promise.all(props.filter(x=>x.image_path).map(async prop=>{ const r=await supabase.storage.from('property-images').createSignedUrl(prop.image_path!,3600); if(r.data?.signedUrl) urls[prop.id]=r.data.signedUrl; }));
-    setImageUrls(urls); setProperties(props); setUnits(unitRows); setTransactions(txRows); setLoading(false);
-  },[user]);
+  }, [refreshTransactions, user.id]);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [p,u,t] = await withTimeout(Promise.all([
+        supabase.from('properties').select('*').order('address'),
+        supabase.from('units').select('*').order('unit_number'),
+        supabase.from('transactions').select('*').order('transaction_date',{ascending:false}),
+      ]), 8000, 'Dashboard data took too long to load. Please retry.');
+      const err=p.error||u.error||t.error; if(err) throw err;
+      const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; const txRows=(t.data||[]) as Transaction[];
+
+      // Show the useful dashboard as soon as the core data arrives.
+      setProperties(props); setUnits(unitRows); setTransactions(txRows); setLoading(false);
+
+      // Images and recurring bookkeeping happen after render and never block it.
+      void (async()=>{
+        const urls:Record<string,string>={};
+        await Promise.all(props.filter(x=>x.image_path).map(async prop=>{
+          try { const r=await supabase.storage.from('property-images').createSignedUrl(prop.image_path!,3600); if(r.data?.signedUrl) urls[prop.id]=r.data.signedUrl; } catch {}
+        }));
+        setImageUrls(urls);
+      })();
+      void ensureRecurring(props, unitRows, txRows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load the dashboard.');
+      setLoading(false);
+    }
+  },[ensureRecurring]);
+
   useEffect(()=>{load();},[load]);
 
   async function generateTestRentChecks(){

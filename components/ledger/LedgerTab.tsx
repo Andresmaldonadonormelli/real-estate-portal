@@ -7,6 +7,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculations';
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
+import { withTimeout } from '@/lib/async';
 
 type ViewMode = 'months' | 'table';
 type TxType = 'income' | 'expense' | 'transfer';
@@ -39,14 +40,18 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
 
   async function loadData() {
     setLoading(true); setError('');
-    const [t,p,u] = await Promise.all([
-      supabase.from('transactions').select('*').order('transaction_date',{ascending:false}),
-      supabase.from('properties').select('*').order('address'),
-      supabase.from('units').select('*').order('unit_number'),
-    ]);
-    const err=t.error||p.error||u.error;
-    if(err) setError(err.message); else { setTransactions((t.data||[]) as Transaction[]); setProperties((p.data||[]) as Property[]); setUnits((u.data||[]) as Unit[]); }
-    setLoading(false);
+    try {
+      const [t,p,u] = await withTimeout(Promise.all([
+        supabase.from('transactions').select('*').order('transaction_date',{ascending:false}),
+        supabase.from('properties').select('*').order('address'),
+        supabase.from('units').select('*').order('unit_number'),
+      ]), 8000, 'Ledger data took too long to load. Please retry.');
+      const err=t.error||p.error||u.error;
+      if(err) throw err;
+      setTransactions((t.data||[]) as Transaction[]); setProperties((p.data||[]) as Property[]); setUnits((u.data||[]) as Unit[]);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : 'Could not load ledger data.');
+    } finally { setLoading(false); }
   }
   useEffect(()=>{loadData();},[]);
 
