@@ -53,6 +53,37 @@ export default function Dashboard() {
   },[]);
   useEffect(()=>{load();},[load]);
 
+  async function generateTestRentChecks(){
+    setError('');
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) { setError('You are not signed in.'); return; }
+    const now=new Date(); const month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; const first=`${month}-01`;
+    const eligible=units.filter(unit=>unit.occupied&&unit.recurring_rent_enabled!==false&&Number(unit.current_rent||0)>0);
+    if(!eligible.length){ setError('No occupied units with recurring rent are available to test.'); return; }
+    let changed=0;
+    for(const unit of eligible){
+      const monthRows=transactions.filter(tx=>tx.unit_id===unit.id&&tx.category==='Rent'&&tx.transaction_date.startsWith(month));
+      const pending=monthRows.find(tx=>tx.status==='pending');
+      if(pending) continue;
+      const posted=monthRows.find(tx=>(tx.status||'posted')==='posted');
+      if(posted) continue;
+      const declined=monthRows.find(tx=>tx.status==='declined'&&tx.source==='recurring');
+      if(declined){
+        const r=await supabase.from('transactions').update({status:'pending',notes:'Recurring rent awaiting confirmation (test reset)',confirmed_at:null}).eq('id',declined.id);
+        if(r.error){setError(r.error.message);return;}
+        changed++;
+        continue;
+      }
+      const r=await supabase.from('transactions').upsert({user_id:auth.user.id,property_id:unit.property_id,unit_id:unit.id,transaction_date:first,type:'income',category:'Rent',description:`${unit.unit_number} rent`,payee_source:unit.tenant_name||null,amount:Number(unit.current_rent),notes:'Recurring rent awaiting confirmation (test)',source:'recurring',status:'pending',import_key:`recurring-rent:${unit.id}:${month}`},{onConflict:'user_id,import_key',ignoreDuplicates:true});
+      if(r.error){setError(r.error.message);return;}
+      changed++;
+    }
+    await load();
+    const firstEligible=eligible.find(unit=>!transactions.some(tx=>tx.unit_id===unit.id&&tx.category==='Rent'&&tx.transaction_date.startsWith(month)&&(tx.status||'posted')==='posted'));
+    if(firstEligible) setReviewPropertyId(firstEligible.property_id);
+    if(changed===0&&!firstEligible) setError('Nothing to test: this month’s rent is already recorded for all occupied units.');
+  }
+
   async function confirmRent(tx:Transaction){
     setConfirming(tx.id); setError('');
     const property=properties.find(p=>p.id===tx.property_id); const feePercent=Number(property?.management_fee_percent||0);
@@ -77,7 +108,7 @@ export default function Dashboard() {
   const reviewRents=pendingRents.filter(t=>t.property_id===reviewPropertyId);
 
   return <div style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:24}}><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:24,flexWrap:'wrap'}}><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}><button className="primary-action" onClick={generateTestRentChecks} style={primaryButton}>Test rent check</button><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div></div>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<p>Loading…</p>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:16}}><StatCard label="Properties" value={stats.totalProperties}/><StatCard label="Occupied Units" value={`${stats.occupiedUnits}/${stats.totalUnits}`}/><StatCard label="Vacant Units" value={stats.vacantUnits}/></div>

@@ -139,7 +139,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'grid',placeItems:'center',padding:18,zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h2 style={{fontSize:21}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
 const inputStyle:React.CSSProperties={width:'100%',padding:'10px 11px',border:'1px solid var(--border-color)',borderRadius:8,background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16};
-const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:8,background:'var(--accent)',color:'#fff',fontWeight:600,cursor:'pointer'};
+const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:8,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:8,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
