@@ -131,7 +131,7 @@ const primaryButtonStyle: React.CSSProperties = {
   border: 0,
   borderRadius: 8,
   background: 'var(--accent)',
-  color: '#fff',
+  color: 'var(--accent-contrast)',
   fontSize: 15,
   fontWeight: 600,
   cursor: 'pointer',

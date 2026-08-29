@@ -11,6 +11,7 @@ export interface Property {
   purchase_date?: string | null;
   monthly_mortgage_payment?: number | null;
   management_fee_percent?: number | null;
+  image_path?: string | null;
 }
 
 export interface Unit {
@@ -41,7 +42,7 @@ export interface Transaction {
   notes: string | null;
   import_key?: string | null;
   source?: string | null;
-  status?: 'pending' | 'posted';
+  status?: 'pending' | 'posted' | 'declined';
   confirmed_at?: string | null;
 }
 

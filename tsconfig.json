@@ -21,5 +21,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "real-estate-portal"]
+  "exclude": ["node_modules"]
 }

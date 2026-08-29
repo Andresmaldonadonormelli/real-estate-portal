@@ -44,11 +44,10 @@ export default function SideNav() {
           <Link
             key={item.href}
             href={item.href}
+            className={`nav-link ${pathname === item.href ? 'active' : ''}`}
             style={{
               display: 'block',
-              padding: '12px 24px',
               color: pathname === item.href ? 'var(--accent)' : 'var(--text-primary)',
-              borderLeft: pathname === item.href ? '3px solid var(--accent)' : '3px solid transparent',
               textDecoration: 'none',
               fontSize: '14px',
               transition: 'all 0.2s',

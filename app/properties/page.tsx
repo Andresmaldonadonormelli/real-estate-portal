@@ -26,6 +26,8 @@ export default function PropertiesPage() {
   const [propertyForm, setPropertyForm] = useState(emptyProperty);
   const [unitForm, setUnitForm] = useState(emptyUnit);
   const [saving, setSaving] = useState(false);
+  const [propertyImage, setPropertyImage] = useState<File | null>(null);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
 
   async function loadData() {
     setLoading(true);
@@ -37,8 +39,12 @@ export default function PropertiesPage() {
     if (propError || unitError) {
       setError(propError?.message || unitError?.message || 'Could not load properties.');
     } else {
-      setProperties((props || []) as Property[]);
+      const propertyRows = (props || []) as Property[];
+      setProperties(propertyRows);
       setUnits((unitRows || []) as Unit[]);
+      const urls: Record<string,string> = {};
+      await Promise.all(propertyRows.filter(p => p.image_path).map(async p => { const r = await supabase.storage.from('property-images').createSignedUrl(p.image_path!, 3600); if (r.data?.signedUrl) urls[p.id] = r.data.signedUrl; }));
+      setImageUrls(urls);
     }
     setLoading(false);
   }
@@ -54,12 +60,14 @@ export default function PropertiesPage() {
 
   function startAddProperty() {
     setEditingProperty(null);
+    setPropertyImage(null);
     setPropertyForm(emptyProperty);
     setShowPropertyForm(true);
   }
 
   function startEditProperty(property: Property) {
     setEditingProperty(property);
+    setPropertyImage(null);
     setPropertyForm({
       address: property.address || '', city: property.city || '', state: property.state || '', zip: property.zip || '',
       property_type: property.property_type || 'duplex',
@@ -88,12 +96,23 @@ export default function PropertiesPage() {
       management_fee_percent: Number(propertyForm.management_fee_percent || 0),
     };
 
+    let propertyId = editingProperty?.id || '';
     const result = editingProperty
-      ? await supabase.from('properties').update(payload).eq('id', editingProperty.id)
-      : await supabase.from('properties').insert(payload);
+      ? await supabase.from('properties').update(payload).eq('id', editingProperty.id).select('id').single()
+      : await supabase.from('properties').insert(payload).select('id').single();
 
-    if (result.error) setError(result.error.message);
-    else { setShowPropertyForm(false); await loadData(); }
+    if (result.error) { setError(result.error.message); setSaving(false); return; }
+    propertyId = result.data?.id || propertyId;
+    if (propertyImage && propertyId) {
+      if (!propertyImage.type.startsWith('image/')) { setError('Please choose an image file.'); setSaving(false); return; }
+      const ext = propertyImage.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${auth.user.id}/${propertyId}/primary-${Date.now()}.${ext}`;
+      const upload = await supabase.storage.from('property-images').upload(path, propertyImage, { upsert: true, contentType: propertyImage.type });
+      if (upload.error) { setError(upload.error.message); setSaving(false); return; }
+      const imageUpdate = await supabase.from('properties').update({ image_path: path }).eq('id', propertyId);
+      if (imageUpdate.error) { setError(imageUpdate.error.message); setSaving(false); return; }
+    }
+    setShowPropertyForm(false); setPropertyImage(null); await loadData();
     setSaving(false);
   }
 
@@ -175,9 +194,12 @@ export default function PropertiesPage() {
             return (
               <section key={property.id} className="card" style={{ padding: 22 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                    {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-hero" /> : <div className="property-hero" style={{ display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 34 }}>⌂</div>}
+                    <div>
                     <h2 style={{ fontSize: 21, fontWeight: 550, marginBottom: 5 }}>{property.address}</h2>
                     <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{property.city}, {property.state} {property.zip}</div>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => startEditProperty(property)} style={secondaryButton}>Edit</button>
@@ -233,6 +255,7 @@ export default function PropertiesPage() {
             <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
             <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
             <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field></div>
+            <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
             <button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
           </form>
@@ -263,7 +286,7 @@ function ErrorBox({ message }: { message: string }) { return <div style={{ margi
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', padding: 18, zIndex: 1000 }}><div className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', padding: 22 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" style={{ ...secondaryButton, padding: '7px 10px' }}>✕</button></div>{children}</div></div>; }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
-const primaryButton: React.CSSProperties = { padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: '#fff', fontWeight: 600, cursor: 'pointer' };
+const primaryButton: React.CSSProperties = { padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontWeight: 600, cursor: 'pointer' };
 const secondaryButton: React.CSSProperties = { padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
 const dangerButton: React.CSSProperties = { ...secondaryButton, color: 'var(--danger)' };
 const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 };
