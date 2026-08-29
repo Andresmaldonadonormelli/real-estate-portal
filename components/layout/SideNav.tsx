@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LayoutDashboard, House, Files, PlugZap, UserRound } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
 export default function SideNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/properties', label: 'Properties' },
-    { href: '/ledger', label: 'Ledger & Docs' },
-    { href: '/utilities', label: 'Utilities' },
-    { href: '/account', label: 'Account' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/properties', label: 'Properties', icon: House },
+    { href: '/ledger', label: 'Ledger & Docs', icon: Files },
+    { href: '/utilities', label: 'Utilities', icon: PlugZap },
+    { href: '/account', label: 'Account', icon: UserRound },
   ];
 
   return (
@@ -40,22 +41,20 @@ export default function SideNav() {
       </div>
 
       <div style={{ marginBottom: '32px', flex: 1 }}>
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`nav-link ${pathname === item.href ? 'active' : ''}`}
-            style={{
-              display: 'block',
-              color: pathname === item.href ? 'var(--accent)' : 'var(--text-primary)',
-              textDecoration: 'none',
-              fontSize: '14px',
-              transition: 'all 0.2s',
-            }}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`nav-link ${active ? 'active' : ''}`}
+            >
+              <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div style={{ padding: '0 24px', borderTop: '1px solid var(--border-color)', paddingTop: '24px' }}>
