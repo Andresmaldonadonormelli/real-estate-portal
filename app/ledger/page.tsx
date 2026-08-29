@@ -5,6 +5,7 @@ import type { Property } from '@/lib/types';
 import LedgerTab from '@/components/ledger/LedgerTab';
 import StatementsTab from '@/components/ledger/StatementsTab';
 import DocumentsTab from '@/components/ledger/DocumentsTab';
+import PageSkeleton from '@/components/common/PageSkeleton';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
@@ -20,7 +21,7 @@ export default function LedgerDocsPage(){
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{(['ledger','statements','documents'] as Tab[]).map(t=><button key={t} onClick={()=>setTab(t)} style={tab===t?activeTab:tabButton}>{t==='ledger'?'Ledger':t==='statements'?'Statements':'Documents'}</button>)}</div>
         <label style={{display:'grid',gap:6,fontSize:13,minWidth:280}}>Select property<select value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)} style={inputStyle}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label>
       </div>
-      {loading?<p>Loading…</p>:tab==='ledger'?<LedgerTab selectedPropertyId={selectedPropertyId}/>:tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId}/>} 
+      {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'?<LedgerTab selectedPropertyId={selectedPropertyId}/>:tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId}/>} 
     </div>
   </div>
 }

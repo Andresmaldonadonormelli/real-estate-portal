@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/auth/AuthContext';
+import PageSkeleton from '@/components/common/PageSkeleton';
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
 
@@ -15,6 +17,7 @@ const emptyUnit = {
 };
 
 export default function PropertiesPage() {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,11 +85,9 @@ export default function PropertiesPage() {
   async function saveProperty(e: FormEvent) {
     e.preventDefault();
     setSaving(true); setError('');
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { setError('You are not signed in.'); setSaving(false); return; }
 
     const payload = {
-      user_id: auth.user.id,
+      user_id: user.id,
       address: propertyForm.address.trim(), city: propertyForm.city.trim(), state: propertyForm.state.trim(), zip: propertyForm.zip.trim(),
       property_type: propertyForm.property_type,
       mortgage_balance: Number(propertyForm.mortgage_balance || 0),
@@ -106,7 +107,7 @@ export default function PropertiesPage() {
     if (propertyImage && propertyId) {
       if (!propertyImage.type.startsWith('image/')) { setError('Please choose an image file.'); setSaving(false); return; }
       const ext = propertyImage.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `${auth.user.id}/${propertyId}/primary-${Date.now()}.${ext}`;
+      const path = `${user.id}/${propertyId}/primary-${Date.now()}.${ext}`;
       const upload = await supabase.storage.from('property-images').upload(path, propertyImage, { upsert: true, contentType: propertyImage.type });
       if (upload.error) { setError(upload.error.message); setSaving(false); return; }
       const imageUpdate = await supabase.from('properties').update({ image_path: path }).eq('id', propertyId);
@@ -141,11 +142,9 @@ export default function PropertiesPage() {
   async function saveUnit(e: FormEvent) {
     e.preventDefault();
     setSaving(true); setError('');
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { setError('You are not signed in.'); setSaving(false); return; }
 
     const payload = {
-      user_id: auth.user.id,
+      user_id: user.id,
       property_id: unitForm.property_id,
       unit_number: unitForm.unit_number.trim(),
       bedroom_count: Number(unitForm.bedroom_count || 0), bathroom_count: Number(unitForm.bathroom_count || 0),
@@ -180,7 +179,7 @@ export default function PropertiesPage() {
       </div>
 
       {error && <ErrorBox message={error} />}
-      {loading ? <p>Loading…</p> : properties.length === 0 ? (
+      {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (
         <div className="card" style={{ padding: 28 }}>
           <h2 style={{ fontSize: 20, marginBottom: 8 }}>Add your first property</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 18 }}>Your dashboard and ledger will build from the properties and transactions you enter here.</p>

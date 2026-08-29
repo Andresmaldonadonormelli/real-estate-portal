@@ -2,11 +2,14 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/auth/AuthContext';
+import PageSkeleton from '@/components/common/PageSkeleton';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
 export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
@@ -57,16 +60,14 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
     e.preventDefault();
     if (!file) { setError('Choose a file to upload.'); return; }
     setSaving(true); setError('');
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { setError('You are not signed in.'); setSaving(false); return; }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');
-    const path = `${auth.user.id}/${form.property_id}/${Date.now()}-${safeName}`;
+    const path = `${user.id}/${form.property_id}/${Date.now()}-${safeName}`;
     const upload = await supabase.storage.from('property-documents').upload(path, file, { upsert:false, contentType:file.type || undefined });
     if (upload.error) { setError(upload.error.message); setSaving(false); return; }
 
     const row = {
-      user_id: auth.user.id,
+      user_id: user.id,
       property_id: form.property_id,
       unit_id: form.unit_id || null,
       category: form.category,
@@ -113,7 +114,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
       <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={inputStyle}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
     </div>
 
-    {loading ? <p>Loading…</p> : filtered.length === 0 ? <div className="card" style={{padding:28,color:'var(--text-secondary)'}}>No documents yet.</div> :
+    {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="card" style={{padding:28,color:'var(--text-secondary)'}}>No documents yet.</div> :
       <div style={{display:'grid',gap:10}}>{filtered.map(doc => <div key={doc.id} className="card" style={{padding:16,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:14,alignItems:'center'}}>
         <div style={{minWidth:0}}>
           <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:4}}>{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>

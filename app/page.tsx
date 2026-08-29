@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import StatCard from '@/components/common/StatCard';
+import PageSkeleton from '@/components/common/PageSkeleton';
+import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit, Transaction } from '@/lib/types';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -22,8 +25,7 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { setError('You are not signed in.'); setLoading(false); return; }
+    if (!user) { setError('You are not signed in.'); setLoading(false); return; }
     const [p,u,t] = await Promise.all([
       supabase.from('properties').select('*').order('address'),
       supabase.from('units').select('*').order('unit_number'),
@@ -38,12 +40,12 @@ export default function Dashboard() {
       const resolved=txRows.some(tx=>tx.unit_id===unit.id&&tx.category==='Rent'&&tx.transaction_date.startsWith(month)&&((tx.status||'posted')==='posted'||tx.status==='declined'));
       const pending=txRows.some(tx=>tx.unit_id===unit.id&&tx.category==='Rent'&&tx.transaction_date.startsWith(month)&&tx.status==='pending');
       if(resolved||pending) continue;
-      inserts.push({user_id:auth.user.id,property_id:unit.property_id,unit_id:unit.id,transaction_date:first,type:'income',category:'Rent',description:`${unit.unit_number} rent`,payee_source:unit.tenant_name||null,amount:Number(unit.current_rent),notes:'Recurring rent awaiting confirmation',source:'recurring',status:'pending',import_key:`recurring-rent:${unit.id}:${month}`});
+      inserts.push({user_id:user.id,property_id:unit.property_id,unit_id:unit.id,transaction_date:first,type:'income',category:'Rent',description:`${unit.unit_number} rent`,payee_source:unit.tenant_name||null,amount:Number(unit.current_rent),notes:'Recurring rent awaiting confirmation',source:'recurring',status:'pending',import_key:`recurring-rent:${unit.id}:${month}`});
     }
     for(const property of props){
       const payment=Number(property.monthly_mortgage_payment||0); if(payment<=0) continue;
       const exists=txRows.some(tx=>tx.property_id===property.id&&tx.category==='Mortgage'&&tx.transaction_date.startsWith(month)&&(tx.status||'posted')==='posted');
-      if(!exists) inserts.push({user_id:auth.user.id,property_id:property.id,unit_id:null,transaction_date:first,type:'expense',category:'Mortgage',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`recurring-mortgage:${property.id}:${month}`});
+      if(!exists) inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:first,type:'expense',category:'Mortgage',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`recurring-mortgage:${property.id}:${month}`});
     }
     if(inserts.length){
       const ins=await supabase.from('transactions').upsert(inserts,{onConflict:'user_id,import_key',ignoreDuplicates:true});
@@ -52,7 +54,7 @@ export default function Dashboard() {
     const urls:Record<string,string>={};
     await Promise.all(props.filter(x=>x.image_path).map(async prop=>{ const r=await supabase.storage.from('property-images').createSignedUrl(prop.image_path!,3600); if(r.data?.signedUrl) urls[prop.id]=r.data.signedUrl; }));
     setImageUrls(urls); setProperties(props); setUnits(unitRows); setTransactions(txRows); setLoading(false);
-  },[]);
+  },[user]);
   useEffect(()=>{load();},[load]);
 
   async function generateTestRentChecks(){
@@ -69,7 +71,7 @@ export default function Dashboard() {
     const property=properties.find(p=>p.id===tx.property_id); const feePercent=Number(property?.management_fee_percent||0);
     const up=await supabase.from('transactions').update({status:'posted',confirmed_at:new Date().toISOString(),notes:'Recurring rent confirmed received'}).eq('id',tx.id).eq('status','pending');
     if(up.error){setError(up.error.message);setConfirming(null);return;}
-    if(feePercent>0){ const {data:auth}=await supabase.auth.getUser(); if(auth.user){ const fee=Math.round(Math.abs(Number(tx.amount))*feePercent)/100; const fr=await supabase.from('transactions').upsert({user_id:auth.user.id,property_id:tx.property_id,unit_id:tx.unit_id||null,transaction_date:tx.transaction_date,type:'expense',category:'Management Fee',description:`Management fee (${feePercent}%)`,payee_source:'Property manager',amount:-fee,notes:`Automatically created when rent was confirmed. Rate: ${feePercent}%`,source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`management-fee:${tx.id}`},{onConflict:'user_id,import_key',ignoreDuplicates:true}); if(fr.error)setError(fr.error.message); }}
+    if(feePercent>0){ const fee=Math.round(Math.abs(Number(tx.amount))*feePercent)/100; const fr=await supabase.from('transactions').upsert({user_id:user.id,property_id:tx.property_id,unit_id:tx.unit_id||null,transaction_date:tx.transaction_date,type:'expense',category:'Management Fee',description:`Management fee (${feePercent}%)`,payee_source:'Property manager',amount:-fee,notes:`Automatically created when rent was confirmed. Rate: ${feePercent}%`,source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`management-fee:${tx.id}`},{onConflict:'user_id,import_key',ignoreDuplicates:true}); if(fr.error)setError(fr.error.message); }
     await load(); setConfirming(null);
   }
   async function declineRent(tx:Transaction){
@@ -91,7 +93,7 @@ export default function Dashboard() {
   return <div style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:24,flexWrap:'wrap'}}><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}><button className="primary-action" onClick={generateTestRentChecks} style={primaryButton}>Test rent check</button><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div></div>
     {error&&<div style={errorBox}>{error}</div>}
-    {loading?<p>Loading…</p>:<>
+    {loading?<PageSkeleton variant="dashboard"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:16}}><StatCard label="Properties" value={stats.totalProperties}/><StatCard label="Occupied Units" value={`${stats.occupiedUnits}/${stats.totalUnits}`}/><StatCard label="Vacant Units" value={stats.vacantUnits}/></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:32}}><StatCard label="Income This Month" value={formatCurrency(monthlyTotals.income)} color="accent"/><StatCard label="Expenses This Month" value={formatCurrency(monthlyTotals.expense)} color="danger"/><StatCard label="Net Cash Flow" value={formatCurrency(monthlyTotals.net)} color={monthlyTotals.net>=0?'accent':'danger'}/><StatCard label="Mortgage Balance" value={formatCurrency(stats.totalMortgageBalance)}/></div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><h2 style={{fontSize:19,fontWeight:600}}>Properties</h2><Link href="/properties" style={{fontSize:14}}>Manage properties →</Link></div>

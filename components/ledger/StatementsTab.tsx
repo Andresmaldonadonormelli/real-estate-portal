@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import PageSkeleton from '@/components/common/PageSkeleton';
 import { calculateMonthlyTotals, groupTransactionsByMonth } from '@/lib/calculations';
 import { formatCurrency, formatMonthYear } from '@/lib/formatters';
 import type { Transaction } from '@/lib/types';
@@ -23,7 +24,7 @@ export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyI
     return {key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),count:txs.length,...totals};
   }),[transactions]);
 
-  if(loading)return <p>Loading…</p>;
+  if(loading)return <PageSkeleton variant="ledger"/>;
   if(error)return <div style={{padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8}}>{error}</div>;
   if(!months.length)return <div className="card" style={{padding:28,color:'var(--text-secondary)'}}>No statement data yet. Statements will populate from your ledger transactions.</div>;
   return <div style={{display:'grid',gap:10}}>{months.map(m=><div className="card" key={m.key} style={{padding:18,display:'grid',gridTemplateColumns:'minmax(0,1fr) repeat(3,minmax(100px,auto))',gap:18,alignItems:'center'}}>

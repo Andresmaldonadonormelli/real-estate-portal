@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { AuthSessionProvider } from '@/components/auth/AuthContext';
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -53,7 +54,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (loading) {
-    return <div style={{ padding: 32 }}>Loading portal…</div>;
+    return <div className="auth-loading-shell" role="status" aria-label="Loading portal"><div className="auth-loading-card"><div className="skeleton-block" style={{width:110,height:16,marginBottom:18}}/><div className="skeleton-block" style={{width:'58%',height:30,marginBottom:12}}/><div className="skeleton-block" style={{width:'82%',height:14,marginBottom:26}}/><div className="skeleton-block" style={{height:44,marginBottom:12}}/><div className="skeleton-block" style={{height:44,marginBottom:18}}/><div className="skeleton-block" style={{height:44}}/></div></div>;
   }
 
   if (!session) {
@@ -113,7 +114,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <AuthSessionProvider session={session}>{children}</AuthSessionProvider>;
 }
 
 const inputStyle: React.CSSProperties = {

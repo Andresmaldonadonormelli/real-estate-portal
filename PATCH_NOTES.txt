@@ -1,0 +1,6 @@
+V2.1.3 PATCH
+- Centralizes Supabase auth/session state in AuthGate/AuthContext.
+- Removes repeated getSession/getUser calls from individual pages.
+- Adds pulsing skeleton loading states inspired by modern dashboard loading patterns.
+- No Supabase SQL changes required.
+- Upload these files to the ROOT of the GitHub repo, preserving folders.

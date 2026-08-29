@@ -162,3 +162,71 @@ td {
 .bottom-nav-link.active { color: var(--nav-active-text); background: var(--nav-active-bg); border-radius: 10px; margin: 5px 3px; }
 .property-thumb { width: 72px; height: 58px; border-radius: 9px; object-fit: cover; background: var(--bg-primary); border: 1px solid var(--border-color); flex: 0 0 auto; }
 .property-hero { width: 150px; height: 108px; border-radius: 12px; object-fit: cover; background: var(--bg-primary); border: 1px solid var(--border-color); }
+
+/* Loading skeletons */
+:root {
+  --skeleton-bg: #ecece7;
+  --skeleton-edge: #f5f5f2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --skeleton-bg: #232320;
+    --skeleton-edge: #2b2b27;
+  }
+}
+[data-theme="light"] {
+  --skeleton-bg: #ecece7;
+  --skeleton-edge: #f5f5f2;
+}
+[data-theme="dark"] {
+  --skeleton-bg: #232320;
+  --skeleton-edge: #2b2b27;
+}
+.skeleton-block {
+  display: block;
+  width: 100%;
+  border-radius: 9px;
+  background: var(--skeleton-bg);
+  animation: skeleton-pulse 1.35s ease-in-out infinite;
+}
+.skeleton-grid {
+  display: grid;
+  gap: 12px;
+}
+.skeleton-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.skeleton-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.skeleton-card-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+.auth-loading-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+.auth-loading-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: .55; background: var(--skeleton-bg); }
+  50% { opacity: 1; background: var(--skeleton-edge); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; }
+}
+@media (max-width: 767px) {
+  .skeleton-grid-3, .skeleton-grid-4 { grid-template-columns: 1fr 1fr; }
+  .skeleton-card-row { align-items: flex-start; }
+}
