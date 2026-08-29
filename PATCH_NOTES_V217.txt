@@ -1,0 +1,22 @@
+V2.1.7 — UI/UX CLEANUP RELEASE
+
+What changed
+- Unit rows stay clickable but return to a normal 14px card radius instead of pill shapes.
+- Global pill rule is narrowed so buttons are pills while cards, interactive rows, inputs, selects and textareas keep appropriate radii.
+- Mobile Dashboard density is tightened: top operational KPIs fit in one 3-column row, financial KPIs use a compact 2x2 grid, cards are shorter, spacing is reduced, and Properties appear sooner.
+- Dashboard property cards now have hover/focus feedback and open Properties when clicked. Review Rents still works independently.
+- Mobile bottom-nav active treatment is slightly lighter/smaller.
+- Ledger & Docs receives a real mobile layout: stacked toolbar, full-width property selector, compact filters and summary metrics.
+- Ledger Table view becomes mobile transaction cards instead of forcing a wide desktop table onto a narrow screen.
+- Ledger empty state is clearer.
+- Recurring transactions now say “Skip this month” / “Skip month” instead of Delete. Skipping keeps the declined record so the Dashboard does not recreate that month.
+- Form controls use soft rectangular radii instead of inheriting the pill treatment.
+- Active Ledger/Statements/Documents tab now uses the theme accent, so light mode gets forest green + white and dark mode gets mint + dark text.
+- Destructive actions get clearer red hierarchy.
+
+Database
+- NO new Supabase SQL for V2.1.7.
+- Keep the V2.1.6 database update you already ran.
+
+Deployment
+Upload/replace the files in this ZIP at the ROOT of the GitHub repository, preserving folders. Do not create another nested project folder.

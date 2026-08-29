@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import StatCard from '@/components/common/StatCard';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -12,6 +13,7 @@ import type { Property, Unit, Transaction } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 
 export default function Dashboard() {
+  const router = useRouter();
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -142,13 +144,13 @@ export default function Dashboard() {
       <div className="dashboard-stats dashboard-stats-top"><StatCard label="Properties" value={stats.totalProperties}/><StatCard label="Occupied Units" value={`${stats.occupiedUnits}/${stats.totalUnits}`}/><StatCard label="Vacant Units" value={stats.vacantUnits}/></div>
       <div className="dashboard-stats dashboard-stats-money"><StatCard label="Income This Month" value={formatCurrency(monthlyTotals.income)} color="accent"/><StatCard label="Expenses This Month" value={formatCurrency(monthlyTotals.expense)} color="danger"/><StatCard label="Net Cash Flow" value={formatCurrency(monthlyTotals.net)} color={monthlyTotals.net>=0?'accent':'danger'}/><StatCard label="Mortgage Balance" value={formatCurrency(stats.totalMortgageBalance)}/></div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><h2 style={{fontSize:19,fontWeight:600}}>Properties</h2><Link href="/properties" style={{fontSize:14}}>Manage properties →</Link></div>
-      <div style={{display:'grid',gap:12,marginBottom:32}}>{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);const pending=pendingRents.filter(t=>t.property_id===property.id);return <div key={property.id} className="card" style={{padding:16}}>
+      <div style={{display:'grid',gap:12,marginBottom:32}}>{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);const pending=pendingRents.filter(t=>t.property_id===property.id);return <div key={property.id} className="card dashboard-property-card" role="button" tabIndex={0} aria-label={`Open ${property.address}`} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}} style={{padding:16}}>
         <div style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr) auto',gap:14,alignItems:'center'}}>
           {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-thumb"/>:<div className="property-thumb" style={{display:'grid',placeItems:'center',color:'var(--text-muted)',fontSize:24}}>⌂</div>}
           <div><h3 style={{fontSize:17,marginBottom:4}}>{property.address}</h3><div style={{color:'var(--text-secondary)',fontSize:13}}>{property.city}, {property.state} · {pu.filter(u=>u.occupied).length}/{pu.length} occupied</div></div>
           <div style={{textAlign:'right'}}><div style={{fontSize:12,color:'var(--text-secondary)'}}>This month</div><strong style={{color:totals.net>=0?'var(--accent)':'var(--danger)'}}>{formatCurrency(totals.net)}</strong></div>
         </div>
-        {(()=>{const testPending=pending.length===0?testPendingForProperty(property.id):0;const actionCount=pending.length||testPending;if(!actionCount)return null;const isTest=testPending>0;return <div className="rent-attention-panel"><div><div className="rent-attention-kicker">{isTest?'TEST · ACTION NEEDED':'ACTION NEEDED'}</div><strong style={{fontSize:15}}>{monthLabel} rent confirmation</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{actionCount} occupied unit{actionCount===1?' is':'s are'} awaiting confirmation.</div></div><button className="primary-action" onClick={()=>{setTestPreview(isTest);setReviewPropertyId(property.id);}} style={primaryButton}>Review rents</button></div>;})()}
+        {(()=>{const testPending=pending.length===0?testPendingForProperty(property.id):0;const actionCount=pending.length||testPending;if(!actionCount)return null;const isTest=testPending>0;return <div className="rent-attention-panel"><div><div className="rent-attention-kicker">{isTest?'TEST · ACTION NEEDED':'ACTION NEEDED'}</div><strong style={{fontSize:15}}>{monthLabel} rent confirmation</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{actionCount} occupied unit{actionCount===1?' is':'s are'} awaiting confirmation.</div></div><button className="primary-action" onClick={e=>{e.stopPropagation();setTestPreview(isTest);setReviewPropertyId(property.id);}} style={primaryButton}>Review rents</button></div>;})()}
       </div>})}</div>
       <div className="recent-activity-heading"><h2 style={{fontSize:19,fontWeight:600}}>Recent Activity</h2></div><div className="card recent-activity-card"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=><div className="recent-activity-row" key={tx.id}><div className="recent-activity-copy"><span>{new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span><strong>{tx.description}</strong></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></div>)}</div><Link href="/ledger" className="pill-link primary-action recent-ledger-button">Open ledger</Link></div>
     </>}

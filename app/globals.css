@@ -413,7 +413,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .recent-ledger-button { margin-top:16px; width:max-content; }
 
 /* Buttons are pills. Navigation remains rounded rectangles. */
-button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button) { border-radius:999px !important; }
+button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control) { border-radius:999px !important; }
 
 @media (max-width: 767px) {
   .dashboard-page { padding:18px 16px 92px !important; }
@@ -432,4 +432,175 @@ button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-but
   .recent-activity-copy strong { font-size:13px; }
   .recent-ledger-button { width:100%; }
   .bottom-nav-link.active { margin:6px 4px; border-radius:12px; }
+}
+
+
+/* V2.1.7 cleanup: density, radii, responsive ledger, control consistency */
+:root,
+[data-theme="light"] {
+  --control-bg: #ffffff;
+  --control-border: rgba(0,0,0,.10);
+  --surface-hover: #f2f5f1;
+  --danger-soft: #f8e9e7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --control-bg: #141412;
+    --control-border: rgba(255,255,255,.12);
+    --surface-hover: #20211e;
+    --danger-soft: rgba(239,145,138,.12);
+  }
+}
+[data-theme="dark"] {
+  --control-bg: #141412;
+  --control-border: rgba(255,255,255,.12);
+  --surface-hover: #20211e;
+  --danger-soft: rgba(239,145,138,.12);
+}
+
+/* Interactive rows are cards, not pills. */
+.unit-card,
+.interactive-card {
+  border-radius: 14px !important;
+}
+
+/* Form controls are soft rectangles. Buttons remain pills. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-radius: 10px !important;
+}
+
+/* Dashboard property rows can be navigated like real rows. */
+.dashboard-property-card {
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .dashboard-property-card:hover {
+    background: var(--surface-hover);
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--border-color));
+    transform: translateY(-1px);
+  }
+}
+
+/* Ledger controls */
+.ledger-actions,
+.ledger-view-actions {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.ledger-actions { justify-content:flex-end; margin-bottom:18px; }
+.ledger-view-actions { margin-bottom:14px; }
+.ledger-filters {
+  display:grid;
+  grid-template-columns:minmax(180px,1.25fr) repeat(4,minmax(120px,1fr));
+  gap:10px;
+  padding:14px;
+  margin-bottom:14px;
+}
+.ledger-summary {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  padding:16px;
+  margin-bottom:18px;
+}
+.ledger-table-wrap { overflow-x:auto; }
+.ledger-mobile-list { display:none; }
+.ledger-empty-state {
+  padding:28px;
+  text-align:center;
+  color:var(--text-secondary);
+}
+
+/* Better destructive hierarchy. */
+.danger-action {
+  color: var(--danger) !important;
+  background: transparent !important;
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border-color)) !important;
+}
+
+@media (max-width: 767px) {
+  .dashboard-page { padding:16px 14px 92px !important; }
+  .dashboard-header { margin-bottom:14px; gap:8px; }
+  .dashboard-header h1 { font-size:24px !important; line-height:1.15; }
+  .dashboard-header-actions { gap:8px; }
+  .dashboard-header-actions > a { font-size:13px !important; }
+  .dashboard-stats-top {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .dashboard-stats-money {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-bottom:20px;
+  }
+  .dashboard-stats .card {
+    min-height:88px;
+    padding:11px 12px;
+    border-radius:12px;
+  }
+  .dashboard-stats .stat-label {
+    font-size:10px;
+    line-height:1.25;
+    margin-bottom:5px;
+  }
+  .dashboard-stats .stat-value {
+    font-size:18px;
+    line-height:1.15;
+  }
+  .dashboard-stats-top .stat-value { font-size:19px; }
+  .test-rent-button { font-size:11px; padding:7px 10px !important; }
+  .property-thumb { width:62px; height:52px; }
+  .recent-activity-card { padding:14px; }
+  .recent-activity-row { padding:10px 0; }
+  .bottom-nav { height:62px; }
+  .bottom-nav-link.active { margin:7px 5px; border-radius:10px; }
+
+  .ledger-actions { justify-content:stretch; }
+  .ledger-actions button { flex:1 1 calc(50% - 4px); min-height:42px; }
+  .ledger-view-actions { gap:7px; }
+  .ledger-view-actions button { min-height:40px; }
+  .ledger-filters {
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:10px;
+  }
+  .ledger-filters > :first-child { grid-column:1 / -1; }
+  .ledger-summary { padding:13px; gap:8px; }
+  .ledger-summary > div > div:last-child { font-size:16px !important; }
+  .ledger-table-wrap { display:none; }
+  .ledger-mobile-list { display:grid; gap:10px; }
+  .ledger-mobile-card { padding:14px; }
+  .ledger-mobile-meta { color:var(--text-secondary); font-size:12px; margin-bottom:5px; }
+  .ledger-mobile-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; }
+  .ledger-mobile-amount { text-align:right; font-weight:650; white-space:nowrap; }
+  .ledger-mobile-actions { display:flex; gap:6px; justify-content:flex-end; margin-top:9px; }
+
+  .modal-actions { flex-wrap:wrap; }
+  .modal-actions button { min-height:42px; }
+}
+
+@media (max-width: 420px) {
+  .dashboard-stats-top { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .dashboard-stats .card { min-height:82px; padding:10px; }
+  .dashboard-stats .stat-label { font-size:9px; letter-spacing:.25px; }
+  .dashboard-stats .stat-value { font-size:17px; }
+  .ledger-filters { grid-template-columns:1fr; }
+  .ledger-filters > :first-child { grid-column:auto; }
+}
+
+/* Ledger page shell */
+@media (max-width: 767px) {
+  .ledger-page { padding:16px 14px 92px !important; }
+  .ledger-page > div:first-child { margin-bottom:18px !important; }
+  .ledger-page h1 { font-size:25px !important; }
+  .ledger-page-toolbar { align-items:stretch !important; gap:12px !important; margin-bottom:16px !important; }
+  .ledger-tabs { width:100%; flex-wrap:nowrap !important; }
+  .ledger-tabs button { flex:1; padding:9px 11px !important; }
+  .ledger-property-picker { min-width:0 !important; width:100%; }
 }
