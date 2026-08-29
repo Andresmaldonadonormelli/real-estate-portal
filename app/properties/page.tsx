@@ -10,7 +10,7 @@ import { withTimeout } from '@/lib/async';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
-  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', management_fee_percent: '8',
+  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8',
 };
 
 const emptyUnit = {
@@ -82,6 +82,7 @@ export default function PropertiesPage() {
       mortgage_balance: String(property.mortgage_balance ?? ''), purchase_price: String(property.purchase_price ?? ''),
       purchase_date: property.purchase_date || '',
       monthly_mortgage_payment: String(property.monthly_mortgage_payment ?? ''),
+      mortgage_start_date: (property as Property & {mortgage_start_date?:string|null}).mortgage_start_date ?? '',
       management_fee_percent: String(property.management_fee_percent ?? 0),
     });
     setShowPropertyForm(true);
@@ -99,6 +100,7 @@ export default function PropertiesPage() {
       purchase_price: propertyForm.purchase_price ? Number(propertyForm.purchase_price) : null,
       purchase_date: propertyForm.purchase_date || null,
       monthly_mortgage_payment: Number(propertyForm.monthly_mortgage_payment || 0),
+      mortgage_start_date: propertyForm.mortgage_start_date || null,
       management_fee_percent: Number(propertyForm.management_fee_percent || 0),
     };
 
@@ -258,7 +260,7 @@ export default function PropertiesPage() {
             <div style={twoCol}><Field label="ZIP"><input required value={propertyForm.zip} onChange={e => setPropertyForm({ ...propertyForm, zip: e.target.value })} style={inputStyle} /></Field><Field label="Property type"><select value={propertyForm.property_type} onChange={e => setPropertyForm({ ...propertyForm, property_type: e.target.value })} style={inputStyle}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></Field></div>
             <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
             <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
-            <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field></div>
+            <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
             <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
             <button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>

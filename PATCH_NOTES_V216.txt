@@ -1,0 +1,14 @@
+V2.1.6 LOGIC + MOBILE + THEME CLEANUP
+
+- Adds mortgage_start_date to property editing and recurring mortgage generation.
+- Recurring mortgage entries deleted from Ledger are now marked skipped/declined for that month instead of hard-deleted, so Dashboard does not recreate them.
+- Redesigns existing Recent Activity into a compact latest-6 list with Open ledger pill.
+- Improves Dashboard mobile layout with a deliberate 2-column KPI grid and tighter spacing.
+- Makes action buttons pill-shaped while leaving navigation treatments alone.
+- Light mode now uses forest green + white button text, darker red, off-white page background, white cards and subtle card shadows.
+- Dark mode keeps mint + dark button text, softer red and no traditional card shadow.
+- Preserves V2.1.4 loading/performance architecture and V2.1.5 rent/mobile-menu/unit-card fixes.
+
+DATABASE STEP REQUIRED:
+Run V216_DATABASE_UPDATE.sql once in Supabase SQL Editor.
+Then edit W134 and set Mortgage start date to 2026-09-01.
