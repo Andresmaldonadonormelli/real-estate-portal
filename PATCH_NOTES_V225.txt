@@ -1,0 +1,10 @@
+V2.2.5 — Interactive Cash Flow + richer semantic color
+
+- Adds Robinhood-style cash-flow inspection on touch/drag and desktop hover.
+- Selected month gets a vertical guide line, emphasized point, month label, and value.
+- Monthly mode exposes income, expenses, and net for the selected month.
+- Cumulative mode shows cumulative value plus the selected month's net.
+- Adds richer positive green, negative coral/red, and amber warning colors in both light and dark modes.
+- Keeps brand mint separate from financial positive green.
+- Dark mode moves closer to near-black with stronger typography contrast and more vivid data colors.
+- No Supabase SQL required.

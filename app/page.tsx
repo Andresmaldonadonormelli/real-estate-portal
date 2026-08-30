@@ -162,9 +162,16 @@ export default function Dashboard() {
   },[documents,pendingRents,properties,monthLabel,testActionsActive]);
 
   const cashFlow=useMemo(()=>{
-    const now=new Date(); const rows:{key:string;label:string;value:number}[]=[];
-    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;const value=transactions.filter(t=>(t.status||'posted')==='posted'&&t.transaction_date.startsWith(key)&&(!cashPropertyId||t.property_id===cashPropertyId)).reduce((sum,t)=>sum+Number(t.amount||0),0);rows.push({key,label:d.toLocaleString('en-US',{month:'short'}),value});}
-    if(cashMode==='cumulative'){let running=0;return rows.map(r=>({...r,value:(running+=r.value)}));} return rows;
+    const now=new Date(); const rows:{key:string;label:string;fullLabel:string;value:number;monthlyNet:number;income:number;expense:number}[]=[];
+    for(let i=11;i>=0;i--){
+      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const monthTx=transactions.filter(t=>(t.status||'posted')==='posted'&&t.transaction_date.startsWith(key)&&(!cashPropertyId||t.property_id===cashPropertyId));
+      const totals=calculateMonthlyTotals(monthTx);
+      rows.push({key,label:d.toLocaleString('en-US',{month:'short'}),fullLabel:d.toLocaleString('en-US',{month:'long',year:'numeric'}),value:totals.net,monthlyNet:totals.net,income:totals.income,expense:totals.expense});
+    }
+    if(cashMode==='cumulative'){let running=0;return rows.map(r=>({...r,value:(running+=r.monthlyNet)}));}
+    return rows;
   },[transactions,cashMode,cashPropertyId]);
 
   return <div className="dashboard-page" style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
@@ -175,7 +182,7 @@ export default function Dashboard() {
       <div className="dashboard-stats dashboard-stats-money"><StatCard label="Income This Month" value={formatCurrency(monthlyTotals.income)} color="accent"/><StatCard label="Expenses This Month" value={formatCurrency(monthlyTotals.expense)} color="danger"/><StatCard label="Net Cash Flow" value={formatCurrency(monthlyTotals.net)} color={monthlyTotals.net>=0?'accent':'danger'}/><StatCard label="Mortgage Balance" value={formatCurrency(stats.totalMortgageBalance)}/></div>
       {actionItems.length>0&&<section className="action-center card"><div className="section-heading-row"><div><div className="eyebrow">NEEDS YOU</div><h2>Action Center</h2></div><div style={{display:'flex',alignItems:'center',gap:8}}>{testActionsActive&&<span className="test-badge">TEST</span>}{actionItems.length>3&&<span className="muted-small">{actionItems.length} open</span>}</div></div><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push('/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">{item.kind==='rent'?'Review':'Open'} <span aria-hidden="true">→</span></span></button>)}</div><div className="action-center-footer"><button className="action-center-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></div></section>}
       <section className="dashboard-main-grid">
-        <div className="cashflow-card card"><div className="section-heading-row cashflow-head"><div><h2>Cash Flow</h2><p>Trailing 12 months · posted ledger activity</p></div><div className="cashflow-controls"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><div className="segmented"><button className={cashMode==='monthly'?'active':''} onClick={()=>setCashMode('monthly')}>Monthly</button><button className={cashMode==='cumulative'?'active':''} onClick={()=>setCashMode('cumulative')}>Cumulative</button></div></div></div><CashFlowChart rows={cashFlow}/></div>
+        <div className="cashflow-card card"><div className="section-heading-row cashflow-head"><div><h2>Cash Flow</h2><p>Trailing 12 months · posted ledger activity</p></div><div className="cashflow-controls"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><div className="segmented"><button className={cashMode==='monthly'?'active':''} onClick={()=>setCashMode('monthly')}>Monthly</button><button className={cashMode==='cumulative'?'active':''} onClick={()=>setCashMode('cumulative')}>Cumulative</button></div></div></div><CashFlowChart rows={cashFlow} mode={cashMode}/></div>
         <div className="dashboard-properties-panel card"><div className="section-heading-row properties-panel-head"><h2>Properties</h2><Link href="/properties" style={{fontSize:13}}>Manage →</Link></div><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);const pending=pendingRents.filter(t=>t.property_id===property.id);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
           {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
           <div className="property-compact-copy"><strong>{property.address}</strong><span>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</span></div><strong className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</strong>
@@ -192,10 +199,42 @@ export default function Dashboard() {
 function DashboardCategoryIcon({category}:{category:string}){const props={size:19,strokeWidth:1.8};const Icon=category==='Rent'?Banknote:category==='Mortgage'?Landmark:category==='Repairs & Maintenance'?Wrench:category==='Utilities'?Zap:category==='Insurance'?ShieldCheck:category==='Management Fee'?ClipboardCheck:category==='Leasing Fee'?Receipt:category==='Property Taxes'?Building2:category==='CapEx'?Hammer:category==='Legal'?Scale:category==='Owner Distribution'?WalletCards:category==='Other Income'?CircleDollarSign:category.toLowerCase().includes('refund')?RotateCcw:FileText;return <span className="ledger-category-icon recent-category-icon" aria-hidden="true"><Icon {...props}/></span>}
 function ActionIcon({kind,title}:{kind:'rent'|'document';title:string}){const props={size:19,strokeWidth:1.8};const lower=title.toLowerCase();const Icon=kind==='rent'?Banknote:lower.includes('insurance')?ShieldCheck:lower.includes('lease')?FileText:ClipboardCheck;return <span className="action-icon" aria-hidden="true"><Icon {...props}/></span>}
 
-function CashFlowChart({rows}:{rows:{key:string;label:string;value:number}[]}){
-  const w=760,h=210,pad=28; const vals=rows.map(r=>r.value); const max=Math.max(1,...vals.map(v=>Math.abs(v))); const zero=h/2; const x=(i:number)=>pad+i*((w-pad*2)/Math.max(1,rows.length-1)); const y=(v:number)=>zero-(v/max)*(h/2-pad); const points=rows.map((r,i)=>`${x(i)},${y(r.value)}`).join(' ');
-  return <div className="cashflow-chart-wrap"><svg className="cashflow-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Cash flow over the last 12 months"><line x1={pad} y1={zero} x2={w-pad} y2={zero} className="chart-zero"/><polyline points={points} className="chart-line" fill="none"/>{rows.map((r,i)=><g key={r.key}><circle cx={x(i)} cy={y(r.value)} r="4" className={r.value<0?'chart-point negative':'chart-point'}/><text x={x(i)} y={h-4} textAnchor="middle" className="chart-label">{r.label}</text></g>)}</svg><div className="cashflow-total"><span>Latest</span><strong className={rows.at(-1)?.value&&rows.at(-1)!.value<0?'amount-negative':'amount-positive'}>{formatCurrency(rows.at(-1)?.value||0)}</strong></div></div>;
+function CashFlowChart({rows,mode}:{rows:{key:string;label:string;fullLabel:string;value:number;monthlyNet:number;income:number;expense:number}[];mode:'monthly'|'cumulative'}){
+  const [selectedIndex,setSelectedIndex]=useState<number|null>(null);
+  const w=760,h=230,padX=28,padTop=24,padBottom=30;
+  const vals=rows.map(r=>r.value);
+  const max=Math.max(1,...vals.map(v=>Math.abs(v)));
+  const zero=(h-padBottom+padTop)/2;
+  const x=(i:number)=>padX+i*((w-padX*2)/Math.max(1,rows.length-1));
+  const y=(v:number)=>zero-(v/max)*((h-padBottom-padTop)/2);
+  const points=rows.map((r,i)=>`${x(i)},${y(r.value)}`).join(' ');
+  const activeIndex=selectedIndex??Math.max(0,rows.length-1);
+  const active=rows[activeIndex];
+
+  function selectFromPointer(e:React.PointerEvent<SVGSVGElement>){
+    const rect=e.currentTarget.getBoundingClientRect();
+    const px=Math.max(0,Math.min(rect.width,e.clientX-rect.left));
+    const normalized=(px/rect.width)*w;
+    const index=Math.max(0,Math.min(rows.length-1,Math.round((normalized-padX)/((w-padX*2)/Math.max(1,rows.length-1)))));
+    setSelectedIndex(index);
+  }
+
+  return <div className="cashflow-chart-wrap interactive-cashflow">
+    <div className="cashflow-selected-summary" aria-live="polite">
+      <div><span>{selectedIndex===null?'Latest':active?.fullLabel}</span><strong className={(active?.value||0)<0?'amount-negative':'amount-positive'}>{formatCurrency(active?.value||0)}</strong></div>
+      {selectedIndex!==null&&active&&<div className="cashflow-selected-details"><span>Income <b className="amount-positive">{formatCurrency(active.income)}</b></span><span>Expenses <b className="amount-negative">{formatCurrency(active.expense)}</b></span><span>{mode==='cumulative'?'Month net':'Net'} <b className={active.monthlyNet<0?'amount-negative':'amount-positive'}>{formatCurrency(active.monthlyNet)}</b></span></div>}
+    </div>
+    <svg className="cashflow-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Interactive cash flow over the last 12 months" onPointerDown={selectFromPointer} onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)selectFromPointer(e);}} onPointerLeave={()=>setSelectedIndex(null)} onPointerCancel={()=>setSelectedIndex(null)}>
+      <line x1={padX} y1={zero} x2={w-padX} y2={zero} className="chart-zero"/>
+      <polyline points={points} className="chart-line" fill="none"/>
+      {selectedIndex!==null&&active&&<line x1={x(activeIndex)} y1={padTop-4} x2={x(activeIndex)} y2={h-padBottom+2} className="chart-guide"/>}
+      {rows.map((r,i)=><g key={r.key}><circle cx={x(i)} cy={y(r.value)} r={selectedIndex===i?6:3.5} className={`${r.value<0?'chart-point negative':'chart-point'}${selectedIndex===i?' selected':''}`}/><text x={x(i)} y={h-6} textAnchor="middle" className={selectedIndex===i?'chart-label selected':'chart-label'}>{r.label}</text></g>)}
+      <rect x="0" y="0" width={w} height={h-padBottom} fill="transparent" className="chart-hit-area"/>
+    </svg>
+    <div className="cashflow-interaction-hint">Tap and drag to inspect months</div>
+  </div>;
 }
+
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:18};
