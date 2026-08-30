@@ -1,0 +1,9 @@
+V2.2.2 polish pass
+
+- Restores a true explicit Light mode and Dark mode. User-selected theme now overrides OS dark-mode media rules reliably.
+- Adds UI-only Test action control so Action Center can be reviewed without creating fake database records.
+- Reworks Dashboard into Cash Flow + compact Properties two-column layout on desktop; stacks on smaller screens.
+- Replaces house thumbnails in Recent Activity with the same Lucide category icons used in Ledger.
+- Adds category icons to Ledger Table view and mobile table cards while keeping Table denser than Months.
+- Tightens table spacing and category presentation.
+- No Supabase SQL changes required after V220_DATABASE_UPDATE.sql.
