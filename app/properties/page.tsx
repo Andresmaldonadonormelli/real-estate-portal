@@ -10,7 +10,7 @@ import { withTimeout } from '@/lib/async';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
-  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8',
+  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: true,
 };
 
 const emptyUnit = {
@@ -41,8 +41,8 @@ export default function PropertiesPage() {
     setError('');
     try {
       const [{ data: props, error: propError }, { data: unitRows, error: unitError }] = await withTimeout(Promise.all([
-        supabase.from('properties').select('*').order('address'),
-        supabase.from('units').select('*').order('unit_number'),
+        supabase.from('properties').select('*').is('archived_at',null).order('address'),
+        supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
       ]), 8000, 'Properties took too long to load. Please retry.');
       if (propError || unitError) throw (propError || unitError);
       const propertyRows = (props || []) as Property[];
@@ -87,6 +87,7 @@ export default function PropertiesPage() {
       monthly_mortgage_payment: String(property.monthly_mortgage_payment ?? ''),
       mortgage_start_date: (property as Property & {mortgage_start_date?:string|null}).mortgage_start_date ?? '',
       management_fee_percent: String(property.management_fee_percent ?? 0),
+      mortgage_recurring_enabled: property.mortgage_recurring_enabled !== false,
     });
     setShowPropertyForm(true);
   }
@@ -105,6 +106,7 @@ export default function PropertiesPage() {
       monthly_mortgage_payment: Number(propertyForm.monthly_mortgage_payment || 0),
       mortgage_start_date: propertyForm.mortgage_start_date || null,
       management_fee_percent: Number(propertyForm.management_fee_percent || 0),
+      mortgage_recurring_enabled: propertyForm.mortgage_recurring_enabled !== false,
     };
 
     let propertyId = editingProperty?.id || '';
@@ -170,8 +172,8 @@ export default function PropertiesPage() {
   }
 
   async function deleteUnit(unit: Unit) {
-    if (!confirm(`Delete ${unit.unit_number}? Existing transactions will remain attached to the property.`)) return;
-    const { error: deleteError } = await supabase.from('units').delete().eq('id', unit.id);
+    if (!confirm(`Archive ${unit.unit_number}? You can restore it later from Archive.`)) return;
+    const { error: deleteError } = await supabase.from('units').update({archived_at:new Date().toISOString()}).eq('id', unit.id);
     if (deleteError) setError(deleteError.message); else { setShowUnitForm(false); setEditingUnit(null); await loadData(); }
   }
 
@@ -184,7 +186,7 @@ export default function PropertiesPage() {
     if (!deleteTarget || deleteConfirmText.trim() !== deleteTarget.address.trim()) return;
     setDeletingProperty(true);
     setError('');
-    const { error: deleteError } = await supabase.from('properties').delete().eq('id', deleteTarget.id);
+    const { error: deleteError } = await supabase.from('properties').update({archived_at:new Date().toISOString()}).eq('id', deleteTarget.id);
     if (deleteError) {
       setError(deleteError.message);
     } else {
@@ -278,7 +280,7 @@ export default function PropertiesPage() {
             <div style={twoCol}><Field label="ZIP"><input required value={propertyForm.zip} onChange={e => setPropertyForm({ ...propertyForm, zip: e.target.value })} style={inputStyle} /></Field><Field label="Property type"><select value={propertyForm.property_type} onChange={e => setPropertyForm({ ...propertyForm, property_type: e.target.value })} style={inputStyle}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></Field></div>
             <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
             <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
-            <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
+            <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field><label style={{display:'flex',gap:9,alignItems:'center',fontSize:13}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label></div><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
             <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
             <button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
@@ -287,7 +289,7 @@ export default function PropertiesPage() {
                 <div style={{fontWeight:600,fontSize:14}}>Danger zone</div>
                 <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Permanent deletion also removes linked units, ledger transactions, documents and utilities.</div>
               </div>
-              <button type="button" onClick={() => requestDeleteProperty(editingProperty)} style={dangerButton}>Delete property…</button>
+              <button type="button" onClick={() => requestDeleteProperty(editingProperty)} style={dangerButton}>Archive property…</button>
             </div>}
           </form>
         </Modal>
@@ -295,7 +297,7 @@ export default function PropertiesPage() {
 
 
       {deleteTarget && (
-        <Modal title="Permanently delete property?" onClose={() => { if (!deletingProperty) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
+        <Modal title="Archive property property?" onClose={() => { if (!deletingProperty) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
           <div style={{display:'grid',gap:14}}>
             <div style={{padding:14,border:'1px solid var(--danger)',borderRadius:12,background:'color-mix(in srgb, var(--danger) 8%, transparent)'}}>
               <div style={{fontWeight:650,color:'var(--danger)',marginBottom:6}}>This cannot be undone.</div>
@@ -304,7 +306,7 @@ export default function PropertiesPage() {
             <Field label={`Type “${deleteTarget.address}” to confirm`}><input autoFocus value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} style={inputStyle} /></Field>
             <div style={{display:'flex',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
               <button type="button" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }} style={secondaryButton}>Cancel</button>
-              <button type="button" disabled={deletingProperty || deleteConfirmText.trim() !== deleteTarget.address.trim()} onClick={deletePropertyPermanently} style={{...dangerButton,opacity:deleteConfirmText.trim() === deleteTarget.address.trim()?1:.45}}>{deletingProperty?'Deleting…':'Permanently delete'}</button>
+              <button type="button" disabled={deletingProperty || deleteConfirmText.trim() !== deleteTarget.address.trim()} onClick={deletePropertyPermanently} style={{...dangerButton,opacity:deleteConfirmText.trim() === deleteTarget.address.trim()?1:.45}}>{deletingProperty?'Deleting…':'Archive property'}</button>
             </div>
           </div>
         </Modal>

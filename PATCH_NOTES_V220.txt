@@ -1,0 +1,28 @@
+RE PORTAL V2.2.0 — ACTIONS + CASH FLOW + SAFETY
+
+IMPORTANT: Run V220_DATABASE_UPDATE.sql in Supabase BEFORE deploying this patch.
+
+WHAT'S NEW
+- Action Center on Dashboard. It appears only when something needs attention.
+- Rent confirmations feed Action Center.
+- Documents can now have expiration/renewal dates and 90/60/30/7-day reminders.
+- Added Rental Registration / Agent as a document category.
+- Full Action Center page for more than three open items.
+- Cash Flow card with Monthly / Cumulative modes and All Properties / individual property selector.
+- Cash Flow uses posted ledger transactions from the trailing 12 months.
+- Ledger rows now use restrained Lucide category icons for faster scanning.
+- Archive/Restore replaces destructive deletion for properties, units, utilities, documents and ordinary transactions.
+- Archive is accessible from Account and lets you restore items.
+- Mortgage recurring posting can be enabled/paused per property.
+- Existing unit recurring-rent toggle and Skip Month behavior are preserved.
+
+DESIGN / BEHAVIOR
+- Action Center is conditional and disappears when there is nothing to do.
+- Dashboard shows at most three actions before View all.
+- Document reminders use the actual date entered; legal renewal schedules are not hard-coded.
+- Archived documents keep their storage file instead of deleting the file.
+
+NOTES
+- No permanent purge UI is included intentionally. Archive is the safety net.
+- Cash Flow is only as accurate as the ledger data entered/imported for the period.
+- This patch adds lucide-react to package.json because the Ledger category icons use the same icon family as navigation.

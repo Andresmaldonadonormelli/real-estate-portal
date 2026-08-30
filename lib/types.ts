@@ -12,6 +12,9 @@ export interface Property {
   monthly_mortgage_payment?: number | null;
   management_fee_percent?: number | null;
   image_path?: string | null;
+  mortgage_start_date?: string | null;
+  mortgage_recurring_enabled?: boolean;
+  archived_at?: string | null;
 }
 
 export interface Unit {
@@ -26,6 +29,7 @@ export interface Unit {
   tenant_name: string;
   occupied: boolean;
   recurring_rent_enabled?: boolean;
+  archived_at?: string | null;
 }
 
 export interface Transaction {
@@ -44,6 +48,7 @@ export interface Transaction {
   source?: string | null;
   status?: 'pending' | 'posted' | 'declined';
   confirmed_at?: string | null;
+  archived_at?: string | null;
 }
 
 export interface PropertyDocument {
@@ -60,6 +65,9 @@ export interface PropertyDocument {
   document_date?: string | null;
   notes?: string | null;
   created_at?: string;
+  expires_at?: string | null;
+  reminder_days?: number | null;
+  archived_at?: string | null;
 }
 
 export interface UtilityAccount {
@@ -77,4 +85,5 @@ export interface UtilityAccount {
   password_reference?: string | null;
   notes?: string | null;
   created_at?: string;
+  archived_at?: string | null;
 }

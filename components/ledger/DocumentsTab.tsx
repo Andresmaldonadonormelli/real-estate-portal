@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 
-const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Inspection','Management Agreement','Closing / Property','Tax','Other'];
+const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
 export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
   const { user } = useAuth();
@@ -19,15 +19,15 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [form, setForm] = useState({ property_id:'', unit_id:'', category:'Lease', title:'', document_date:'', notes:'' });
+  const [form, setForm] = useState({ property_id:'', unit_id:'', category:'Lease', title:'', document_date:'', expires_at:'', reminder_days:'60', notes:'' });
   const [selectedDoc, setSelectedDoc] = useState<PropertyDocument | null>(null);
 
   async function loadData() {
     setLoading(true); setError('');
     const [p,u,d] = await Promise.all([
-      supabase.from('properties').select('*').order('address'),
-      supabase.from('units').select('*').order('unit_number'),
-      supabase.from('documents').select('*').order('created_at',{ascending:false}),
+      supabase.from('properties').select('*').is('archived_at',null).order('address'),
+      supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
+      supabase.from('documents').select('*').is('archived_at',null).order('created_at',{ascending:false}),
     ]);
     const err = p.error || u.error || d.error;
     if (err) setError(err.message);
@@ -53,7 +53,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
 
   function openUpload() {
     setFile(null);
-    setForm({property_id:selectedPropertyId || properties[0]?.id || '', unit_id:'', category:'Lease', title:'', document_date:'', notes:''});
+    setForm({property_id:selectedPropertyId || properties[0]?.id || '', unit_id:'', category:'Lease', title:'', document_date:'', expires_at:'', reminder_days:'60', notes:''});
     setShowUpload(true);
   }
 
@@ -78,6 +78,8 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
       mime_type: file.type || null,
       file_size: file.size,
       document_date: form.document_date || null,
+      expires_at: form.expires_at || null,
+      reminder_days: Number(form.reminder_days || 60),
       notes: form.notes.trim() || null,
     };
     const insert = await supabase.from('documents').insert(row);
@@ -97,12 +99,17 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
     window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
+  async function saveDocumentTiming(doc:PropertyDocument) {
+    setSaving(true); setError('');
+    const r=await supabase.from('documents').update({expires_at:doc.expires_at||null,reminder_days:Number(doc.reminder_days||60)}).eq('id',doc.id);
+    if(r.error)setError(r.error.message); else await loadData();
+    setSaving(false);
+  }
+
   async function deleteDocument(doc:PropertyDocument) {
     if (!confirm(`Delete “${doc.title}”?`)) return;
     setError('');
-    const storage = await supabase.storage.from('property-documents').remove([doc.storage_path]);
-    if (storage.error) { setError(storage.error.message); return; }
-    const row = await supabase.from('documents').delete().eq('id', doc.id);
+    const row = await supabase.from('documents').update({archived_at:new Date().toISOString()}).eq('id', doc.id);
     if (row.error) setError(row.error.message); else { setSelectedDoc(null); await loadData(); }
   }
 
@@ -133,17 +140,18 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
         <DetailRow label="Property" value={propertyName(selectedDoc.property_id)}/>
         {unitName(selectedDoc.unit_id)&&<DetailRow label="Unit" value={unitName(selectedDoc.unit_id)}/>} 
         <DetailRow label="File" value={selectedDoc.file_name}/>
-        {selectedDoc.document_date&&<DetailRow label="Document date" value={selectedDoc.document_date}/>} 
+        {selectedDoc.document_date&&<DetailRow label="Document date" value={selectedDoc.document_date}/>} {selectedDoc.expires_at&&<DetailRow label="Expires / renews" value={selectedDoc.expires_at}/>} 
         {selectedDoc.notes&&<DetailRow label="Notes" value={selectedDoc.notes}/>} 
       </div>
+      <div className="document-reminder-editor"><Field label="Expiration / renewal date"><input type="date" value={selectedDoc.expires_at||''} onChange={e=>setSelectedDoc({...selectedDoc,expires_at:e.target.value||null})} style={inputStyle}/></Field><Field label="Reminder"><select value={String(selectedDoc.reminder_days||60)} onChange={e=>setSelectedDoc({...selectedDoc,reminder_days:Number(e.target.value)})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field><button type="button" disabled={saving} onClick={()=>saveDocumentTiming(selectedDoc)} style={secondaryButton}>{saving?'Saving…':'Save reminder'}</button></div>
       <button type="button" onClick={()=>openDocument(selectedDoc)} style={secondaryButton}>Open document</button>
-      <div className="danger-zone"><div><div style={{fontWeight:600,fontSize:14}}>Danger zone</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Delete is hidden from the normal document list to prevent accidental removal.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Delete document</button></div>
+      <div className="danger-zone"><div><div style={{fontWeight:600,fontSize:14}}>Danger zone</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Archive document</button></div>
     </div></Modal>}
 
     {showUpload && <Modal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
       <Field label="Property"><select required value={form.property_id} onChange={e=>setForm({...form,property_id:e.target.value,unit_id:''})} style={inputStyle}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></Field>
       <Field label="Unit (optional)"><select value={form.unit_id} onChange={e=>setForm({...form,unit_id:e.target.value})} style={inputStyle}><option value="">Whole property</option>{units.filter(u=>u.property_id===form.property_id).map(u=><option key={u.id} value={u.id}>{u.unit_number}</option>)}</select></Field>
-      <div style={twoCol}><Field label="Category"><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inputStyle}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field><Field label="Document date"><input type="date" value={form.document_date} onChange={e=>setForm({...form,document_date:e.target.value})} style={inputStyle}/></Field></div>
+      <div style={twoCol}><Field label="Category"><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inputStyle}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field><Field label="Document date"><input type="date" value={form.document_date} onChange={e=>setForm({...form,document_date:e.target.value})} style={inputStyle}/></Field></div><div style={twoCol}><Field label="Expiration / renewal date (optional)"><input type="date" value={form.expires_at} onChange={e=>setForm({...form,expires_at:e.target.value})} style={inputStyle}/></Field><Field label="Remind me"><select value={form.reminder_days} onChange={e=>setForm({...form,reminder_days:e.target.value})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field></div>
       <Field label="Title"><input placeholder="e.g. 2026 Lease - Unit 1" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inputStyle}/></Field>
       <Field label="File"><input required type="file" onChange={e=>setFile(e.target.files?.[0] || null)} style={inputStyle}/></Field>
       <Field label="Notes"><textarea rows={3} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} style={inputStyle}/></Field>

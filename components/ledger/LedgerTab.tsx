@@ -8,6 +8,7 @@ import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculat
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
+import { KeyRound, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign } from 'lucide-react';
 
 type ViewMode = 'months' | 'table';
 type TxType = 'income' | 'expense' | 'transfer';
@@ -42,9 +43,9 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
     setLoading(true); setError('');
     try {
       const [t,p,u] = await withTimeout(Promise.all([
-        supabase.from('transactions').select('*').order('transaction_date',{ascending:false}),
-        supabase.from('properties').select('*').order('address'),
-        supabase.from('units').select('*').order('unit_number'),
+        supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false}),
+        supabase.from('properties').select('*').is('archived_at',null).order('address'),
+        supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
       ]), 8000, 'Ledger data took too long to load. Please retry.');
       const err=t.error||p.error||u.error;
       if(err) throw err;
@@ -82,7 +83,7 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
     const result=editing?await supabase.from('transactions').update(payload).eq('id',editing.id):await supabase.from('transactions').insert(payload);
     if(result.error)setError(result.error.message);else{setShowForm(false);await loadData();} setSaving(false);
   }
-  async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const recurring=tx.source==='recurring';const result=recurring?await supabase.from('transactions').update({status:'declined',notes:[tx.notes,'Skipped/deleted by owner'].filter(Boolean).join(' · ')}).eq('id',tx.id):await supabase.from('transactions').delete().eq('id',tx.id);if(result.error)setError(result.error.message);else{if(recurring)setNotice('Recurring entry skipped for this month. It will not be recreated.');await loadData();}}
+  async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const recurring=tx.source==='recurring';const result=recurring?await supabase.from('transactions').update({status:'declined',notes:[tx.notes,'Skipped/deleted by owner'].filter(Boolean).join(' · ')}).eq('id',tx.id):await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',tx.id);if(result.error)setError(result.error.message);else{if(recurring)setNotice('Recurring entry skipped for this month. It will not be recreated.');await loadData();}}
 
   function exportCsv(){const rows=[['Date','Property','Unit','Description','Category','Payee','Type','Status','Amount'],...filtered.map(tx=>[tx.transaction_date,propertyName(tx.property_id),unitName(tx.unit_id),tx.description,tx.category,tx.payee_source||'',tx.type,tx.status||'posted',String(tx.amount)])];const csv=rows.map(r=>r.map(v=>`"${String(v).split('"').join('""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ledger.csv';a.click();URL.revokeObjectURL(url);}
 
@@ -147,7 +148,9 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
   </div>;
 }
 
-function TxRow({tx,property,unit,onEdit,onDelete}:{tx:Transaction;property:string;unit:string;onEdit:()=>void;onDelete:()=>void}){const pending=tx.status==='pending';return <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,padding:'14px 18px',borderBottom:'1px solid var(--border-color)',opacity:pending?0.72:1}}><div><div style={{fontSize:13,color:'var(--text-secondary)'}}>{formatDateShort(tx.transaction_date)} · {property}{unit?` · ${unit}`:''}</div><div style={{fontWeight:550,marginTop:3}}>{tx.description}{pending&&<span style={{marginLeft:8,fontSize:11,padding:'2px 6px',border:'1px solid var(--border-color)',borderRadius:999,color:'var(--text-secondary)'}}>Pending</span>}</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>{tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}</div></div><div style={{textAlign:'right'}}><div style={{fontWeight:600,color:pending?'var(--text-secondary)':tx.type==='income'?'var(--accent)':tx.type==='expense'?'var(--danger)':'var(--text-secondary)'}}>{formatCurrency(tx.amount)}</div><div style={{display:'flex',gap:5,marginTop:6}}><button onClick={onEdit} style={smallButton}>Edit</button><button className="danger-action" onClick={onDelete} style={{...smallButton,color:'var(--danger)'}}>{tx.source==='recurring'?'Skip month':'Delete'}</button></div></div></div>}
+function CategoryIcon({category}:{category:string}){const props={size:16,strokeWidth:1.8};const Icon=category==='Rent'?KeyRound:category==='Mortgage'?Landmark:category==='Repairs & Maintenance'?Wrench:category==='Utilities'?Zap:category==='Insurance'?ShieldCheck:category==='Management Fee'||category==='Leasing Fee'?Receipt:category==='Property Taxes'?Building2:category==='CapEx'?Hammer:category==='Legal'?Scale:category==='Owner Distribution'?WalletCards:category==='Other Income'?CircleDollarSign:FileText;return <span className="ledger-category-icon" aria-hidden="true"><Icon {...props}/></span>}
+function TxRow({tx,property,unit,onEdit,onDelete}:{tx:Transaction;property:string;unit:string;onEdit:()=>void;onDelete:()=>void}){const pending=tx.status==='pending';return <div className="ledger-tx-row" style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr) auto',gap:12,padding:'14px 18px',borderBottom:'1px solid var(--border-color)',opacity:pending?0.72:1}}><CategoryIcon category={tx.category}/><div><div style={{fontSize:13,color:'var(--text-secondary)'}}>{formatDateShort(tx.transaction_date)} · {property}{unit?` · ${unit}`:''}</div><div style={{fontWeight:550,marginTop:3}}>{tx.description}{pending&&<span style={{marginLeft:8,fontSize:11,padding:'2px 6px',border:'1px solid var(--border-color)',borderRadius:999,color:'var(--text-secondary)'}}>Pending</span>}</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>{tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}</div></div><div style={{textAlign:'right'}}><div style={{fontWeight:600,color:pending?'var(--text-secondary)':tx.type==='income'?'var(--accent)':tx.type==='expense'?'var(--danger)':'var(--text-secondary)'}}>{formatCurrency(tx.amount)}</div><div style={{display:'flex',gap:5,marginTop:6}}><button onClick={onEdit} style={smallButton}>Edit</button><button className="danger-action" onClick={onDelete} style={{...smallButton,color:'var(--danger)'}}>{tx.source==='recurring'?'Skip month':'Archive'}</button></div></div></div>}
+
 function Metric({label,value,color}:{label:string;value:string;color:string}){return <div><div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:4}}>{label}</div><div style={{fontSize:18,fontWeight:600,color}}>{value}</div></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'grid',placeItems:'center',padding:18,zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:620,maxHeight:'90vh',overflow:'auto',padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h2 style={{fontSize:21}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}

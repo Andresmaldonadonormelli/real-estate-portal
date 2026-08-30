@@ -12,7 +12,7 @@ export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyI
   const [error,setError]=useState('');
   useEffect(()=>{(async()=>{
     setLoading(true); setError('');
-    let q=supabase.from('transactions').select('*').order('transaction_date',{ascending:false});
+    let q=supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false});
     if(selectedPropertyId) q=q.eq('property_id',selectedPropertyId);
     const {data,error}=await q;
     if(error)setError(error.message); else setTransactions((data||[]) as Transaction[]);
