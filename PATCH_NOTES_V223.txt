@@ -1,0 +1,11 @@
+RE Portal V2.2.3
+
+- Rent confirmation now lives inside Action Center instead of a separate dashboard rent-test flow.
+- Test Action includes a rent-review action and opens the existing rent confirmation preview without writing fake ledger data.
+- Action Center receives a stronger outlined/elevated treatment inspired by the supplied reference.
+- Action rows are explicitly non-pill shaped and use category-style Lucide icons.
+- Action rows include a clear Review/Open CTA.
+- Removed rent-action badges from property rows to avoid competing attention systems.
+- Increased ledger category icon size in Months, Table, mobile Table, and Recent Activity.
+- Refined category icon mapping so categories are more distinct: Rent=Banknote, Insurance=Shield, Management Fee=ClipboardCheck, Repairs=Wrench, Utilities=Zap, Mortgage=Landmark, Legal=Scale, etc.
+- No Supabase SQL required.
