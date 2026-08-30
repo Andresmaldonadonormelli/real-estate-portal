@@ -413,7 +413,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .recent-ledger-button { margin-top:16px; width:max-content; }
 
 /* Buttons are pills. Navigation remains rounded rectangles. */
-button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row) { border-radius:999px !important; }
+button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row):not(.action-row) { border-radius:999px !important; }
 
 @media (max-width: 767px) {
   .dashboard-page { padding:18px 16px 92px !important; }
@@ -826,4 +826,92 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   .action-center.card { border-radius: 20px !important; }
   .action-row { grid-template-columns: 36px minmax(0,1fr) auto !important; }
   .action-cta { font-size: 11px; }
+}
+
+
+/* V2.2.4 Action Center list architecture */
+.action-center .action-list {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+.action-center button.action-row,
+.action-center button.action-row:hover,
+.action-center button.action-row:focus,
+.action-center button.action-row:active,
+.actions-page a.action-row,
+.actions-page a.action-row:hover,
+.actions-page a.action-row:focus,
+.actions-page a.action-row:active {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.action-center button.action-row {
+  width: 100%;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 15px 2px !important;
+}
+.action-center button.action-row:first-child { border-top: 0 !important; }
+.action-center button.action-row:last-child { border-bottom: 0 !important; }
+.action-center button.action-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 28%, transparent) !important;
+}
+.action-center-footer {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+.action-center-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+.actions-page { max-width: 900px; margin: 0 auto; padding: 24px; }
+.actions-page-header { margin-bottom: 24px; }
+.actions-page-header h1 { font-size: 28px; font-weight: 600; margin-top: 12px; }
+.actions-page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 5px; }
+.actions-group-label { font-size: 11px; letter-spacing: .08em; font-weight: 750; color: var(--text-secondary); margin: 22px 0 10px; }
+.actions-page-list { display: grid; gap: 12px; }
+.actions-page-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.actions-page-item:hover { background: color-mix(in srgb, var(--accent-soft) 32%, var(--bg-secondary)); }
+.actions-page-icon { width: 42px; height: 42px; border-radius: 11px; display:grid; place-items:center; background:var(--accent-soft); color:var(--accent-dark); }
+.actions-page-copy strong { display:block; font-size:15px; }
+.actions-page-copy span { display:block; color:var(--text-secondary); font-size:13px; margin-top:3px; }
+.actions-page-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 13px;
+  font-weight: 700;
+}
+@media(max-width:767px){
+  .action-center-see-all { padding: 8px 12px; }
+  .actions-page { padding: 20px 16px 92px; }
+  .actions-page-item { grid-template-columns: 40px minmax(0,1fr) auto; padding: 14px 12px; gap: 11px; border-radius: 13px; }
+  .actions-page-icon { width: 38px; height: 38px; border-radius: 10px; }
+  .actions-page-cta { min-width: 0; padding: 9px 11px; font-size: 12px; }
 }

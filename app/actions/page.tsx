@@ -1,7 +1,129 @@
 'use client';
-import { useEffect,useMemo,useState } from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Banknote, ShieldCheck, FileText, ClipboardCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { Property,PropertyDocument,Transaction } from '@/lib/types';
+import type { Property, PropertyDocument, Transaction } from '@/lib/types';
 import PageSkeleton from '@/components/common/PageSkeleton';
-export default function ActionsPage(){const [properties,setProperties]=useState<Property[]>([]),[docs,setDocs]=useState<PropertyDocument[]>([]),[txs,setTxs]=useState<Transaction[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');useEffect(()=>{(async()=>{const [p,d,t]=await Promise.all([supabase.from('properties').select('*').is('archived_at',null).order('address'),supabase.from('documents').select('*').is('archived_at',null),supabase.from('transactions').select('*').is('archived_at',null).eq('category','Rent').eq('status','pending')]);if(p.error||d.error||t.error)setError((p.error||d.error||t.error)!.message);else{setProperties((p.data||[]) as Property[]);setDocs((d.data||[]) as PropertyDocument[]);setTxs((t.data||[]) as Transaction[])}setLoading(false)})()},[]);const items=useMemo(()=>{const a:{id:string;title:string;detail:string;href:string;days:number}[]=[];const grouped=new Map<string,number>();txs.forEach(t=>grouped.set(t.property_id,(grouped.get(t.property_id)||0)+1));grouped.forEach((n,id)=>a.push({id:`rent-${id}`,title:'Rent confirmation needed',detail:`${properties.find(p=>p.id===id)?.address||'Property'} · ${n} unit${n===1?'':'s'}`,href:'/',days:-999}));const today=new Date();today.setHours(0,0,0,0);docs.filter(d=>d.expires_at).forEach(d=>{const days=Math.ceil((new Date(`${d.expires_at}T12:00:00`).getTime()-today.getTime())/86400000);if(days<=Number(d.reminder_days||60))a.push({id:d.id,title:days<0?`${d.category} expired`:days===0?`${d.category} due today`:`${d.category} due in ${days} days`,detail:`${properties.find(p=>p.id===d.property_id)?.address||'Property'} · ${d.title}`,href:'/ledger',days})});return a.sort((x,y)=>x.days-y.days)},[docs,txs,properties]);return <div style={{padding:24,maxWidth:900,margin:'0 auto'}}><Link href="/" style={{fontSize:13}}>← Dashboard</Link><h1 style={{fontSize:28,fontWeight:500,marginTop:12}}>Action Center</h1><p style={{fontSize:14,color:'var(--text-secondary)',margin:'5px 0 22px'}}>Rent confirmations and time-sensitive property documents in one place.</p>{error&&<div style={{color:'var(--danger)',marginBottom:16}}>{error}</div>}{loading?<PageSkeleton variant="ledger"/>:items.length===0?<div className="card" style={{padding:28}}><strong>You're caught up.</strong><div className="muted-small" style={{marginTop:5}}>Nothing needs your attention right now.</div></div>:<div className="card action-list">{items.map(i=><Link className="action-row" href={i.href} key={i.id}><span className={`action-dot ${i.days<=7?'urgent':''}`}/><span><strong>{i.title}</strong><small>{i.detail}</small></span><span className="action-arrow">→</span></Link>)}</div>}</div>}
+
+type ActionItem = {
+  id: string;
+  kind: 'rent' | 'document';
+  title: string;
+  detail: string;
+  href: string;
+  days: number;
+  test?: boolean;
+};
+
+export default function ActionsPage() {
+  const searchParams = useSearchParams();
+  const testMode = searchParams.get('test') === '1';
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [docs, setDocs] = useState<PropertyDocument[]>([]);
+  const [txs, setTxs] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      const [p, d, t] = await Promise.all([
+        supabase.from('properties').select('*').is('archived_at', null).order('address'),
+        supabase.from('documents').select('*').is('archived_at', null),
+        supabase.from('transactions').select('*').is('archived_at', null).eq('category', 'Rent').eq('status', 'pending'),
+      ]);
+      if (p.error || d.error || t.error) setError((p.error || d.error || t.error)!.message);
+      else {
+        setProperties((p.data || []) as Property[]);
+        setDocs((d.data || []) as PropertyDocument[]);
+        setTxs((t.data || []) as Transaction[]);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const items = useMemo<ActionItem[]>(() => {
+    const a: ActionItem[] = [];
+    const grouped = new Map<string, Transaction[]>();
+    txs.forEach(t => grouped.set(t.property_id, [...(grouped.get(t.property_id) || []), t]));
+    grouped.forEach((rows, id) => {
+      const total = rows.reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+      const property = properties.find(p => p.id === id);
+      a.push({
+        id: `rent-${id}`,
+        kind: 'rent',
+        title: `Confirm ${new Date().toLocaleString('en-US', { month: 'long' })} rents`,
+        detail: `${property?.address || 'Property'} · ${rows.length} unit${rows.length === 1 ? '' : 's'} · $${total.toLocaleString('en-US', { maximumFractionDigits: 2 })} expected`,
+        href: '/',
+        days: -999,
+      });
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    docs.filter(d => d.expires_at).forEach(d => {
+      const days = Math.ceil((new Date(`${d.expires_at}T12:00:00`).getTime() - today.getTime()) / 86400000);
+      if (days <= Number(d.reminder_days || 60)) {
+        a.push({
+          id: d.id,
+          kind: 'document',
+          title: days < 0 ? `${d.category} expired` : days === 0 ? `${d.category} due today` : `${d.category} due in ${days} days`,
+          detail: `${properties.find(p => p.id === d.property_id)?.address || 'Property'} · ${d.title}`,
+          href: '/ledger',
+          days,
+        });
+      }
+    });
+
+    if (testMode) {
+      const property = properties[0];
+      const address = property?.address || '15334 Triskett Rd';
+      a.unshift(
+        { id: 'test-rent', kind: 'rent', title: 'Confirm August rents', detail: `${address} · 2 units · $2,850 expected · Test preview`, href: '/', days: -999, test: true },
+        { id: 'test-insurance', kind: 'document', title: 'Insurance renewal due in 30 days', detail: `${address} · Policy renewal · Test preview`, href: '/ledger', days: 30, test: true },
+        { id: 'test-lease', kind: 'document', title: 'Lease expires in 60 days', detail: `${address} · Unit 1 lease · Test preview`, href: '/ledger', days: 60, test: true },
+      );
+    }
+
+    return a.sort((x, y) => x.days - y.days);
+  }, [docs, txs, properties, testMode]);
+
+  const needsYou = items.filter(i => i.days <= 30);
+  const upcoming = items.filter(i => i.days > 30);
+
+  return <div className="actions-page">
+    <div className="actions-page-header">
+      <Link href="/" style={{ fontSize: 13 }}>← Dashboard</Link>
+      <h1>Action Items</h1>
+      <p>Everything that needs your attention across your properties.</p>
+    </div>
+    {error && <div style={{ color: 'var(--danger)', marginBottom: 16 }}>{error}</div>}
+    {loading ? <PageSkeleton variant="ledger" /> : items.length === 0 ?
+      <div className="card" style={{ padding: 28 }}><strong>You're caught up.</strong><div className="muted-small" style={{ marginTop: 5 }}>Nothing needs your attention right now.</div></div> :
+      <>
+        {needsYou.length > 0 && <ActionGroup label="NEEDS YOU" items={needsYou} />}
+        {upcoming.length > 0 && <ActionGroup label="UPCOMING" items={upcoming} />}
+      </>}
+  </div>;
+}
+
+function ActionGroup({ label, items }: { label: string; items: ActionItem[] }) {
+  return <section>
+    <div className="actions-group-label">{label} {items.length}</div>
+    <div className="actions-page-list">
+      {items.map(item => <Link className="actions-page-item" href={item.href} key={item.id}>
+        <ActionPageIcon item={item} />
+        <span className="actions-page-copy"><strong>{item.title}</strong><span>{item.detail}</span></span>
+        <span className="actions-page-cta">{item.kind === 'rent' ? 'Review' : 'Open'}</span>
+      </Link>)}
+    </div>
+  </section>;
+}
+
+function ActionPageIcon({ item }: { item: ActionItem }) {
+  const lower = item.title.toLowerCase();
+  const Icon = item.kind === 'rent' ? Banknote : lower.includes('insurance') ? ShieldCheck : lower.includes('lease') ? FileText : ClipboardCheck;
+  return <span className="actions-page-icon" aria-hidden="true"><Icon size={21} strokeWidth={1.8} /></span>;
+}

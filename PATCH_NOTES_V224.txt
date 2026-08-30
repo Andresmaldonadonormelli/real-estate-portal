@@ -1,0 +1,12 @@
+V2.2.4 Action Center scaling pass
+
+- Removed Action Center rows from the global pill-button rule.
+- Action Center dashboard rows are now flat list rows with dividers.
+- Dashboard always exposes See all whenever Action Center is visible.
+- Dashboard still shows only the top 3 actions.
+- See all opens a dedicated Action Items page.
+- Test Action carries through to the Action Items page for visual testing.
+- Action Items page groups unresolved work into Needs You and Upcoming.
+- Rent confirmations remain consolidated to one action per property/month.
+- Action Items page uses the same action/category icon language and clear CTAs.
+- No Supabase changes required.
