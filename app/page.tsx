@@ -69,10 +69,11 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [p,u,t] = await withTimeout(Promise.all([
+      const [p,u,t,d] = await withTimeout(Promise.all([
         supabase.from('properties').select('*').order('address'),
         supabase.from('units').select('*').order('unit_number'),
         supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false}),
+        supabase.from('documents').select('*').is('archived_at',null).order('created_at',{ascending:false}),
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
       const err=p.error||u.error||t.error||d.error; if(err) throw err;
       const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; const txRows=(t.data||[]) as Transaction[];
