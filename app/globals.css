@@ -2237,3 +2237,118 @@ button.ledger-month-head:focus:not(:focus-visible){
   }
 }
 
+
+
+/* ==========================================================
+   V2.2.15 MOBILE PERFORMANCE HIERARCHY + ALIGNMENT
+   ========================================================== */
+
+/* Recent Transactions icons align to the entire transaction row,
+   not to the first text line. */
+.property-transaction-row{
+  align-items:center!important;
+}
+.property-transaction-row > .property-category-icon{
+  align-self:center!important;
+  margin:0!important;
+  transform:none!important;
+}
+.property-transaction-copy{
+  align-self:center!important;
+}
+
+/* Cash Flow month labels were too small for a primary dashboard chart. */
+.interactive-cashflow .chart-label{
+  font-size:13px!important;
+}
+.interactive-cashflow .chart-label.selected{
+  font-size:13px!important;
+  font-weight:700!important;
+}
+.cashflow-interaction-hint{
+  font-size:13px!important;
+  line-height:1.35!important;
+}
+.cashflow-selected-summary>div:first-child span{
+  font-size:13px!important;
+}
+.cashflow-selected-details{
+  font-size:12px!important;
+}
+
+/* Desktop order remains unchanged. */
+.performance-period-control{order:initial;}
+.performance-kpis{order:initial;}
+.performance-panels{order:initial;}
+.performance-chart-panel{order:initial;}
+.performance-breakdown-panel{order:initial;}
+
+@media(max-width:767px){
+  /* Mobile story:
+     period selector → chart → KPI summary → expense breakdown → watch/trends */
+  .performance-origin{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:14px!important;
+  }
+
+  .performance-period-control{
+    order:1;
+  }
+
+  .performance-panels{
+    display:contents!important;
+  }
+
+  .performance-chart-panel{
+    order:2;
+  }
+
+  .performance-kpis{
+    order:3;
+  }
+
+  .performance-breakdown-panel{
+    order:4;
+  }
+
+  .performance-watch{
+    order:5;
+  }
+
+  .property-insights{
+    order:6;
+  }
+
+  /* KPI cards remain readable but no longer dominate mobile scroll. */
+  .performance-kpis{
+    gap:8px!important;
+  }
+
+  .performance-kpis .property-kpi{
+    min-height:78px!important;
+    padding:11px 12px!important;
+    grid-template-rows:28px 32px minmax(20px,auto)!important;
+  }
+
+  .performance-kpis .property-kpi>span{
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+
+  .performance-kpis .property-kpi>strong{
+    font-size:19px!important;
+    line-height:1.05!important;
+  }
+
+  .performance-kpis .property-kpi>small{
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+
+  /* Keep chart card tight to the period selector. */
+  .performance-chart-panel{
+    margin-top:0!important;
+  }
+}
+
