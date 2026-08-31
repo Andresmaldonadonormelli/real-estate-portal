@@ -415,7 +415,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .recent-ledger-button { margin-top:16px; width:max-content; }
 
 /* Buttons are pills. Navigation remains rounded rectangles. */
-button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row):not(.action-row) { border-radius:999px !important; }
+button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row):not(.action-row):not(.origin-breakdown-toggle):not(.ledger-modern-row):not(.ledger-month-head):not(.ledger-tx-row) { border-radius:999px !important; }
 
 @media (max-width: 767px) {
   .dashboard-page { padding:18px 16px 92px !important; }
@@ -2009,5 +2009,117 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
     min-width:26px!important;
     flex-basis:26px;
   }
+}
+
+
+
+/* ==========================================================
+   V2.2.13 FINAL UI CONSISTENCY PASS
+   Rule: pills are for controls/statuses, never list rows.
+   ========================================================== */
+
+/* Cool monochrome loading skeletons. */
+:root,
+[data-theme="light"]{
+  --skeleton-bg:#e8eaec!important;
+  --skeleton-edge:#f2f3f4!important;
+}
+[data-theme="dark"]{
+  --skeleton-bg:#1a1d1b!important;
+  --skeleton-edge:#252927!important;
+}
+
+/* Navigation hover is neutral, never warm or semantic. */
+.nav-link:hover,
+.property-nav-link:hover,
+.bottom-nav-link:hover,
+.mobile-menu-item:hover,
+.theme-toggle:hover{
+  background:var(--theme-surface-hover)!important;
+  color:var(--text-primary)!important;
+}
+.nav-link.active,
+.bottom-nav-link.active{
+  background:var(--theme-nav-active)!important;
+  color:var(--theme-nav-active-text)!important;
+}
+
+/* Operating expense rows are flat list rows, not pills. */
+button.origin-breakdown-toggle,
+button.origin-breakdown-toggle:hover,
+button.origin-breakdown-toggle:focus,
+button.origin-breakdown-toggle:focus-visible{
+  width:100%!important;
+  border-radius:0!important;
+  outline-offset:0!important;
+}
+button.origin-breakdown-toggle:hover{
+  background:var(--theme-surface-hover)!important;
+}
+button.origin-breakdown-toggle:focus:not(:focus-visible){
+  outline:none!important;
+}
+
+/* Precisely center the breakdown dot + chevron against the row label. */
+.origin-breakdown-label{
+  align-items:center!important;
+}
+.origin-breakdown-label .origin-dot{
+  display:block!important;
+  align-self:center!important;
+  margin:0!important;
+  transform:none!important;
+}
+.origin-breakdown-label svg{
+  display:block!important;
+  align-self:center!important;
+  margin:0!important;
+  transform-origin:center!important;
+}
+
+/* Ledger transaction rows use the full row geometry on hover. */
+button.ledger-modern-row,
+button.ledger-modern-row:hover,
+button.ledger-modern-row:focus,
+button.ledger-modern-row:focus-visible,
+button.ledger-tx-row,
+button.ledger-tx-row:hover,
+button.ledger-tx-row:focus,
+button.ledger-tx-row:focus-visible{
+  border-radius:0!important;
+}
+button.ledger-modern-row:hover,
+button.ledger-tx-row:hover{
+  background:var(--theme-surface-hover)!important;
+}
+button.ledger-modern-row:focus:not(:focus-visible),
+button.ledger-tx-row:focus:not(:focus-visible){
+  outline:none!important;
+}
+
+/* Month statement hover fills the actual month row, not an inner pill. */
+.ledger-month-card{
+  border-radius:10px!important;
+}
+button.ledger-month-head,
+button.ledger-month-head:hover,
+button.ledger-month-head:focus,
+button.ledger-month-head:focus-visible{
+  width:100%!important;
+  border-radius:0!important;
+}
+button.ledger-month-head:hover{
+  background:var(--theme-surface-hover)!important;
+}
+button.ledger-month-head:focus:not(:focus-visible){
+  outline:none!important;
+}
+
+/* Keep true filter/status controls as pills. */
+.review-filter-chip,
+.needs-review-badge,
+.status-pill,
+.unit-status{
+  border-radius:999px!important;
 }
 

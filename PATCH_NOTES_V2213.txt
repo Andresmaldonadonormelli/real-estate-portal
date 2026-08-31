@@ -1,0 +1,24 @@
+V2.2.13 — Final UI Consistency Pass
+
+NO SQL REQUIRED.
+
+CHANGES
+- Removed the duplicate review count from Ledger & Docs.
+  The amber count now appears only on Needs Review, where it represents an action.
+- Remaining list-row pill hovers are removed:
+  - Operating expense categories
+  - Ledger transaction rows
+  - Monthly statement/month rows
+- Actual controls and statuses can still be pills.
+- Operating expense category dot and chevron are explicitly vertically centered.
+- Loading skeleton shimmer changed from warm beige/olive to cool neutral gray.
+- Sidebar, property navigation and menu hover surfaces now use the neutral theme hover token.
+- Monthly statement hover fills the full row rather than creating an inner pill.
+- No accounting, recurring, archive or Supabase behavior changed.
+
+DESIGN RULE
+Pills = controls/statuses.
+Rows/cards = preserve their own rectangular geometry on hover.
+
+UPLOAD
+Upload the contents of this ZIP to the GitHub repository root.
