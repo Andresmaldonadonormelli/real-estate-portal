@@ -1,0 +1,112 @@
+/*
+  RE PORTAL DESIGN TOKENS
+  ------------------------------------------------------------
+  This is the file to edit by hand in GitHub when you want to
+  tweak colors or typography.
+
+  Components should use these variables, not hard-coded hex values.
+*/
+
+:root {
+  /* TYPE SCALE */
+  --type-display-size: 40px;
+  --type-display-line: 1.05;
+  --type-display-weight: 680;
+
+  --type-heading-lg-size: 28px;
+  --type-heading-lg-line: 1.12;
+  --type-heading-lg-weight: 680;
+
+  --type-heading-md-size: 20px;
+  --type-heading-md-line: 1.2;
+  --type-heading-md-weight: 670;
+
+  --type-body-lg-size: 16px;
+  --type-body-lg-line: 1.45;
+  --type-body-lg-weight: 500;
+
+  --type-body-size: 14px;
+  --type-body-line: 1.45;
+  --type-body-weight: 500;
+
+  --type-caption-size: 12px;
+  --type-caption-line: 1.4;
+  --type-caption-weight: 500;
+
+  --type-kpi-lg-size: 30px;
+  --type-kpi-md-size: 24px;
+  --type-kpi-weight: 680;
+
+  /* LIGHT MODE: SURFACES + TEXT */
+  --theme-page: #f3f4f6;
+  --theme-sidebar: #f7f8f9;
+  --theme-card: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-surface-hover: #eef0f2;
+  --theme-input: #ffffff;
+  --theme-text-primary: #171918;
+  --theme-text-secondary: #68706c;
+  --theme-text-muted: #969d99;
+  --theme-border: rgba(18, 22, 20, 0.10);
+
+  /* LIGHT MODE: FINANCIAL DATA */
+  --theme-income: #119d57;
+  --theme-expense: #e5483f;
+  --theme-noi: #3f7ee8;
+  --theme-warning: #c98518;
+
+  /* LIGHT MODE: CATEGORIES */
+  --theme-maintenance: #dc7a17;
+  --theme-management: #7c5bd6;
+  --theme-mortgage: #3f7ee8;
+  --theme-utilities: #1495af;
+  --theme-insurance: #5869d6;
+  --theme-taxes: #b98013;
+  --theme-capex: #bd4c9d;
+  --theme-legal: #7659c7;
+  --theme-review: #c98518;
+
+  /* MONOCHROME UI */
+  --theme-action: #171918;
+  --theme-action-text: #ffffff;
+  --theme-nav-active: #e9ebed;
+  --theme-nav-active-text: #171918;
+}
+
+[data-theme="dark"] {
+  /* DARK MODE: SURFACES + TEXT */
+  --theme-page: #080909;
+  --theme-sidebar: #0d0f0e;
+  --theme-card: #111312;
+  --theme-surface: #111312;
+  --theme-surface-hover: #191c1a;
+  --theme-input: #0d0f0e;
+  --theme-text-primary: #f4f5f3;
+  --theme-text-secondary: #aeb5b1;
+  --theme-text-muted: #787f7b;
+  --theme-border: rgba(255, 255, 255, 0.10);
+
+  /* DARK MODE: FINANCIAL DATA
+     Intentionally richer/brighter than light mode. */
+  --theme-income: #2bd275;
+  --theme-expense: #ff6056;
+  --theme-noi: #69a0ff;
+  --theme-warning: #f2a73a;
+
+  /* DARK MODE: CATEGORIES */
+  --theme-maintenance: #ff9b36;
+  --theme-management: #9c79ff;
+  --theme-mortgage: #69a0ff;
+  --theme-utilities: #3ac1dc;
+  --theme-insurance: #8291ff;
+  --theme-taxes: #f3b447;
+  --theme-capex: #ed74c8;
+  --theme-legal: #a382ff;
+  --theme-review: #f2a73a;
+
+  /* MONOCHROME UI */
+  --theme-action: #f3f4f2;
+  --theme-action-text: #101210;
+  --theme-nav-active: rgba(255,255,255,.09);
+  --theme-nav-active-text: #ffffff;
+}

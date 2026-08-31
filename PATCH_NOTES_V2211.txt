@@ -1,0 +1,39 @@
+V2.2.11 — Design System + Ledger Architecture Patch
+
+NO SQL REQUIRED.
+
+WHAT CHANGED
+- Added app/design-tokens.css as the single hand-editable color + typography file.
+- Light and dark themes have separate semantic color values.
+- Performance chart uses editable Income, Expense and NOI tokens.
+- Cash Flow uses the same editable Income/Expense tokens.
+- Category colors are centralized in the token file.
+- Added a six-level typography token scale plus KPI numeric sizes.
+- Rebuilt Ledger Table view into a simpler two-line transaction row.
+- Removed redundant “Uncategorized” text when a transaction already says Needs review.
+- Property/unit/category moved into compact secondary metadata.
+- Needs Review filter now matches the geometry of other Ledger controls and has an obvious active state.
+- Standardized Add/Edit Transaction form control heights.
+- Increased Cash Flow labels and interaction text.
+- Property Overview now uses the same Occupied/Vacant status pills as the Units tab.
+- Action Items page now uses the same horizontal page alignment as other workspaces.
+- Month hover fills the full rectangular month header.
+- Existing Performance Watch warning system remains and now uses the centralized warning token.
+
+HOW TO CHANGE COLORS YOURSELF
+Open: app/design-tokens.css
+
+Examples:
+--theme-income controls positive/income green.
+--theme-expense controls expense/negative red.
+--theme-noi controls the blue NOI line.
+--theme-maintenance controls maintenance orange.
+--theme-management controls management purple.
+--theme-review controls Needs Review amber.
+--theme-page controls the page background.
+--theme-card controls cards.
+
+There is a LIGHT section and a DARK section. Edit the hex values there and commit in GitHub. No component code needs to change.
+
+UPLOAD
+Upload the patch contents to the GitHub repo root.
