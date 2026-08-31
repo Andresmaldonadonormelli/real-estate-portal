@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Building2, CalendarDays, ChevronRight, FileText, Home, ReceiptText, TrendingDown, TrendingUp, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, Banknote, Building2, CalendarDays, ChevronDown, ChevronRight, CircleDollarSign, ClipboardCheck, FileText, Hammer, Home, Landmark, Receipt, RotateCcw, Scale, ShieldCheck, TrendingDown, TrendingUp, Users, WalletCards, Wrench, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
@@ -31,7 +31,6 @@ export default function PropertyWorkspacePage(){
   const [imageUrl,setImageUrl]=useState('');
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
-  const [year,setYear]=useState(new Date().getFullYear());
 
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');
@@ -44,18 +43,13 @@ export default function PropertyWorkspacePage(){
     if(p.error){ setError(p.error.message); setLoading(false); return; }
     const prop=p.data as Property; setProperty(prop); setUnits((u.data||[]) as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments((d.data||[]) as PropertyDocument[]);
     if(prop.image_path){ const signed=await supabase.storage.from('property-images').createSignedUrl(prop.image_path,3600); if(signed.data?.signedUrl) setImageUrl(signed.data.signedUrl); }
-    const years=(t.data||[]).map((x:any)=>Number(String(x.transaction_date).slice(0,4))).filter(Boolean); if(years.length && !years.includes(new Date().getFullYear())) setYear(Math.max(...years));
     setLoading(false);
   })(); },[propertyId]);
 
   const years=useMemo(()=>Array.from(new Set(transactions.map(t=>Number(t.transaction_date.slice(0,4))).filter(Boolean))).sort((a,b)=>b-a),[transactions]);
-  const current=useMemo(()=>transactions.filter(t=>t.status!=='declined' && Number(t.transaction_date.slice(0,4))===year),[transactions,year]);
-  const prior=useMemo(()=>transactions.filter(t=>t.status!=='declined' && Number(t.transaction_date.slice(0,4))===year-1),[transactions,year]);
-
+  const currentYear=new Date().getFullYear();
+  const current=useMemo(()=>transactions.filter(t=>t.status!=='declined' && Number(t.transaction_date.slice(0,4))===currentYear),[transactions,currentYear]);
   const metrics=useMemo(()=>calculateMetrics(current),[current]);
-  const priorMetrics=useMemo(()=>calculateMetrics(prior),[prior]);
-  const monthly=useMemo(()=>buildMonthly(current),[current]);
-  const breakdown=useMemo(()=>buildBreakdown(current),[current]);
   const occupied=units.filter(u=>u.occupied).length;
   const expectedRent=units.filter(u=>u.occupied).reduce((s,u)=>s+Number(u.current_rent||0),0);
 
@@ -70,13 +64,13 @@ export default function PropertyWorkspacePage(){
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
         <div><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div></div>
       </div>
-      <div className="property-header-actions"><select value={year} onChange={e=>setYear(Number(e.target.value))} className="property-year-select">{(years.length?years:[year]).map(y=><option key={y} value={y}>{y}</option>)}</select><Link href={`/ledger?property=${property.id}`} className="property-secondary-action">View ledger</Link></div>
+      <div className="property-header-actions"><Link href={`/ledger?property=${property.id}`} className="property-secondary-action">View ledger</Link></div>
     </header>
 
     <nav className="property-subnav" aria-label="Property sections">{(['overview','performance','units','documents'] as Tab[]).map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav>
 
     {tab==='overview' && <Overview property={property} units={units} transactions={transactions} documents={documents} imageUrl={imageUrl} occupied={occupied} expectedRent={expectedRent} metrics={metrics}/>} 
-    {tab==='performance' && <Performance year={year} metrics={metrics} priorMetrics={priorMetrics} monthly={monthly} breakdown={breakdown} propertyId={property.id}/>} 
+    {tab==='performance' && <Performance transactions={transactions} years={years} propertyId={property.id}/>} 
     {tab==='units' && <Units units={units}/>} 
     {tab==='documents' && <Documents documents={documents} propertyId={property.id}/>} 
   </div>;
@@ -102,29 +96,40 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
   </div>;
 }
 
-function Performance({year,metrics,priorMetrics,monthly,breakdown,propertyId}:{year:number;metrics:ReturnType<typeof calculateMetrics>;priorMetrics:ReturnType<typeof calculateMetrics>;monthly:ReturnType<typeof buildMonthly>;breakdown:ReturnType<typeof buildBreakdown>;propertyId:string}){
+function Performance({transactions,years,propertyId}:{transactions:Tx[];years:number[];propertyId:string}){
+  const now=new Date();
+  const [period,setPeriod]=useState<string>('ytd');
+  const range=useMemo(()=>getPeriodRange(period,now),[period]);
+  const previousRange=useMemo(()=>getPreviousRange(range),[range.start.getTime(),range.end.getTime()]);
+  const rows=useMemo(()=>transactions.filter(t=>t.status!=='declined'&&inRange(t.transaction_date,range.start,range.end)),[transactions,range.start.getTime(),range.end.getTime()]);
+  const priorRows=useMemo(()=>transactions.filter(t=>t.status!=='declined'&&inRange(t.transaction_date,previousRange.start,previousRange.end)),[transactions,previousRange.start.getTime(),previousRange.end.getTime()]);
+  const metrics=useMemo(()=>calculateMetrics(rows),[rows]);
+  const priorMetrics=useMemo(()=>calculateMetrics(priorRows),[priorRows]);
+  const monthly=useMemo(()=>buildMonthlyRange(rows,range.start,range.end),[rows,range.start.getTime(),range.end.getTime()]);
+  const breakdown=useMemo(()=>buildBreakdown(rows),[rows]);
   const expenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
   const priorExpenseRatio=priorMetrics.income>0?priorMetrics.operatingExpenses/priorMetrics.income:0;
   const maintenance=breakdown.find(x=>x.key==='maintenance');
-  const priorMaintenance=0;
+  const label=period==='ytd'?'YTD':period==='l12m'?'Last 12M':period;
+  const compareLabel=period==='ytd'?'vs prior YTD':period==='l12m'?'vs previous 12M':`vs ${Number(period)-1}`;
+  const periodOptions=Array.from(new Set([String(now.getFullYear()),...years.map(String)])).sort((a,b)=>Number(b)-Number(a));
   return <div className="property-section-stack performance-origin">
+    <div className="performance-period-switch" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
     <div className="property-kpi-grid">
-      <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={`vs ${year-1}`}/>
-      <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={`vs ${year-1}`}/>
-      <Kpi label="NOI" value={formatCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={`vs ${year-1}`}/>
-      <Kpi label="Cash flow after mortgage" value={formatCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={`vs ${year-1}`}/>
-      <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={priorMetrics.income?`${((expenseRatio-priorExpenseRatio)*100).toFixed(1)} pp vs ${year-1}`:'Operating expenses ÷ income'} tone={expenseRatio<=priorExpenseRatio?'positive':undefined}/>
+      <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
+      <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
+      <Kpi label="NOI" value={formatCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
+      <Kpi label="Cash flow after mortgage" value={formatCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
+      <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={priorMetrics.income?`${((expenseRatio-priorExpenseRatio)*100).toFixed(1)} pp ${compareLabel}`:'Operating expenses ÷ income'} tone={priorMetrics.income&&expenseRatio<=priorExpenseRatio?'positive':undefined}/>
     </div>
-
     <div className="property-performance-grid">
-      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{year}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>
-      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><span className="muted-small">{year}</span></div><div className="origin-breakdown">{breakdown.length?breakdown.map(x=><BreakdownRow key={x.category} item={x} total={metrics.operatingExpenses}/>):<Empty text="No operating expenses recorded."/>}</div><Link href={`/ledger?property=${propertyId}`} className="origin-footer-link">View all transactions <ChevronRight size={15}/></Link></section>
+      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{label}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>
+      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><span className="muted-small">{label}</span></div><div className="origin-breakdown">{breakdown.length?breakdown.map(x=><BreakdownRow key={x.category} item={x} total={metrics.operatingExpenses} propertyId={propertyId}/>):<Empty text="No operating expenses recorded."/>}</div><Link href={`/ledger?property=${propertyId}`} className="origin-footer-link">View all transactions <ChevronRight size={15}/></Link></section>
     </div>
-
     <section className="card origin-panel property-insights"><div className="property-panel-head"><div><div className="eyebrow">TRENDS</div><h2>What to watch</h2></div></div><div className="insight-grid">
-      <Insight icon={<Wrench size={18}/>} color="var(--category-maintenance)" title="Repairs & maintenance" body={maintenance?`${formatCurrency(maintenance.amount)} recorded in ${year}, ${Math.round(maintenance.share*100)}% of operating expenses.`:'No repairs or maintenance recorded this year.'}/>
-      <Insight icon={expenseRatio<=priorExpenseRatio?<TrendingDown size={18}/>:<TrendingUp size={18}/>} color={expenseRatio<=priorExpenseRatio?'var(--positive)':'var(--category-review)'} title="Operating expense ratio" body={priorMetrics.income?`${(expenseRatio*100).toFixed(1)}% this year vs ${(priorExpenseRatio*100).toFixed(1)}% last year.`:`${(expenseRatio*100).toFixed(1)}% of recorded income is going to operating expenses.`}/>
-      <Insight icon={metrics.cashFlow>=priorMetrics.cashFlow?<TrendingUp size={18}/>:<TrendingDown size={18}/>} color={metrics.cashFlow>=priorMetrics.cashFlow?'var(--positive)':'var(--negative)'} title="Cash flow" body={priorMetrics.income?`${formatCurrency(metrics.cashFlow)} this year vs ${formatCurrency(priorMetrics.cashFlow)} last year.`:`${formatCurrency(metrics.cashFlow)} after all recorded cash expenses.`}/>
+      <Insight icon={<Wrench size={18}/>} color="var(--category-maintenance)" title="Repairs & maintenance" body={maintenance?`${formatCurrency(maintenance.amount)} in ${label}, ${Math.round(maintenance.share*100)}% of operating expenses.`:`No repairs or maintenance recorded in ${label}.`}/>
+      <Insight icon={expenseRatio<=priorExpenseRatio?<TrendingDown size={18}/>:<TrendingUp size={18}/>} color={expenseRatio<=priorExpenseRatio?'var(--positive)':'var(--category-review)'} title="Operating expense ratio" body={priorMetrics.income?`${(expenseRatio*100).toFixed(1)}% ${label.toLowerCase()} vs ${(priorExpenseRatio*100).toFixed(1)}% in the comparison period.`:`${(expenseRatio*100).toFixed(1)}% of recorded income is going to operating expenses.`}/>
+      <Insight icon={metrics.cashFlow>=priorMetrics.cashFlow?<TrendingUp size={18}/>:<TrendingDown size={18}/>} color={metrics.cashFlow>=priorMetrics.cashFlow?'var(--positive)':'var(--negative)'} title="Cash flow" body={priorMetrics.income?`${formatCurrency(metrics.cashFlow)} ${label.toLowerCase()} vs ${formatCurrency(priorMetrics.cashFlow)} in the comparison period.`:`${formatCurrency(metrics.cashFlow)} after all recorded cash expenses.`}/>
     </div></section>
   </div>;
 }
@@ -134,16 +139,19 @@ function Units({units}:{units:Unit[]}){ const [selected,setSelected]=useState(un
 function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
 
 function Kpi({label,value,sub,tone,change,changeLabel,inverse}:{label:string;value:string;sub?:string;tone?:'positive'|'negative';change?:number|null;changeLabel?:string;inverse?:boolean}){ const good=change!=null?(inverse?change<=0:change>=0):tone==='positive'; return <div className="card property-kpi"><span>{label}</span><strong className={tone?`kpi-${tone}`:''}>{value}</strong>{change!=null&&Number.isFinite(change)?<small className={good?'change-good':'change-bad'}>{change>=0?'↑':'↓'} {Math.abs(change).toFixed(1)}% <em>{changeLabel}</em></small>:<small>{sub||changeLabel||' '}</small>}</div>; }
-function BreakdownRow({item,total}:{item:ReturnType<typeof buildBreakdown>[number];total:number}){ const color=categoryVar[item.key]||'var(--category-neutral)'; const pct=total?Math.round(item.amount/total*100):0; return <div className="origin-breakdown-row"><div className="origin-breakdown-label"><span className="origin-dot" style={{background:color}}/><strong>{item.category}</strong><span>{formatCurrency(item.amount)}</span></div><div className="origin-breakdown-track"><i style={{width:`${pct}%`,background:color}}/></div><div className="origin-breakdown-percent">{pct}%</div></div>; }
+function BreakdownRow({item,total,propertyId}:{item:ReturnType<typeof buildBreakdown>[number];total:number;propertyId:string}){ const [open,setOpen]=useState(false); const color=categoryVar[item.key]||'var(--category-neutral)'; const pct=total?Math.round(item.amount/total*100):0; return <div className={`origin-breakdown-row expandable ${open?'open':''}`}><button type="button" className="origin-breakdown-toggle" onClick={()=>setOpen(v=>!v)}><div className="origin-breakdown-label"><span className="origin-dot" style={{background:color}}/><strong>{item.category}</strong><span>{formatCurrency(item.amount)}</span><ChevronDown size={15}/></div><div className="origin-breakdown-track"><i style={{width:`${pct}%`,background:color}}/></div><div className="origin-breakdown-percent">{pct}%</div></button>{open&&<div className="origin-breakdown-details">{item.transactions.slice(0,8).map(t=><Link href={`/ledger?property=${propertyId}`} key={t.id}><span><strong>{t.payee_source||t.description||item.category}</strong><small>{formatDate(t.transaction_date)} · {t.description}</small></span><b>{formatCurrency(Math.abs(t.amount))}</b></Link>)}{item.transactions.length>8&&<Link href={`/ledger?property=${propertyId}`}>+ {item.transactions.length-8} more transactions</Link>}</div>}</div>; }
+
 function Insight({icon,color,title,body}:{icon:React.ReactNode;color:string;title:string;body:string}){ return <div className="insight-row"><div className="insight-icon" style={{color,background:`color-mix(in srgb, ${color} 13%, transparent)`}}>{icon}</div><div><strong>{title}</strong><span>{body}</span></div></div>; }
-function TransactionRow({tx}:{tx:Tx}){ const positive=tx.type==='income'; return <div className="property-list-row"><div><strong>{tx.description||tx.category}</strong><span>{formatDate(tx.transaction_date)} · {tx.category}</span></div><div className={positive?'amount-positive':'amount-negative'}>{positive?'+':'−'}{formatCurrency(Math.abs(Number(tx.amount||0)))}</div></div>; }
+function TransactionRow({tx}:{tx:Tx}){ const positive=tx.type==='income'; return <div className="property-list-row property-transaction-row"><PropertyCategoryIcon category={tx.category}/><div className="property-transaction-copy"><strong>{tx.description||tx.category}</strong><span>{formatDate(tx.transaction_date)} · {tx.category}</span></div><div className={positive?'amount-positive':'amount-negative'}>{positive?'+':'−'}{formatCurrency(Math.abs(Number(tx.amount||0)))}</div></div>; }
+function PropertyCategoryIcon({category}:{category:string}){const props={size:16,strokeWidth:1.8};const key=categoryKey(category);const Icon=key==='rent'?Banknote:key.startsWith('mortgage')?Landmark:key==='maintenance'?Wrench:key==='utilities'?Zap:key==='insurance'?ShieldCheck:key==='management'?ClipboardCheck:key==='leasing'?Receipt:key==='taxes'?Building2:key==='capex'?Hammer:key==='legal'?Scale:key==='distribution'?WalletCards:key==='other-income'?CircleDollarSign:key==='refund'?RotateCcw:FileText;return <span className="ledger-category-icon property-category-icon" data-category={key}><Icon {...props}/></span>}
+
 function Empty({text}:{text:string}){return <div className="property-empty-inline">{text}</div>}
 
-function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthly>}){
-  const W=760,H=286,pad={l:48,r:18,t:24,b:42}; const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b; const max=Math.max(1,...rows.flatMap(r=>[r.income,r.operatingExpenses,r.noi])); const groupW=innerW/12; const barW=Math.max(8,Math.min(17,groupW*.22));
+function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthlyRange>}){
+  const W=760,H=286,pad={l:48,r:18,t:24,b:42}; const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b; const max=Math.max(1,...rows.flatMap(r=>[r.income,r.operatingExpenses,r.noi])); const groupW=innerW/Math.max(1,rows.length); const barW=Math.max(8,Math.min(17,groupW*.22));
   const [selected,setSelected]=useState<number|null>(null);
   const wrapRef=useRef<HTMLDivElement|null>(null);
-  const choose=(clientX:number)=>{const box=wrapRef.current?.getBoundingClientRect();if(!box)return;const local=(clientX-box.left)/box.width*W;const idx=Math.max(0,Math.min(11,Math.round((local-pad.l-groupW/2)/groupW)));setSelected(idx);};
+  const choose=(clientX:number)=>{const box=wrapRef.current?.getBoundingClientRect();if(!box)return;const local=(clientX-box.left)/box.width*W;const idx=Math.max(0,Math.min(rows.length-1,Math.round((local-pad.l-groupW/2)/groupW)));setSelected(idx);};
   const noiPoints=rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2; const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH; return `${x},${y}`}).join(' ');
   const selectedRow=selected==null?null:rows[selected];
   return <div className="performance-chart-shell">
@@ -161,8 +169,12 @@ function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthly>}){
 }
 
 function calculateMetrics(rows:Tx[]){ let income=0,operatingExpenses=0,cashExpenses=0; for(const t of rows){const amount=Math.abs(Number(t.amount||0)); if(t.type==='income') income+=amount; if(t.type==='expense'){cashExpenses+=amount; const key=categoryKey(t.category||''); if(!OPERATING_EXCLUSIONS.includes(key)) operatingExpenses+=amount;}} const noi=income-operatingExpenses; return {income,operatingExpenses,noi,cashFlow:income-cashExpenses,cashExpenses}; }
-function buildMonthly(rows:Tx[]){ return Array.from({length:12},(_,m)=>{const set=rows.filter(t=>Number(t.transaction_date.slice(5,7))===m+1); const x=calculateMetrics(set); return {label:new Date(2020,m,1).toLocaleString('en-US',{month:'short'}),...x};}); }
-function buildBreakdown(rows:Tx[]){ const map=new Map<string,{category:string;key:string;amount:number}>(); for(const t of rows){if(t.type!=='expense')continue; const key=categoryKey(t.category||''); if(OPERATING_EXCLUSIONS.includes(key))continue; const name=t.category||'Other Expense'; const curr=map.get(name)||{category:name,key,amount:0};curr.amount+=Math.abs(Number(t.amount||0));map.set(name,curr);} const arr=[...map.values()].sort((a,b)=>b.amount-a.amount); const total=arr.reduce((s,x)=>s+x.amount,0); return arr.map(x=>({...x,share:total?x.amount/total:0})); }
+function buildMonthlyRange(rows:Tx[],start:Date,end:Date){const months:{year:number;month:number;label:string}[]=[];let d=new Date(start.getFullYear(),start.getMonth(),1);const last=new Date(end.getFullYear(),end.getMonth(),1);while(d<=last&&months.length<18){months.push({year:d.getFullYear(),month:d.getMonth()+1,label:d.toLocaleString('en-US',{month:'short'})});d=new Date(d.getFullYear(),d.getMonth()+1,1);}return months.map(m=>{const set=rows.filter(t=>Number(t.transaction_date.slice(0,4))===m.year&&Number(t.transaction_date.slice(5,7))===m.month);return {label:m.label,...calculateMetrics(set)}})}
+function buildBreakdown(rows:Tx[]){ const map=new Map<string,{category:string;key:string;amount:number;transactions:Tx[]}>(); for(const t of rows){if(t.type!=='expense')continue; const key=categoryKey(t.category||''); if(OPERATING_EXCLUSIONS.includes(key))continue; const name=t.category||'Other Expense'; const curr=map.get(name)||{category:name,key,amount:0,transactions:[]};curr.amount+=Math.abs(Number(t.amount||0));curr.transactions.push(t);map.set(name,curr);} const arr=[...map.values()].sort((a,b)=>b.amount-a.amount);arr.forEach(x=>x.transactions.sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))); const total=arr.reduce((sum,x)=>sum+x.amount,0); return arr.map(x=>({...x,share:total?x.amount/total:0})); }
+function getPeriodRange(period:string,now:Date){if(period==='ytd')return{start:new Date(now.getFullYear(),0,1),end:new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59)};if(period==='l12m')return{start:new Date(now.getFullYear(),now.getMonth()-11,1),end:new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59)};const y=Number(period);return{start:new Date(y,0,1),end:new Date(y,11,31,23,59,59)}}
+function getPreviousRange(range:{start:Date;end:Date}){const start=new Date(range.start);const end=new Date(range.end);start.setFullYear(start.getFullYear()-1);end.setFullYear(end.getFullYear()-1);return{start,end}}
+function inRange(value:string,start:Date,end:Date){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d>=start&&d<=end}
+
 function pctChange(current:number,prior:number){ if(!prior) return null; return (current-prior)/Math.abs(prior)*100; }
 function formatDate(value:string){ if(!value)return ''; const d=new Date(`${value.slice(0,10)}T12:00:00`); return Number.isNaN(d.getTime())?value:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function prettyPropertyType(v:string){ return ({duplex:'Duplex',single_family:'Single family',triplex:'Triplex',multi_unit:'Multi-unit'} as Record<string,string>)[v]||v||'Property'; }

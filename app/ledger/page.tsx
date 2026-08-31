@@ -30,7 +30,7 @@ export default function LedgerDocsPage(){
     <div style={{marginBottom:24}}><h1 style={{fontSize:30,fontWeight:600}}>Ledger & Docs</h1><p style={{fontSize:14,color:'var(--text-secondary)',marginTop:5}}>Your money and property paperwork in one place.</p></div>
     <div style={{borderTop:'1px solid var(--border-color)',paddingTop:22}}>
       <div className="ledger-page-toolbar" style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'end',flexWrap:'wrap',marginBottom:22}}>
-        <div className="ledger-tabs" style={{display:'flex',gap:8,flexWrap:'wrap'}}>{(['ledger','statements','documents'] as Tab[]).map(t=><button key={t} onClick={()=>setTab(t)} style={tab===t?activeTab:tabButton}>{t==='ledger'?'Ledger':t==='statements'?'Statements':'Documents'}</button>)}</div>
+        <div className="ledger-tabs" style={{display:'flex',gap:8,flexWrap:'wrap'}}>{(['ledger','statements','documents'] as Tab[]).map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'top-tab active':'top-tab'}>{t==='ledger'?'Ledger':t==='statements'?'Statements':'Documents'}</button>)}</div>
         <label className="ledger-property-picker" style={{display:'grid',gap:6,fontSize:13,minWidth:280}}>Select property<select value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)} style={inputStyle}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label>
       </div>
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'?<LedgerTab selectedPropertyId={selectedPropertyId}/>:tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId}/>} 

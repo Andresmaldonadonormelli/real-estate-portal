@@ -1,0 +1,25 @@
+V2.2.9 — Ledger workspace + performance periods + document links
+
+DATABASE
+Run V229_DATABASE_UPDATE.sql once in Supabase before deploying.
+
+UPDATES
+- One shared Add/Edit Transaction modal across Dashboard and Ledger.
+- Ledger defaults to Table view.
+- Desktop transaction rows are clickable; mobile uses a deliberate chevron tap target.
+- Ledger rows are denser on narrow screens.
+- Needs Review is a status pill, not a cash category icon; redundant review banner removed.
+- Multiple supporting documents can link to one transaction, and one document can support multiple transactions.
+- Ledger paperclip displays the supporting-document count.
+- Property Performance gets YTD / Last 12M / calendar-year switching.
+- Performance expense categories expand to show their underlying transactions.
+- Property Overview recent transactions use category icons and semantic colors.
+- Archived properties and units no longer load into Dashboard selectors such as Cash Flow.
+- Action Center semantic icon colors are restored with a stronger neutral container treatment.
+- Monochrome CTA and focus-state cleanup.
+- Light mode gets a cooler gray page background.
+- Minimal white/black house app icon and favicon.
+- Add/Edit/Archive transaction confirmation toasts.
+
+UPLOAD
+Upload the patch contents to the GitHub repo root. Do not create a nested folder.
