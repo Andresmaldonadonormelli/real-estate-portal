@@ -1,0 +1,10 @@
+V2.2.16 — Recent Transaction Icon Alignment
+
+NO SQL REQUIRED.
+
+CHANGE
+- Fixed Recent Transactions category icons so they are vertically centered to the full transaction row.
+- Removed any inherited margin/top offset from those icons.
+- Amount and text block are centered independently.
+
+This patch only changes alignment CSS.
