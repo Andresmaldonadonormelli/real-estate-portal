@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Building2, CalendarDays, ChevronRight, FileText, Home, ReceiptText, TrendingDown, TrendingUp, Users, Wrench } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
@@ -129,7 +129,7 @@ function Performance({year,metrics,priorMetrics,monthly,breakdown,propertyId}:{y
   </div>;
 }
 
-function Units({units}:{units:Unit[]}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div><Link href="/properties" className="property-secondary-action">Edit units</Link></div><div className="unit-workspace-grid">{units.length?units.map(u=><article className="unit-workspace-card" key={u.id}><div className="unit-workspace-top"><div><strong>{u.unit_number||'Unit'}</strong><span>{u.bedroom_count||0} bd · {u.bathroom_count||0} ba · {u.sqft||0} sqft</span></div><span className={u.occupied?'unit-status occupied':'unit-status vacant'}>{u.occupied?'Occupied':'Vacant'}</span></div><div className="unit-workspace-rent">{formatCurrency(Number(u.current_rent||0))}<span>/mo</span></div><div className="unit-workspace-tenant">{u.tenant_name||'No tenant assigned'}</div></article>):<Empty text="No units yet."/>}</div></section>; }
+function Units({units}:{units:Unit[]}){ const [selected,setSelected]=useState(units[0]?.id||''); const unit=units.find(u=>u.id===selected)||units[0]; return <section className="card property-panel property-tab-panel compact-units-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div><Link href="/properties" className="property-secondary-action">Edit units</Link></div>{!unit?<Empty text="No units yet."/>:<><div className="property-unit-tabs">{units.map(u=><button type="button" key={u.id} className={u.id===unit.id?'active':''} onClick={()=>setSelected(u.id)}>{u.unit_number||'Unit'}</button>)}</div><div className="compact-unit-detail"><div><span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span><h3>{unit.unit_number||'Unit'}</h3><p>{unit.tenant_name||'No tenant assigned'}</p></div><div className="compact-unit-stats"><div><span>Rent</span><strong>{formatCurrency(Number(unit.current_rent||0))}/mo</strong></div><div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div><div><span>Size</span><strong>{unit.sqft||0} sqft</strong></div></div></div></>}</section>; }
 
 function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
 
@@ -140,13 +140,24 @@ function TransactionRow({tx}:{tx:Tx}){ const positive=tx.type==='income'; return
 function Empty({text}:{text:string}){return <div className="property-empty-inline">{text}</div>}
 
 function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthly>}){
-  const W=760,H=260,pad={l:44,r:18,t:18,b:36}; const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b; const max=Math.max(1,...rows.flatMap(r=>[r.income,r.operatingExpenses])); const groupW=innerW/12; const barW=Math.max(7,Math.min(16,groupW*.22));
+  const W=760,H=286,pad={l:48,r:18,t:24,b:42}; const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b; const max=Math.max(1,...rows.flatMap(r=>[r.income,r.operatingExpenses,r.noi])); const groupW=innerW/12; const barW=Math.max(8,Math.min(17,groupW*.22));
+  const [selected,setSelected]=useState<number|null>(null);
+  const wrapRef=useRef<HTMLDivElement|null>(null);
+  const choose=(clientX:number)=>{const box=wrapRef.current?.getBoundingClientRect();if(!box)return;const local=(clientX-box.left)/box.width*W;const idx=Math.max(0,Math.min(11,Math.round((local-pad.l-groupW/2)/groupW)));setSelected(idx);};
   const noiPoints=rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2; const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH; return `${x},${y}`}).join(' ');
-  return <div className="origin-chart-wrap"><svg viewBox={`0 0 ${W} ${H}`} className="origin-chart" role="img" aria-label="Monthly income, operating expenses and net operating income">
-    {[0,.25,.5,.75,1].map(v=>{const y=pad.t+innerH-innerH*v;return <g key={v}><line x1={pad.l} x2={W-pad.r} y1={y} y2={y} className="origin-grid"/><text x={pad.l-8} y={y+4} textAnchor="end" className="origin-y-label">{v===0?'$0':`$${Math.round(max*v/1000)}K`}</text></g>})}
-    {rows.map((r,i)=>{const cx=pad.l+groupW*i+groupW/2; const ih=(r.income/max)*innerH; const eh=(r.operatingExpenses/max)*innerH; return <g key={r.label}><rect x={cx-barW-2} y={pad.t+innerH-ih} width={barW} height={ih} rx="3" className="origin-income-bar"/><rect x={cx+2} y={pad.t+innerH-eh} width={barW} height={eh} rx="3" className="origin-expense-bar"/><text x={cx} y={H-11} textAnchor="middle" className="origin-x-label">{r.label}</text></g>})}
-    <polyline points={noiPoints} fill="none" className="origin-noi-line"/>{rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2;const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH;return <circle key={r.label} cx={x} cy={y} r="3.2" className="origin-noi-point"/>})}
-  </svg></div>;
+  const selectedRow=selected==null?null:rows[selected];
+  return <div className="performance-chart-shell">
+    <div ref={wrapRef} className="origin-chart-wrap interactive-performance-chart" onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)choose(e.clientX)}} onPointerDown={e=>{(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);choose(e.clientX)}} onPointerLeave={()=>setSelected(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="origin-chart" role="img" aria-label="Monthly income, operating expenses and net operating income">
+        {[0,.25,.5,.75,1].map(v=>{const y=pad.t+innerH-innerH*v;return <g key={v}><line x1={pad.l} x2={W-pad.r} y1={y} y2={y} className="origin-grid"/><text x={pad.l-8} y={y+4} textAnchor="end" className="origin-y-label">{v===0?'$0':`$${Math.round(max*v/1000)}K`}</text></g>})}
+        {rows.map((r,i)=>{const cx=pad.l+groupW*i+groupW/2; const ih=(r.income/max)*innerH; const eh=(r.operatingExpenses/max)*innerH; return <g key={r.label}><rect x={cx-barW-2} y={pad.t+innerH-ih} width={barW} height={ih} rx="3" className="origin-income-bar"/><rect x={cx+2} y={pad.t+innerH-eh} width={barW} height={eh} rx="3" className="origin-expense-bar"/><text x={cx} y={H-12} textAnchor="middle" className={`origin-x-label ${selected===i?'selected':''}`}>{r.label}</text></g>})}
+        <polyline points={noiPoints} fill="none" className="origin-noi-line"/>{rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2;const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH;return <circle key={r.label} cx={x} cy={y} r={selected===i?5:3.2} className="origin-noi-point"/>})}
+        {selected!=null&&<line x1={pad.l+groupW*selected+groupW/2} x2={pad.l+groupW*selected+groupW/2} y1={pad.t} y2={pad.t+innerH} className="performance-guide"/>}
+        <rect x={pad.l} y={pad.t} width={innerW} height={innerH} fill="transparent"/>
+      </svg>
+    </div>
+    <div className="performance-selected-summary">{selectedRow?<><div><span>{selectedRow.label}</span><strong>{formatCurrency(selectedRow.noi)} NOI</strong></div><div><span>Income <b className="amount-positive">{formatCurrency(selectedRow.income)}</b></span><span>Operating expenses <b className="amount-negative">{formatCurrency(selectedRow.operatingExpenses)}</b></span></div></>:<span>Hover or press and drag to inspect a month.</span>}</div>
+  </div>;
 }
 
 function calculateMetrics(rows:Tx[]){ let income=0,operatingExpenses=0,cashExpenses=0; for(const t of rows){const amount=Math.abs(Number(t.amount||0)); if(t.type==='income') income+=amount; if(t.type==='expense'){cashExpenses+=amount; const key=categoryKey(t.category||''); if(!OPERATING_EXCLUSIONS.includes(key)) operatingExpenses+=amount;}} const noi=income-operatingExpenses; return {income,operatingExpenses,noi,cashFlow:income-cashExpenses,cashExpenses}; }

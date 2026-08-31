@@ -1,0 +1,23 @@
+V2.2.8 — Monochrome + navigation + transaction QA polish
+
+WHAT'S NEW
+- Monochrome UI chrome. Green is now reserved for positive/income semantics.
+- One consistent negative red across light/dark modes.
+- Desktop sidebar nests individual properties directly under Properties.
+- Sidebar shows Needs Review count.
+- Properties list is compact and no longer expands every unit inline.
+- Property Units tab uses compact unit tabs with one selected unit at a time.
+- Property Performance chart is interactive on desktop hover and mobile press/drag.
+- Performance and Cash Flow month labels use larger, clearer typography.
+- Add Transaction is faster: Amount first, unit chips, description no longer mandatory.
+- Notes/documentation are tucked into optional details.
+- Transactions can link to an existing property document.
+- Ledger shows a paperclip indicator when a receipt or supporting document exists.
+- Missing receipt does NOT automatically create Needs Review.
+- Mobile bottom navigation respects iPhone safe-area padding.
+
+DATABASE
+Run V228_DATABASE_UPDATE.sql once before deploying this patch.
+
+UPLOAD
+Upload the ZIP contents to the GitHub repo root. Do not create a nested folder.

@@ -215,61 +215,19 @@ export default function PropertiesPage() {
           <button onClick={startAddProperty} style={primaryButton}>Add property</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 18 }}>
+        <div className="compact-properties-list">
           {properties.map((property) => {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
-            return (
-              <section key={property.id} className="card property-list-card" style={{ padding: 22 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                    {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-hero" /> : <div className="property-hero" style={{ display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 34 }}>⌂</div>}
-                    <div>
-                    <h2 style={{ fontSize: 21, fontWeight: 550, marginBottom: 5 }}>{property.address}</h2>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{property.city}, {property.state} {property.zip}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/properties/${property.id}`} className="property-open-button">Open property</Link>
-                    <button onClick={() => startEditProperty(property)} style={secondaryButton}>Edit</button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 14, marginTop: 20 }}>
-                  <Metric label="Mortgage balance" value={formatCurrency(property.mortgage_balance || 0)} />
-                  <Metric label="Monthly mortgage" value={property.monthly_mortgage_payment ? formatCurrency(property.monthly_mortgage_payment) : '—'} />
-                  <Metric label="Management fee" value={`${property.management_fee_percent || 0}%`} />
-                  <Metric label="Units" value={String(propertyUnits.length)} />
-                  <Metric label="Occupancy" value={propertyUnits.length ? `${occupied}/${propertyUnits.length}` : '—'} />
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-color)', marginTop: 20, paddingTop: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 600 }}>Units</h3>
-                    <button onClick={() => startAddUnit(property.id)} style={secondaryButton}>+ Add unit</button>
-                  </div>
-                  {propertyUnits.length === 0 ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>No units yet.</div> : (
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {propertyUnits.map((unit) => (
-                        <button key={unit.id} type="button" className="unit-card interactive-card" onClick={() => startEditUnit(unit)} aria-label={`Edit ${unit.unit_number || 'unit'}`}>
-                          <div style={{ textAlign: 'left' }}>
-                            <strong>{unit.unit_number}</strong>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-                              {unit.bedroom_count} bd · {unit.bathroom_count} ba · {unit.sqft || 0} sqft · {unit.tenant_name || 'No tenant'}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right', display: 'grid', justifyItems: 'end', gap: 6 }}>
-                            <div style={{ fontWeight: 600 }}>{formatCurrency(unit.current_rent || 0)}/mo</div>
-                            <div style={{ fontSize: 12, color: unit.occupied ? 'var(--accent)' : 'var(--danger)' }}>{unit.occupied ? 'Occupied' : 'Vacant'}</div>
-                            <div className="unit-edit-hint">Edit unit</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </section>
-            );
+            const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((s,u)=>s+Number(u.current_rent||0),0);
+            return <section key={property.id} className="card compact-property-row">
+              <Link href={`/properties/${property.id}`} className="compact-property-main">
+                {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="compact-property-thumb"/> : <div className="compact-property-thumb compact-property-placeholder">⌂</div>}
+                <div className="compact-property-copy"><strong>{property.address}</strong><span>{property.city}, {property.state} · {propertyUnits.length} {propertyUnits.length===1?'unit':'units'} · {occupied}/{propertyUnits.length||0} occupied</span></div>
+                <div className="compact-property-rent"><strong>{formatCurrency(monthlyRent)}</strong><span>/mo scheduled rent</span></div>
+              </Link>
+              <div className="compact-property-actions"><Link href={`/properties/${property.id}`} className="property-open-button">Open</Link><button onClick={()=>startEditProperty(property)} style={secondaryButton}>Edit</button><button onClick={()=>startAddUnit(property.id)} style={secondaryButton}>+ Unit</button></div>
+            </section>;
           })}
         </div>
       )}

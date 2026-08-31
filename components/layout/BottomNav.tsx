@@ -2,38 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, House, Files, PlugZap, Menu } from 'lucide-react';
+import { Building2, Gauge, Menu, Settings, WalletCards } from 'lucide-react';
 
-interface BottomNavProps {
-  onMenuClick: () => void;
-}
-
-export default function BottomNav({ onMenuClick }: BottomNavProps) {
-  const pathname = usePathname();
-
-  const navItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/properties', label: 'Properties', icon: House },
-    { href: '/ledger', label: 'Ledger', icon: Files },
-    { href: '/utilities', label: 'Utilities', icon: PlugZap },
+export default function BottomNav({ onMenuClick }:{onMenuClick:()=>void}) {
+  const pathname=usePathname();
+  const items=[
+    {href:'/',label:'Dashboard',icon:Gauge},
+    {href:'/properties',label:'Properties',icon:Building2},
+    {href:'/ledger',label:'Ledger',icon:WalletCards},
+    {href:'/utilities',label:'Utilities',icon:Settings},
   ];
-
-  return (
-    <nav className="bottom-nav">
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-        return (
-          <Link key={item.href} href={item.href} className={`bottom-nav-link ${active ? 'active' : ''}`}>
-            <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-      <button onClick={onMenuClick} className="bottom-nav-link" type="button">
-        <Menu size={20} strokeWidth={1.8} aria-hidden="true" />
-        <span>Menu</span>
-      </button>
-    </nav>
-  );
+  return <nav className="bottom-nav">
+    {items.map(({href,label,icon:Icon})=><Link key={href} href={href} className={`bottom-nav-link ${pathname===href||pathname.startsWith(href+'/')?'active':''}`}><Icon size={20}/><span>{label}</span></Link>)}
+    <button onClick={onMenuClick} className="bottom-nav-link"><Menu size={20}/><span>Menu</span></button>
+  </nav>;
 }
