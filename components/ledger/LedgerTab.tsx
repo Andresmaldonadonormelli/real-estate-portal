@@ -168,6 +168,7 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
           <span className="ledger-modern-date">{formatDateShort(tx.transaction_date)}</span>
           <span className="ledger-modern-main">
             <span className="ledger-modern-primary">
+              <CategoryIcon category={tx.category}/>
               <strong>{title}</strong>
               {needsReview&&<span className="needs-review-badge">Needs review</span>}
             </span>

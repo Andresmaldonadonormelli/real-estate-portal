@@ -1,0 +1,24 @@
+V2.2.12 — Expense Breakdown + Ledger Detail Polish
+
+NO SQL REQUIRED.
+
+CHANGES
+1. Repairs & Maintenance stays orange; Needs Review is now a more distinct amber/yellow.
+2. Expanded Operating Expenses transactions no longer have the large left indent or vertical rule.
+3. Needs Review is removed from the Operating Expenses category breakdown because it is a workflow state, not an accounting category.
+   - The underlying uncategorized transactions are NOT deleted.
+   - They remain available in Ledger / Needs Review.
+4. Operating Expense category hover is now a full rectangular row, not a pill.
+5. Ledger Needs Review filter now matches Table / Months / Export button typography and sizing.
+6. Ledger transaction hover is rectangular, not pill-shaped.
+7. Type and Vendor / payee (optional) now share the same label baseline, input top edge, and control height.
+8. Properties list rows are taller with more breathing room and slightly larger thumbnails/type.
+9. Category icons are restored in Ledger rows for faster visual scanning.
+
+COLOR EDITING
+Open app/design-tokens.css.
+Maintenance: --theme-maintenance
+Needs Review: --theme-review
+
+UPLOAD
+Upload the contents of this ZIP to the GitHub repository root.

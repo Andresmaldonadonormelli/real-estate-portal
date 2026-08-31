@@ -56,7 +56,7 @@
   --theme-warning: #c98518;
 
   /* LIGHT MODE: CATEGORIES */
-  --theme-maintenance: #dc7a17;
+  --theme-maintenance: #e27613;
   --theme-management: #7c5bd6;
   --theme-mortgage: #3f7ee8;
   --theme-utilities: #1495af;
@@ -64,7 +64,7 @@
   --theme-taxes: #b98013;
   --theme-capex: #bd4c9d;
   --theme-legal: #7659c7;
-  --theme-review: #c98518;
+  --theme-review: #b88700;
 
   /* MONOCHROME UI */
   --theme-action: #171918;
@@ -94,7 +94,7 @@
   --theme-warning: #f2a73a;
 
   /* DARK MODE: CATEGORIES */
-  --theme-maintenance: #ff9b36;
+  --theme-maintenance: #ff9638;
   --theme-management: #9c79ff;
   --theme-mortgage: #69a0ff;
   --theme-utilities: #3ac1dc;
@@ -102,7 +102,7 @@
   --theme-taxes: #f3b447;
   --theme-capex: #ed74c8;
   --theme-legal: #a382ff;
-  --theme-review: #f2a73a;
+  --theme-review: #f4c84a;
 
   /* MONOCHROME UI */
   --theme-action: #f3f4f2;

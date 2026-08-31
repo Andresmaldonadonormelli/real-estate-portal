@@ -1850,3 +1850,164 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
   }
 }
 
+
+
+/* ==========================================================
+   V2.2.12 REQUESTED POLISH
+   ========================================================== */
+
+/* Expense breakdown: full-row rectangular hover, no pill treatment. */
+.origin-breakdown-toggle{
+  border-radius:0!important;
+  margin:0!important;
+  padding:12px 8px!important;
+}
+.origin-breakdown-toggle:hover{
+  border-radius:0!important;
+  background:var(--surface-hover)!important;
+}
+.origin-breakdown-row.expandable{
+  border-radius:0!important;
+}
+
+/* Expanded expense transactions sit close to the parent category.
+   The expanded state itself is enough hierarchy, so no vertical rule. */
+.origin-breakdown-details{
+  margin:2px 8px 12px 8px!important;
+  padding-left:0!important;
+  border-left:0!important;
+}
+.origin-breakdown-details a{
+  padding:11px 0!important;
+}
+.origin-more-link{
+  padding-left:0!important;
+}
+
+/* Needs Review is a workflow state, so keep its amber separate from
+   Repairs & Maintenance orange. Values live in design-tokens.css. */
+
+/* Needs Review filter uses the same button typography and dimensions
+   as Table / Months / Export while retaining its warning tint. */
+.review-filter-chip{
+  min-height:auto!important;
+  padding:9px 14px!important;
+  border-radius:999px!important;
+  font-size:inherit!important;
+  line-height:normal!important;
+  font-weight:650!important;
+  letter-spacing:normal!important;
+}
+
+/* Ledger rows are rows, not individual pill cards. */
+.ledger-modern-list .ledger-modern-row,
+.ledger-modern-list .ledger-modern-row:hover,
+.ledger-modern-list .ledger-modern-row:focus,
+.ledger-modern-list .ledger-modern-row:focus-visible{
+  border-radius:0!important;
+  clip-path:none!important;
+}
+.ledger-modern-list .ledger-modern-row:hover{
+  background:var(--surface-hover)!important;
+}
+
+/* Restore category scanning icons without bringing back a category column. */
+.ledger-modern-primary .ledger-category-icon{
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  border-radius:8px!important;
+  margin:0!important;
+  flex:0 0 28px;
+}
+.ledger-modern-primary .ledger-category-icon svg{
+  width:15px!important;
+  height:15px!important;
+}
+.ledger-modern-primary strong{
+  flex:0 1 auto;
+}
+
+/* Type and Vendor/payee align to the same label and field baselines. */
+.quick-add-type-vendor{
+  align-items:start;
+}
+.quick-add-type-vendor label{
+  grid-template-rows:20px 44px;
+  align-content:start;
+  gap:5px!important;
+}
+.quick-add-label-title{
+  display:flex!important;
+  align-items:baseline;
+  gap:5px;
+  color:var(--text-primary)!important;
+  font-size:12px!important;
+  font-weight:650!important;
+  line-height:20px!important;
+}
+.quick-add-label-title em{
+  color:var(--text-secondary);
+  font-style:normal;
+  font-weight:400;
+}
+.quick-add-type-vendor input,
+.quick-add-type-vendor select{
+  margin:0!important;
+  align-self:start;
+}
+
+/* Properties list needs breathing room, but stays compact. */
+.compact-property-row{
+  min-height:96px;
+  padding:15px 16px!important;
+}
+.compact-property-main{
+  grid-template-columns:64px minmax(0,1fr) auto;
+  gap:14px;
+}
+.compact-property-thumb{
+  width:64px;
+  height:58px;
+}
+.compact-property-copy{
+  gap:4px;
+}
+.compact-property-copy strong{
+  font-size:15px;
+}
+.compact-property-copy span,
+.compact-property-rent span{
+  font-size:12px;
+}
+.compact-property-rent strong{
+  font-size:14px;
+}
+
+@media(max-width:767px){
+  .compact-property-row{
+    min-height:0;
+    padding:13px 14px!important;
+  }
+  .compact-property-main{
+    grid-template-columns:56px minmax(0,1fr);
+    gap:11px;
+  }
+  .compact-property-thumb{
+    width:56px;
+    height:50px;
+  }
+  .compact-property-rent{
+    grid-column:2;
+  }
+  .compact-property-actions{
+    padding-left:67px;
+  }
+  .ledger-modern-primary .ledger-category-icon{
+    width:26px!important;
+    height:26px!important;
+    min-width:26px!important;
+    flex-basis:26px;
+  }
+}
+
