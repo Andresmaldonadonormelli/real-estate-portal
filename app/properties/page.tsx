@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
@@ -219,7 +220,7 @@ export default function PropertiesPage() {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
             return (
-              <section key={property.id} className="card" style={{ padding: 22 }}>
+              <section key={property.id} className="card property-list-card" style={{ padding: 22 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                     {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-hero" /> : <div className="property-hero" style={{ display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 34 }}>⌂</div>}
@@ -229,6 +230,7 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
+                    <Link href={`/properties/${property.id}`} className="property-open-button">Open property</Link>
                     <button onClick={() => startEditProperty(property)} style={secondaryButton}>Edit</button>
                   </div>
                 </div>

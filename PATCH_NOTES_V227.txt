@@ -1,0 +1,30 @@
+V2.2.7 — Property Workspaces + Performance
+
+WHAT'S NEW
+- Properties now lead into a dedicated workspace for each individual property.
+- New property sections: Overview, Performance, Units, Documents.
+- Origin-inspired Performance page using the portal's existing category colors.
+- Performance metrics: Gross Income, Operating Expenses, NOI, Cash Flow after mortgage, Operating Expense Ratio.
+- Monthly Income vs Operating Expenses chart with NOI trend line.
+- Color-coded operating expense breakdown with horizontal bars instead of a donut chart.
+- Trend / watch section for maintenance spending, operating expense ratio, and cash flow.
+- Overview shows rent roll, recent transactions, mortgage balance, occupancy and document count.
+- Units and Documents are visible inside the individual property workspace.
+- "View ledger" and document links now open Ledger & Docs already filtered to the property.
+
+ACCOUNTING BEHAVIOR
+- NOI excludes financing categories (mortgage principal, mortgage interest, unsplit mortgage), CapEx and owner distributions from operating expenses.
+- Cash flow after mortgage uses all recorded cash expenses.
+- Performance is based only on posted/non-declined transactions already in the portal. It does not invent property values, ROI or appreciation.
+
+FILES TO UPLOAD TO GITHUB ROOT
+- app/properties/page.tsx
+- app/properties/[id]/page.tsx
+- app/ledger/page.tsx
+- app/globals.css
+
+DATABASE
+- No SQL changes required for V2.2.7.
+
+DEPLOYMENT
+Upload the contents of this ZIP to the existing GitHub repository ROOT and let Vercel deploy automatically.
