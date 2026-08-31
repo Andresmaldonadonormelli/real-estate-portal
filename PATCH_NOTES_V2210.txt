@@ -1,0 +1,18 @@
+V2.2.10 — Targeted UI polish patch
+
+NO SQL REQUIRED.
+
+Changes:
+- Fixes dark-mode text contrast across Ledger, property workspace, sidebar, inputs and cards.
+- Makes Needs Review a clickable amber filter chip in Ledger.
+- Tightens Ledger table wrapping and density.
+- Redesigns Months view into clean cards with proper spacing and consistent chevrons.
+- Colors Statement income/expenses/net semantically.
+- Adds amber color to the Needs Review sidebar notification count.
+- Aligns Performance KPI value baselines.
+- Refines expandable Operating Expenses typography and truncates long detail text.
+- Adds conditional Performance Watch warning for negative NOI, very high expense ratio, or maintenance concentration.
+- Centers Property Overview recent-transaction icons.
+- Centers Dashboard Recent Activity icons and makes separators straight hairlines.
+
+Upload the patch contents to the GitHub repo root.
