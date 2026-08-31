@@ -1,0 +1,10 @@
+V2.2.17 — Category Glyph True Centering
+
+NO SQL REQUIRED.
+
+FIX
+- The colored rounded category square is now the positioning parent.
+- Its SVG glyph is centered horizontally and vertically with CSS Grid / place-items:center.
+- Removed inherited SVG margins, transforms, positioning and offsets.
+- No manual pixel nudging.
+- Only Recent Transactions category icon glyph alignment is affected.

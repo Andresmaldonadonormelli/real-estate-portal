@@ -2385,3 +2385,33 @@ button.ledger-month-head:focus:not(:focus-visible){
   align-self:center!important;
 }
 
+
+
+/* ==========================================================
+   V2.2.17 CATEGORY GLYPH TRUE CENTERING
+   The rounded square is the parent. The SVG is centered inside it.
+   ========================================================== */
+
+.property-list-row.property-transaction-row > .property-category-icon{
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  line-height:0!important;
+}
+
+.property-list-row.property-transaction-row > .property-category-icon svg{
+  display:block!important;
+  width:16px!important;
+  height:16px!important;
+  margin:0!important;
+  padding:0!important;
+  position:static!important;
+  inset:auto!important;
+  top:auto!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  translate:none!important;
+}
+
