@@ -10,7 +10,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 
 type ActionItem = {
   id: string;
-  kind: 'rent' | 'document';
+  kind: 'rent' | 'document' | 'review';
   title: string;
   detail: string;
   href: string;
@@ -32,7 +32,7 @@ export default function ActionsPage() {
       const [p, d, t] = await Promise.all([
         supabase.from('properties').select('*').is('archived_at', null).order('address'),
         supabase.from('documents').select('*').is('archived_at', null),
-        supabase.from('transactions').select('*').is('archived_at', null).eq('category', 'Rent').eq('status', 'pending'),
+        supabase.from('transactions').select('*').is('archived_at', null),
       ]);
       if (p.error || d.error || t.error) setError((p.error || d.error || t.error)!.message);
       else {
@@ -47,7 +47,7 @@ export default function ActionsPage() {
   const items = useMemo<ActionItem[]>(() => {
     const a: ActionItem[] = [];
     const grouped = new Map<string, Transaction[]>();
-    txs.forEach(t => grouped.set(t.property_id, [...(grouped.get(t.property_id) || []), t]));
+    txs.filter(t=>t.category==='Rent'&&t.status==='pending').forEach(t => grouped.set(t.property_id, [...(grouped.get(t.property_id) || []), t]));
     grouped.forEach((rows, id) => {
       const total = rows.reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
       const property = properties.find(p => p.id === id);
@@ -63,6 +63,9 @@ export default function ActionsPage() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const needsReview=txs.filter(t=>(t.status||'posted')==='posted'&&((t as Transaction & {needs_review?:boolean}).needs_review||t.category==='Needs Review'));
+    if(needsReview.length){a.push({id:'needs-review',kind:'review',title:`${needsReview.length} transaction${needsReview.length===1?'':'s'} need categorization`,detail:'Review before your accountant export',href:'/ledger?review=1',days:-500});}
+
     docs.filter(d => d.expires_at).forEach(d => {
       const days = Math.ceil((new Date(`${d.expires_at}T12:00:00`).getTime() - today.getTime()) / 86400000);
       if (days <= Number(d.reminder_days || 60)) {
@@ -116,7 +119,7 @@ function ActionGroup({ label, items }: { label: string; items: ActionItem[] }) {
       {items.map(item => <Link className="actions-page-item" href={item.href} key={item.id}>
         <ActionPageIcon item={item} />
         <span className="actions-page-copy"><strong>{item.title}</strong><span>{item.detail}</span></span>
-        <span className="actions-page-cta">{item.kind === 'rent' ? 'Review' : 'Open'}</span>
+        <span className="actions-page-cta">{item.kind === 'rent' || item.kind==='review' ? 'Review' : 'Open'}</span>
       </Link>)}
     </div>
   </section>;
@@ -124,6 +127,7 @@ function ActionGroup({ label, items }: { label: string; items: ActionItem[] }) {
 
 function ActionPageIcon({ item }: { item: ActionItem }) {
   const lower = item.title.toLowerCase();
-  const Icon = item.kind === 'rent' ? Banknote : lower.includes('insurance') ? ShieldCheck : lower.includes('lease') ? FileText : ClipboardCheck;
-  return <span className="actions-page-icon" aria-hidden="true"><Icon size={21} strokeWidth={1.8} /></span>;
+  const Icon = item.kind === 'rent' ? Banknote : item.kind==='review' ? ClipboardCheck : lower.includes('insurance') ? ShieldCheck : lower.includes('lease') ? FileText : ClipboardCheck;
+  const tone=item.kind==='rent'?'rent':item.kind==='review'?'review':lower.includes('insurance')?'insurance':lower.includes('lease')?'lease':'document';
+  return <span className="actions-page-icon" data-action={tone} aria-hidden="true"><Icon size={21} strokeWidth={1.8} /></span>;
 }

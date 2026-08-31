@@ -1,0 +1,21 @@
+RE Portal V2.2.6
+
+WHAT CHANGED
+- Unified the brand green into one token system across light and dark mode.
+- Added a persistent + Add transaction floating action button on Dashboard.
+- Dashboard FAB opens transaction entry directly without routing through Ledger.
+- Added accountant-ready transaction fields: property, unit, date, type, accounting category, vendor/payee, notes, needs-review flag, receipt/invoice attachment.
+- Added accountant-friendly categories including Mortgage Interest, Mortgage Principal, Mortgage Payment (Unsplit), Capital Improvements / CapEx, and Legal & Professional.
+- Added Needs Review as a first-class workflow. Needs-review transactions surface in Action Center and /actions.
+- /ledger?review=1 now filters the ledger to transactions that need categorization.
+- Added consistent category colors to Ledger and Recent Activity icons. Amount colors remain separate: positive green, negative coral/red.
+- Added semantic action colors for rent, insurance, lease, and review actions.
+- Action Center See all is now a filled brand-green CTA.
+- Ledger CSV export now includes Needs Review and Receipt Path columns as foundation for year-end accountant export.
+- Recurring mortgage entries are now created as Mortgage Payment (Unsplit) and flagged Needs Review rather than implying the whole payment is deductible.
+
+DATABASE
+Run V226_DATABASE_UPDATE.sql once in Supabase before deploying this patch. It adds transactions.needs_review, transactions.receipt_path, normalizes several legacy categories, and creates the private transaction-receipts storage bucket/policies.
+
+NOT YET BUILT
+- Full Year-End Accountant Export package / XLSX + receipt bundle. This version makes the underlying ledger clean enough to build that next.

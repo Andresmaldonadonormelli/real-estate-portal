@@ -978,3 +978,116 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   .cashflow-selected-summary>div:first-child strong { font-size:20px; }
   .cashflow-interaction-hint { text-align:left; margin-top:2px; }
 }
+
+/* V2.2.6 accounting-ready visual system + quick transaction capture */
+:root,
+[data-theme="light"] {
+  --brand:#25c98a;
+  --brand-hover:#1cb77b;
+  --brand-soft:rgba(37,201,138,.12);
+  --brand-contrast:#06271a;
+  --positive:#10b96b;
+  --negative:#ef5b50;
+  --warning:#e7a62f;
+  --category-rent:#18b96b;
+  --category-mortgage:#4385f5;
+  --category-management:#8b5cf6;
+  --category-maintenance:#f28c28;
+  --category-utilities:#18a9c9;
+  --category-insurance:#5f6fe8;
+  --category-taxes:#d79a16;
+  --category-capex:#d84db6;
+  --category-legal:#7b68d8;
+  --category-distribution:#64748b;
+  --category-review:#f2a33a;
+  --category-neutral:#7d8480;
+  --accent:var(--brand);
+  --accent-dark:var(--brand-hover);
+  --accent-soft:var(--brand-soft);
+  --accent-contrast:var(--brand-contrast);
+  --nav-active-bg:color-mix(in srgb,var(--brand) 16%,transparent);
+  --nav-active-text:#127451;
+}
+[data-theme="dark"] {
+  --brand:#2ed89a;
+  --brand-hover:#25c78b;
+  --brand-soft:rgba(46,216,154,.13);
+  --brand-contrast:#061f16;
+  --positive:#18d26e;
+  --negative:#ff6455;
+  --warning:#f4ad3e;
+  --category-rent:#18d26e;
+  --category-mortgage:#5b95ff;
+  --category-management:#a77cff;
+  --category-maintenance:#ff9d3f;
+  --category-utilities:#35c5df;
+  --category-insurance:#7a86ff;
+  --category-taxes:#f2b83f;
+  --category-capex:#ef6bd0;
+  --category-legal:#9b87ff;
+  --category-distribution:#99a2ad;
+  --category-review:#ffb144;
+  --category-neutral:#8b928e;
+  --accent:var(--brand);
+  --accent-dark:var(--brand-hover);
+  --accent-soft:var(--brand-soft);
+  --accent-contrast:var(--brand-contrast);
+  --nav-active-bg:var(--brand);
+  --nav-active-text:var(--brand-contrast);
+}
+
+.primary-action,.quick-add-submit,.add-transaction-fab,.action-center-see-all{background:var(--brand)!important;color:var(--brand-contrast)!important;}
+.primary-action:hover,.quick-add-submit:hover,.add-transaction-fab:hover,.action-center-see-all:hover{background:var(--brand-hover)!important;}
+.action-center-see-all{border-color:transparent!important;font-weight:750!important;padding:10px 15px!important;}
+
+/* Category color is informational. Amount color still communicates money in/out. */
+.ledger-category-icon[data-category="rent"]{--category-color:var(--category-rent)}
+.ledger-category-icon[data-category^="mortgage"]{--category-color:var(--category-mortgage)}
+.ledger-category-icon[data-category="management"],.ledger-category-icon[data-category="leasing"]{--category-color:var(--category-management)}
+.ledger-category-icon[data-category="maintenance"]{--category-color:var(--category-maintenance)}
+.ledger-category-icon[data-category="utilities"]{--category-color:var(--category-utilities)}
+.ledger-category-icon[data-category="insurance"]{--category-color:var(--category-insurance)}
+.ledger-category-icon[data-category="taxes"]{--category-color:var(--category-taxes)}
+.ledger-category-icon[data-category="capex"]{--category-color:var(--category-capex)}
+.ledger-category-icon[data-category="legal"]{--category-color:var(--category-legal)}
+.ledger-category-icon[data-category="distribution"]{--category-color:var(--category-distribution)}
+.ledger-category-icon[data-category="review"]{--category-color:var(--category-review)}
+.ledger-category-icon[data-category="other-income"]{--category-color:var(--category-rent)}
+.ledger-category-icon[data-category="refund"]{--category-color:var(--category-utilities)}
+.ledger-category-icon[data-category="neutral"]{--category-color:var(--category-neutral)}
+.ledger-category-icon{
+  color:var(--category-color,var(--category-neutral))!important;
+  background:color-mix(in srgb,var(--category-color,var(--category-neutral)) 13%,var(--bg-secondary))!important;
+  border:1px solid color-mix(in srgb,var(--category-color,var(--category-neutral)) 18%,transparent);
+}
+
+.action-icon[data-action="rent"],.actions-page-icon[data-action="rent"]{--action-color:var(--category-rent)}
+.action-icon[data-action="insurance"],.actions-page-icon[data-action="insurance"]{--action-color:var(--category-insurance)}
+.action-icon[data-action="lease"],.actions-page-icon[data-action="lease"]{--action-color:var(--category-management)}
+.action-icon[data-action="review"],.actions-page-icon[data-action="review"]{--action-color:var(--category-review)}
+.action-icon[data-action="document"],.actions-page-icon[data-action="document"]{--action-color:var(--category-utilities)}
+.action-icon,.actions-page-icon{color:var(--action-color,var(--brand))!important;background:color-mix(in srgb,var(--action-color,var(--brand)) 13%,var(--bg-secondary))!important;}
+
+.needs-review-badge{display:inline-flex;margin-left:8px;padding:2px 6px;border-radius:999px;background:color-mix(in srgb,var(--warning) 14%,transparent);color:var(--warning);font-size:10px;font-weight:750;vertical-align:middle;}
+.review-filter-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 13px;margin-bottom:14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--warning) 38%,var(--border-color));background:color-mix(in srgb,var(--warning) 8%,var(--bg-secondary));}
+.review-filter-banner strong{color:var(--warning)}
+.review-filter-banner span{font-size:12px;color:var(--text-secondary)}
+.ledger-review-check,.review-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:10px!important;padding:12px;border:1px solid var(--border-color);border-radius:11px;background:var(--bg-secondary);}
+.ledger-review-check input,.review-check input{width:18px;height:18px;margin-top:2px;accent-color:var(--brand);}
+.ledger-review-check span,.review-check span{display:grid;gap:2px}.ledger-review-check small,.review-check small{font-size:11px;color:var(--text-secondary);font-weight:400}
+
+/* Persistent quick-entry action */
+.add-transaction-fab{position:fixed;right:24px;bottom:24px;z-index:60;display:inline-flex;align-items:center;gap:8px;padding:13px 17px;border-radius:999px;border:0;box-shadow:0 12px 30px rgba(0,0,0,.24),0 0 0 1px color-mix(in srgb,var(--brand) 22%,transparent);font-weight:760;font-size:14px;transition:transform .16s ease,background .16s ease;}
+.add-transaction-fab:hover{transform:translateY(-2px)}
+.quick-add-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.58);display:grid;place-items:center;padding:18px;backdrop-filter:blur(5px)}
+.quick-add-modal{width:100%;max-width:610px;max-height:92vh;overflow:auto;padding:20px!important;border-radius:18px!important;box-shadow:0 24px 70px rgba(0,0,0,.36)}
+.quick-add-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:16px}.quick-add-head h2{font-size:22px}.quick-add-head p{font-size:12px;color:var(--text-secondary);margin-top:3px}.icon-close{width:38px;height:38px;border-radius:999px;border:1px solid var(--border-color);display:grid;place-items:center;color:var(--text-primary);background:var(--bg-primary)}
+.quick-add-error{padding:10px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--negative) 45%,var(--border-color));color:var(--negative);font-size:12px;margin-bottom:12px}.quick-add-form{display:grid;gap:11px}.quick-add-form label{display:grid;gap:5px;font-size:12px;font-weight:650}.quick-add-form label>span{color:var(--text-secondary);font-weight:400}.quick-add-form input:not([type="checkbox"]),.quick-add-form select,.quick-add-form textarea{width:100%;padding:10px 11px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);font-size:16px}.quick-add-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.receipt-field{padding:11px;border:1px dashed var(--border-color);border-radius:10px}.receipt-field>span{display:flex!important;align-items:center;gap:7px!important;color:var(--text-primary)!important;font-weight:650!important}.receipt-field em{font-style:normal;color:var(--text-secondary);font-weight:400}.receipt-field small{color:var(--text-secondary);font-size:11px}.quick-add-submit{border:0;border-radius:999px;padding:12px 16px;font-weight:760;margin-top:2px}
+
+@media(max-width:767px){
+  .add-transaction-fab{right:14px;bottom:78px;padding:13px 16px;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .quick-add-overlay{place-items:end center;padding:0}
+  .quick-add-modal{max-height:88vh;border-radius:20px 20px 0 0!important;border-bottom:0!important;padding:18px 16px calc(20px + env(safe-area-inset-bottom))!important}
+  .quick-add-two{grid-template-columns:1fr 1fr}
+}
+@media(max-width:430px){.quick-add-two{grid-template-columns:1fr}.add-transaction-fab span{display:inline}}
