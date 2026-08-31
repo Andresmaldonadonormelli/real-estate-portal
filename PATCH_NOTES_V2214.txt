@@ -1,0 +1,19 @@
+V2.2.14 — Mobile Width Fix
+
+NO SQL REQUIRED.
+
+WHAT WAS WRONG
+The Performance page still had desktop/min-content widths leaking into the mobile layout.
+The 620px chart was intended to scroll inside its chart area, but its grid/card parents were
+allowed to use that width as their minimum width. That expanded the entire property page.
+
+FIX
+- Property Performance containers are now width:100%, max-width:100%, min-width:0 on mobile.
+- The page itself cannot horizontally overflow.
+- KPI grids remain two equal mobile columns without widening the page.
+- The 620px chart remains readable and horizontally scrolls ONLY inside its own chart viewport.
+- Operating Expenses breakdown is constrained to the card width.
+- Long category labels truncate rather than force the card wider.
+- Property tabs can scroll inside their own row if needed.
+
+No functionality or database logic changed.
