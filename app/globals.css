@@ -2947,21 +2947,42 @@ button.ledger-month-head:focus:not(:focus-visible){
   .ledger-modern-amount{grid-column:2!important;grid-row:1!important;}
   .ledger-modern-chevron{grid-column:3!important;grid-row:1!important;}
 }
-/* Action Center: standard card surface + stronger neutral outline */
 
-.action-center {
+/* ==========================================================
+   V2.2.22 ACTION CENTER SURFACE + OUTLINE
+   ========================================================== */
+
+/* Match the surrounding card surface. Use hierarchy through a stronger
+   neutral outline, not through a tinted/darker Action Center background. */
+.action-center.card,
+.action-center-card,
+.dashboard-action-center {
   background: var(--bg-card) !important;
-  border: 1.5px solid rgba(0, 0, 0, 0.16) !important;
+  border: 2px solid color-mix(in srgb, var(--text-primary) 18%, var(--border-color)) !important;
+  box-shadow: var(--card-shadow) !important;
 }
 
-/* Dark mode */
-[data-theme="dark"] .action-center {
+[data-theme="light"] .action-center.card,
+[data-theme="light"] .action-center-card,
+[data-theme="light"] .dashboard-action-center {
   background: var(--bg-card) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: color-mix(in srgb, var(--text-primary) 18%, var(--border-color)) !important;
 }
 
-/* Light mode */
-[data-theme="light"] .action-center {
+[data-theme="dark"] .action-center.card,
+[data-theme="dark"] .action-center-card,
+[data-theme="dark"] .dashboard-action-center {
   background: var(--bg-card) !important;
-  border-color: rgba(0, 0, 0, 0.16) !important;
+  border-color: color-mix(in srgb, var(--text-primary) 24%, var(--border-color)) !important;
+}
+
+/* The action row should not read as a second tinted card. */
+.action-center .action-list,
+.action-center button.action-row,
+.action-center button.action-row:focus,
+.action-center button.action-row:active {
+  background: transparent !important;
+}
+.action-center button.action-row:hover {
+  background: var(--surface-hover) !important;
 }
