@@ -2497,3 +2497,250 @@ button.ledger-month-head:focus:not(:focus-visible){
   }
 }
 
+
+
+/* ==========================================================
+   V2.2.19 MOBILE FORM + SPACING + STATEMENTS POLISH
+   ========================================================== */
+
+/* Action Center stays neutral. Amber is reserved for semantic warning content. */
+.action-center-card,
+.action-center,
+.dashboard-action-center{
+  border-color:var(--border-color)!important;
+  box-shadow:none!important;
+}
+
+/* Shared desktop modal shell. */
+.mobile-sheet-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  background:rgba(0,0,0,.52);
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.mobile-sheet{
+  width:100%;
+  max-width:620px;
+  max-height:90dvh;
+  overflow:hidden;
+  padding:0!important;
+  display:flex;
+  flex-direction:column;
+}
+.mobile-sheet-head{
+  position:relative;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:20px 22px 14px;
+  border-bottom:1px solid var(--border-color);
+  background:var(--bg-card);
+  z-index:2;
+}
+.mobile-sheet-head h2{margin:0}
+.mobile-sheet-handle{display:none}
+.mobile-sheet-body{
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:18px 22px 22px;
+}
+.sheet-details-toggle{
+  justify-self:start;
+  border:0!important;
+  background:transparent!important;
+  padding:4px 0!important;
+  border-radius:0!important;
+  color:var(--text-secondary)!important;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  font:inherit;
+}
+.sheet-details-panel{
+  display:grid;
+  gap:12px;
+  padding-top:2px;
+}
+.mobile-sheet-submit{
+  position:sticky;
+  bottom:-1px;
+  z-index:4;
+  margin-top:4px;
+}
+
+/* Statements */
+.statement-list{display:grid;gap:10px}
+.statement-row{
+  padding:18px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(330px,auto);
+  gap:18px;
+  align-items:center;
+}
+.statement-month>div{font-weight:650;font-size:17px}
+.statement-month>span{display:block;font-size:12px;color:var(--text-secondary);margin-top:3px}
+.statement-metrics{display:grid;grid-template-columns:repeat(3,minmax(100px,1fr));gap:18px}
+.statement-metric{text-align:right}
+.statement-metric>div:first-child{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px}
+.statement-metric>div:last-child{font-weight:650;margin-top:3px}
+
+/* Transaction modal also uses one scrolling surface instead of a nested popup scroll. */
+.quick-add-modal{
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+.quick-add-head{flex:0 0 auto}
+.quick-add-form{
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.quick-add-footer{
+  position:sticky!important;
+  bottom:-1px!important;
+  z-index:5!important;
+  background:var(--bg-card)!important;
+  padding-top:12px!important;
+  padding-bottom:max(12px,env(safe-area-inset-bottom))!important;
+}
+
+/* Mobile */
+@media(max-width:767px){
+  /* Dashboard is the spacing reference: all main utility/list pages use 14px sides. */
+  .mobile-page-shell{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+
+  /* Mobile bottom sheet pattern */
+  .mobile-sheet-overlay{
+    place-items:end stretch;
+    padding:0;
+  }
+  .mobile-sheet{
+    max-width:none!important;
+    width:100%!important;
+    height:min(88dvh,760px);
+    max-height:calc(100dvh - env(safe-area-inset-top) - 10px);
+    border-radius:28px 28px 0 0!important;
+    border-bottom:0!important;
+  }
+  .mobile-sheet-head{
+    padding:24px 18px 14px;
+  }
+  .mobile-sheet-handle{
+    display:block;
+    position:absolute;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;
+    height:5px;
+    border-radius:99px;
+    background:var(--border-color);
+  }
+  .mobile-sheet-body{
+    padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+  }
+  .mobile-sheet-form{
+    padding-bottom:8px;
+  }
+  .mobile-sheet-submit{
+    bottom:0;
+    width:100%;
+    min-height:48px;
+    box-shadow:0 -10px 24px var(--bg-card);
+  }
+
+  /* Shared transaction Add/Edit becomes the same mobile sheet behavior. */
+  .quick-add-overlay{
+    align-items:flex-end!important;
+    padding:0!important;
+  }
+  .quick-add-modal{
+    width:100%!important;
+    max-width:none!important;
+    height:min(88dvh,760px)!important;
+    max-height:calc(100dvh - env(safe-area-inset-top) - 10px)!important;
+    border-radius:28px 28px 0 0!important;
+    border-bottom:0!important;
+    padding:0!important;
+  }
+  .quick-add-head{
+    position:relative!important;
+    padding:24px 18px 14px!important;
+    border-bottom:1px solid var(--border-color)!important;
+    background:var(--bg-card)!important;
+  }
+  .quick-add-head:before{
+    content:"";
+    position:absolute;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;
+    height:5px;
+    border-radius:99px;
+    background:var(--border-color);
+  }
+  .quick-add-head p{display:none!important}
+  .quick-add-form{
+    padding:16px 18px calc(18px + env(safe-area-inset-bottom))!important;
+    display:block!important;
+  }
+  .quick-add-form>*{margin-bottom:14px!important}
+  .quick-add-two{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+  }
+  .quick-add-more-panel{
+    display:grid!important;
+    gap:14px!important;
+  }
+
+  /* Mobile statements: month/count first, then a clean 3-column summary below. */
+  .statement-row{
+    padding:16px!important;
+    display:block!important;
+  }
+  .statement-month{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
+  }
+  .statement-month>div{
+    font-size:17px;
+    font-weight:700;
+  }
+  .statement-month>span{
+    margin:0;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .statement-metrics{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+  }
+  .statement-metric{text-align:left}
+  .statement-metric:nth-child(2){text-align:center}
+  .statement-metric:nth-child(3){text-align:right}
+  .statement-metric>div:first-child{
+    font-size:10px!important;
+    letter-spacing:.45px;
+  }
+  .statement-metric>div:last-child{
+    font-size:15px;
+    white-space:nowrap;
+  }
+}

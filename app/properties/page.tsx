@@ -36,6 +36,7 @@ export default function PropertiesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Property | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deletingProperty, setDeletingProperty] = useState(false);
+  const [showPropertyDetails, setShowPropertyDetails] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -74,6 +75,7 @@ export default function PropertiesPage() {
     setEditingProperty(null);
     setPropertyImage(null);
     setPropertyForm(emptyProperty);
+    setShowPropertyDetails(false);
     setShowPropertyForm(true);
   }
 
@@ -90,6 +92,7 @@ export default function PropertiesPage() {
       management_fee_percent: String(property.management_fee_percent ?? 0),
       mortgage_recurring_enabled: property.mortgage_recurring_enabled !== false,
     });
+    setShowPropertyDetails(false);
     setShowPropertyForm(true);
   }
 
@@ -201,7 +204,7 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+    <div className="mobile-page-shell" style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 500 }}>Properties</h1>
         <button onClick={startAddProperty} style={primaryButton}>+ Add property</button>
@@ -234,16 +237,22 @@ export default function PropertiesPage() {
 
       {showPropertyForm && (
         <Modal title={editingProperty ? 'Edit property' : 'Add property'} onClose={() => setShowPropertyForm(false)}>
-          <form onSubmit={saveProperty} style={{ display: 'grid', gap: 12 }}>
+          <form onSubmit={saveProperty} className="mobile-sheet-form" style={{ display: 'grid', gap: 12 }}>
             <Field label="Address"><input required value={propertyForm.address} onChange={e => setPropertyForm({ ...propertyForm, address: e.target.value })} style={inputStyle} /></Field>
             <div style={twoCol}><Field label="City"><input required value={propertyForm.city} onChange={e => setPropertyForm({ ...propertyForm, city: e.target.value })} style={inputStyle} /></Field><Field label="State"><input required value={propertyForm.state} onChange={e => setPropertyForm({ ...propertyForm, state: e.target.value })} style={inputStyle} /></Field></div>
             <div style={twoCol}><Field label="ZIP"><input required value={propertyForm.zip} onChange={e => setPropertyForm({ ...propertyForm, zip: e.target.value })} style={inputStyle} /></Field><Field label="Property type"><select value={propertyForm.property_type} onChange={e => setPropertyForm({ ...propertyForm, property_type: e.target.value })} style={inputStyle}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></Field></div>
-            <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
-            <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
-            <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field><label style={{display:'flex',gap:9,alignItems:'center',fontSize:13}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label></div><Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
-            <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
-            <button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
+
+            <button type="button" className="sheet-details-toggle" onClick={()=>setShowPropertyDetails(v=>!v)}>{showPropertyDetails?'Hide financial details':'Add financial & property details'}</button>
+            {showPropertyDetails&&<div className="sheet-details-panel">
+              <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
+              <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
+              <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div>
+              <label style={{display:'flex',gap:9,alignItems:'center',fontSize:13}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label>
+              <Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
+              <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
+            </div>}
+            <button className="mobile-sheet-submit" disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
             {editingProperty && <div className="danger-zone">
               <div>
                 <div style={{fontWeight:600,fontSize:14}}>Danger zone</div>
@@ -292,7 +301,10 @@ export default function PropertiesPage() {
 function Metric({ label, value }: { label: string; value: string }) { return <div><div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div><div style={{ fontSize: 18, fontWeight: 600 }}>{value}</div></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>{label}{children}</label>; }
 function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 18, padding: 12, border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 8, fontSize: 13 }}>{message}</div>; }
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) { return <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', padding: 18, zIndex: 1000 }}><div className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', padding: 22 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" style={{ ...secondaryButton, padding: '7px 10px' }}>✕</button></div>{children}</div></div>; }
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
+  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" style={{ ...secondaryButton, padding: '7px 10px' }}>✕</button></div><div className="mobile-sheet-body">{children}</div></div></div>;
+}
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
 const primaryButton: React.CSSProperties = { padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontWeight: 600, cursor: 'pointer' };

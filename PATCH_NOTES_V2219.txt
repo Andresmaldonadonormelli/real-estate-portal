@@ -1,0 +1,43 @@
+V2.2.19 — Mobile sheets, form consolidation, spacing, statements
+
+NO SQL REQUIRED.
+
+FIXES
+1. Mobile side padding
+- Properties and Utilities now use the Dashboard mobile side spacing (14px).
+- Shared class is ready to use on other page shells as needed.
+
+2. Add/Edit Transaction
+- Behaves as a bottom sheet on mobile.
+- Background page is locked while open.
+- Header stays at top, form uses one predictable scrolling surface, action footer stays accessible.
+- Vendor/payee, note, documents, and Needs Review moved under “Add details”.
+- Core fields stay immediately visible.
+
+3. Add/Edit Property
+- Behaves as a mobile bottom sheet.
+- Core creation/edit fields are Address, City, State, ZIP, Property type.
+- Purchase, mortgage, management fee and image fields are consolidated under “Add financial & property details”.
+- Background page is locked while open.
+
+4. Add/Edit Utility
+- Behaves as a mobile bottom sheet.
+- Core fields are Property, Utility type, Provider, Responsibility.
+- Account/login/billing/autopay/password reference/notes move under “Add account details”.
+- Background page is locked while open.
+
+5. Action Center
+- Card border forced back to neutral UI border.
+- Amber remains only semantic warning content.
+
+6. Ledger > Statements mobile
+- Month and transaction count are grouped together.
+- Income / Expenses / Net are a stable 3-column row underneath.
+- Fixes broken/dislocated mobile layout and makes transaction counts readable.
+
+UPLOAD
+Upload the ZIP contents to the repo root and replace matching files.
+Vercel should deploy automatically.
+
+NOTE
+This is an overlay patch, not a full project.
