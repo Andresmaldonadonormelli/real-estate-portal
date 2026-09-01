@@ -173,7 +173,7 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
               {needsReview&&<span className="needs-review-badge">Needs review</span>}
             </span>
             <span className="ledger-modern-secondary">
-              <span className="ledger-secondary-text">{propertyLabel}{unitLabel?` · ${unitLabel}`:''}{categoryLabel?` · ${categoryLabel}`:''}</span>
+              <span className="ledger-secondary-text">{propertyLabel}{unitLabel?` · ${unitLabel}`:''}{categoryLabel?` · ${categoryLabel}`:''}<span className="ledger-mobile-inline-date"> · {formatDateShort(tx.transaction_date)}</span></span>
               {attachments>0&&<span className="ledger-paperclip" title={`${attachments} supporting ${attachments===1?'document':'documents'}`}><Paperclip size={12}/>{attachments}</span>}
             </span>
           </span>

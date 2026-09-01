@@ -2903,3 +2903,47 @@ button.ledger-month-head:focus:not(:focus-visible){
   .mobile-sheet-overlay,.quick-add-overlay,.mobile-sheet,.quick-add-modal,.sheet-details-panel,.quick-add-more-panel{animation:none!important}
   .sheet-details-toggle svg,.quick-add-more svg{transition:none!important}
 }
+
+/* ==========================================================
+   V2.2.21 PERFORMANCE ORDER + BREAKDOWN RHYTHM + LEDGER DATE
+   ========================================================== */
+
+/* Expense breakdown: give the label, bar and percentage distinct breathing room. */
+.origin-breakdown-row.expandable .origin-breakdown-label{
+  margin-bottom:8px!important;
+}
+.origin-breakdown-row.expandable .origin-breakdown-track{
+  margin-bottom:8px!important;
+}
+.origin-breakdown-row.expandable .origin-breakdown-percent{
+  line-height:1.2!important;
+}
+
+/* Date stays in its desktop column; mobile uses the metadata line instead. */
+.ledger-mobile-inline-date{display:none;}
+
+@media(max-width:767px){
+  /* Performance hierarchy must respond immediately to the selected period. */
+  .performance-origin{
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .performance-period-control{order:1!important;}
+  .performance-panels{display:contents!important;}
+  .performance-chart-panel{order:2!important;}
+  .performance-kpis{order:3!important;}
+  .performance-breakdown-panel{order:4!important;}
+  .performance-watch{order:5!important;}
+  .property-insights{order:6!important;}
+
+  /* Ledger rows: date belongs to the metadata sentence, not a detached third line. */
+  .ledger-modern-date{display:none!important;}
+  .ledger-mobile-inline-date{display:inline!important;}
+  .ledger-modern-row{
+    grid-template-columns:minmax(0,1fr) auto 22px!important;
+    grid-template-rows:auto!important;
+  }
+  .ledger-modern-main{grid-column:1!important;grid-row:1!important;}
+  .ledger-modern-amount{grid-column:2!important;grid-row:1!important;}
+  .ledger-modern-chevron{grid-column:3!important;grid-row:1!important;}
+}

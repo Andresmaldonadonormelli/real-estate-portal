@@ -1,0 +1,23 @@
+V2.2.21 — Performance order, breakdown spacing, ledger date
+
+1. Performance mobile hierarchy
+- Period selector now sits directly above the chart.
+- Chart moves before KPI cards on mobile.
+- KPI cards follow the chart, then expense breakdown, watch, and trends.
+- This makes YTD / Last 12M / year switching immediately visible.
+
+2. Operating expense breakdown spacing
+- Adds 8px between each category label row and its bar.
+- Adds 8px between each bar and its percentage.
+- Applies consistently to Repairs & Maintenance, Management Fee, Utilities, and future categories.
+
+3. Cash Flow range controls
+- No extra 3M / YTD / 1Y controls added.
+- Cash Flow remains a focused trailing-12-month Monthly / Cumulative view.
+
+4. Ledger mobile date placement
+- Removes the detached date line on mobile.
+- Date now sits at the end of the metadata line with property, unit and category.
+- Desktop keeps its dedicated Date column.
+
+No SQL / Supabase changes.
