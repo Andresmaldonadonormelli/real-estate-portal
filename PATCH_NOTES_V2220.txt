@@ -1,0 +1,46 @@
+RE Portal V2.2.20 — Mobile UX + Performance Chart Polish
+
+What changed
+1. Performance chart
+   - Removed mobile horizontal scrolling.
+   - Selected YTD / Last 12M / year period now fits the full chart into the mobile card.
+   - Exact transparent hit target per month fixes incorrect tap-to-month mapping.
+   - Mobile uses fewer visible month labels while retaining all monthly data.
+   - Tap a month for exact Income / Operating Expenses / NOI.
+
+2. Mobile sheets
+   - Transaction, Property and Utility sheets share viewport-safe behavior.
+   - Background is locked; sheet content is the scrolling surface.
+   - Overlay sits above bottom navigation consistently.
+   - Slide-up/backdrop animation added.
+   - Header hairline removed on mobile.
+   - Close controls are true outlined circles.
+   - CTA/footer behavior hardened for long forms and iPhone safe areas.
+
+3. Collapsed detail sections
+   - Add details / financial details / account details now include ChevronDown.
+   - Chevron rotates when expanded.
+   - Expand content gets a subtle reveal animation.
+
+4. Statements
+   - Keeps V2.2.19 mobile statement restructuring and increases small-data legibility.
+
+5. Recent Transactions
+   - Category glyph receives final 4px upward optical adjustment inside its existing square.
+
+6. Typography
+   - 14px mobile floor applied to meaningful chart/secondary data in the targeted views.
+   - Cash Flow and Performance labels are more legible.
+
+7. Action Center
+   - Forces neutral monochrome outer border/background/hover.
+   - Semantic amber remains available inside warning/action content only.
+
+Database
+- No SQL changes.
+- No Supabase migration required.
+
+Install
+- Upload the CONTENTS of this ZIP to the repository root, preserving folders.
+- Do not upload the enclosing v2220build folder.
+- Vercel should deploy automatically.

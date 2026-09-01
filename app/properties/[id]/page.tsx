@@ -122,17 +122,17 @@ function Performance({transactions,years,propertyId}:{transactions:Tx[];years:nu
         ? {title:'Maintenance concentration',body:`Repairs & maintenance account for ${Math.round(maintenance.share*100)}% of operating expenses in ${label}.`}
         : null;
   return <div className="property-section-stack performance-origin">
-    <div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
-    <div className="property-kpi-grid performance-kpis">
+    <div className="performance-period-switch" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
+    <div className="property-kpi-grid">
       <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
       <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
       <Kpi label="NOI" value={formatCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
       <Kpi label="Cash flow after mortgage" value={formatCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
       <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={priorMetrics.income?`${((expenseRatio-priorExpenseRatio)*100).toFixed(1)} pp ${compareLabel}`:'Operating expenses ÷ income'} tone={priorMetrics.income&&expenseRatio<=priorExpenseRatio?'positive':undefined}/>
     </div>
-    <div className="property-performance-grid performance-panels">
-      <section className="card origin-panel performance-chart-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{label}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>
-      <section className="card origin-panel performance-breakdown-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><span className="muted-small">{label}</span></div><div className="origin-breakdown">{breakdown.length?breakdown.map(x=><BreakdownRow key={x.category} item={x} total={breakdownTotal} propertyId={propertyId}/>):<Empty text="No operating expenses recorded."/>}</div><Link href={`/ledger?property=${propertyId}`} className="origin-footer-link">View all transactions <ChevronRight size={15}/></Link></section>
+    <div className="property-performance-grid">
+      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{label}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>
+      <section className="card origin-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><span className="muted-small">{label}</span></div><div className="origin-breakdown">{breakdown.length?breakdown.map(x=><BreakdownRow key={x.category} item={x} total={breakdownTotal} propertyId={propertyId}/>):<Empty text="No operating expenses recorded."/>}</div><Link href={`/ledger?property=${propertyId}`} className="origin-footer-link">View all transactions <ChevronRight size={15}/></Link></section>
     </div>
     {watch&&<section className="performance-watch"><AlertTriangle size={18}/><div><strong>{watch.title}</strong><span>{watch.body}</span></div></section>}
     <section className="card origin-panel property-insights"><div className="property-panel-head"><div><div className="eyebrow">TRENDS</div><h2>What to watch</h2></div></div><div className="insight-grid">
@@ -159,21 +159,19 @@ function Empty({text}:{text:string}){return <div className="property-empty-inlin
 function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthlyRange>}){
   const W=760,H=286,pad={l:48,r:18,t:24,b:42}; const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b; const max=Math.max(1,...rows.flatMap(r=>[r.income,r.operatingExpenses,r.noi])); const groupW=innerW/Math.max(1,rows.length); const barW=Math.max(8,Math.min(17,groupW*.22));
   const [selected,setSelected]=useState<number|null>(null);
-  const wrapRef=useRef<HTMLDivElement|null>(null);
-  const choose=(clientX:number)=>{const box=wrapRef.current?.getBoundingClientRect();if(!box)return;const local=(clientX-box.left)/box.width*W;const idx=Math.max(0,Math.min(rows.length-1,Math.round((local-pad.l-groupW/2)/groupW)));setSelected(idx);};
   const noiPoints=rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2; const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH; return `${x},${y}`}).join(' ');
   const selectedRow=selected==null?null:rows[selected];
   return <div className="performance-chart-shell">
-    <div ref={wrapRef} className="origin-chart-wrap interactive-performance-chart" onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)choose(e.clientX)}} onPointerDown={e=>{(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);choose(e.clientX)}} onPointerLeave={()=>setSelected(null)}>
+    <div className="origin-chart-wrap interactive-performance-chart" onPointerLeave={()=>setSelected(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} className="origin-chart" role="img" aria-label="Monthly income, operating expenses and net operating income">
         {[0,.25,.5,.75,1].map(v=>{const y=pad.t+innerH-innerH*v;return <g key={v}><line x1={pad.l} x2={W-pad.r} y1={y} y2={y} className="origin-grid"/><text x={pad.l-8} y={y+4} textAnchor="end" className="origin-y-label">{v===0?'$0':`$${Math.round(max*v/1000)}K`}</text></g>})}
-        {rows.map((r,i)=>{const cx=pad.l+groupW*i+groupW/2; const ih=(r.income/max)*innerH; const eh=(r.operatingExpenses/max)*innerH; return <g key={r.label}><rect x={cx-barW-2} y={pad.t+innerH-ih} width={barW} height={ih} rx="3" className="origin-income-bar"/><rect x={cx+2} y={pad.t+innerH-eh} width={barW} height={eh} rx="3" className="origin-expense-bar"/><text x={cx} y={H-12} textAnchor="middle" className={`origin-x-label ${selected===i?'selected':''}`}>{r.label}</text></g>})}
+        {rows.map((r,i)=>{const cx=pad.l+groupW*i+groupW/2; const ih=(r.income/max)*innerH; const eh=(r.operatingExpenses/max)*innerH; return <g key={r.label}><rect x={cx-barW-2} y={pad.t+innerH-ih} width={barW} height={ih} rx="3" className="origin-income-bar"/><rect x={cx+2} y={pad.t+innerH-eh} width={barW} height={eh} rx="3" className="origin-expense-bar"/><text x={cx} y={H-12} textAnchor="middle" className={`origin-x-label ${i%2===1?'performance-label-secondary':''} ${selected===i?'selected':''}`}>{r.label}</text></g>})}
         <polyline points={noiPoints} fill="none" className="origin-noi-line"/>{rows.map((r,i)=>{const x=pad.l+groupW*i+groupW/2;const y=pad.t+innerH-(Math.max(0,r.noi)/max)*innerH;return <circle key={r.label} cx={x} cy={y} r={selected===i?5:3.2} className="origin-noi-point"/>})}
         {selected!=null&&<line x1={pad.l+groupW*selected+groupW/2} x2={pad.l+groupW*selected+groupW/2} y1={pad.t} y2={pad.t+innerH} className="performance-guide"/>}
-        <rect x={pad.l} y={pad.t} width={innerW} height={innerH} fill="transparent"/>
+        {rows.map((r,i)=><rect key={`hit-${r.label}-${i}`} x={pad.l+groupW*i} y={pad.t} width={groupW} height={innerH+28} fill="transparent" className="performance-month-hit" onPointerEnter={e=>{if(e.pointerType==='mouse')setSelected(i)}} onPointerDown={e=>{e.preventDefault();setSelected(i)}} onClick={()=>setSelected(i)}/>)}
       </svg>
     </div>
-    <div className="performance-selected-summary">{selectedRow?<><div><span>{selectedRow.label}</span><strong>{formatCurrency(selectedRow.noi)} NOI</strong></div><div><span>Income <b className="amount-positive">{formatCurrency(selectedRow.income)}</b></span><span>Operating expenses <b className="amount-negative">{formatCurrency(selectedRow.operatingExpenses)}</b></span></div></>:<span>Hover or press and drag to inspect a month.</span>}</div>
+    <div className="performance-selected-summary">{selectedRow?<><div><span>{selectedRow.label}</span><strong>{formatCurrency(selectedRow.noi)} NOI</strong></div><div><span>Income <b className="amount-positive">{formatCurrency(selectedRow.income)}</b></span><span>Operating expenses <b className="amount-negative">{formatCurrency(selectedRow.operatingExpenses)}</b></span></div></>:<span className="performance-inspect-hint"><span className="desktop-hint">Hover or press to inspect a month.</span><span className="mobile-hint">Tap a month for details.</span></span>}</div>
   </div>;
 }
 

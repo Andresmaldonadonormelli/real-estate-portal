@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
@@ -242,7 +243,7 @@ export default function PropertiesPage() {
             <div style={twoCol}><Field label="City"><input required value={propertyForm.city} onChange={e => setPropertyForm({ ...propertyForm, city: e.target.value })} style={inputStyle} /></Field><Field label="State"><input required value={propertyForm.state} onChange={e => setPropertyForm({ ...propertyForm, state: e.target.value })} style={inputStyle} /></Field></div>
             <div style={twoCol}><Field label="ZIP"><input required value={propertyForm.zip} onChange={e => setPropertyForm({ ...propertyForm, zip: e.target.value })} style={inputStyle} /></Field><Field label="Property type"><select value={propertyForm.property_type} onChange={e => setPropertyForm({ ...propertyForm, property_type: e.target.value })} style={inputStyle}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></Field></div>
 
-            <button type="button" className="sheet-details-toggle" onClick={()=>setShowPropertyDetails(v=>!v)}>{showPropertyDetails?'Hide financial details':'Add financial & property details'}</button>
+            <button type="button" className={`sheet-details-toggle ${showPropertyDetails?'expanded':''}`} onClick={()=>setShowPropertyDetails(v=>!v)}><span>{showPropertyDetails?'Hide financial details':'Add financial & property details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
             {showPropertyDetails&&<div className="sheet-details-panel">
               <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
               <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
@@ -303,7 +304,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 18, padding: 12, border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 8, fontSize: 13 }}>{message}</div>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
-  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" style={{ ...secondaryButton, padding: '7px 10px' }}>✕</button></div><div className="mobile-sheet-body">{children}</div></div></div>;
+  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };

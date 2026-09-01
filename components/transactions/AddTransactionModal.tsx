@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Check, FileText, Paperclip, Search, X } from 'lucide-react';
+import { Check, ChevronDown, FileText, Paperclip, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { ACCOUNTING_CATEGORIES, categoryNeedsReview } from '@/lib/accounting';
@@ -70,7 +70,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
         <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>setForm({...form,category:e.target.value,needs_review:categoryNeedsReview(e.target.value)})}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         <div className="quick-add-two"><label><span className="quick-add-label-title">Type</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select></label></div>
-        <button type="button" className="quick-add-more" onClick={()=>setShowMore(v=>!v)}>{showMore?'Hide additional details':'Add details'}</button>
+        <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
         {showMore&&<div className="quick-add-more-panel">
           <label><span className="quick-add-label-title">Vendor / payee <em>(optional)</em></span><input value={form.payee_source} onChange={e=>setForm({...form,payee_source:e.target.value})}/></label>
           <label>Note <span>(optional)</span><textarea rows={2} placeholder="Anything useful to remember" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>

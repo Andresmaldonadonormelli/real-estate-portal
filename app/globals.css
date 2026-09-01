@@ -2744,3 +2744,162 @@ button.ledger-month-head:focus:not(:focus-visible){
     white-space:nowrap;
   }
 }
+
+/* ==========================================================
+   V2.2.20 MOBILE UX + PERFORMANCE CHART POLISH
+   ========================================================== */
+
+/* Action Center: UI chrome stays neutral. */
+.action-center.card,
+.action-center-card,
+.dashboard-action-center{
+  border:1px solid var(--border-color)!important;
+  background:var(--bg-card)!important;
+  box-shadow:var(--card-shadow)!important;
+}
+.action-center button.action-row:hover{background:var(--surface-hover)!important}
+
+/* Expandable detail rows read as controls, with a rotating chevron. */
+.sheet-details-toggle,
+.quick-add-more{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  text-decoration:none!important;
+  font-size:14px!important;
+  font-weight:650!important;
+  color:var(--text-secondary)!important;
+}
+.sheet-details-toggle svg,
+.quick-add-more svg{transition:transform .22s ease;flex:0 0 auto}
+.sheet-details-toggle.expanded svg,
+.quick-add-more.expanded svg{transform:rotate(180deg)}
+.sheet-details-panel,
+.quick-add-more-panel{animation:detailsReveal .22s ease both}
+@keyframes detailsReveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+
+/* One close treatment for all sheets. Never inherits pill geometry. */
+.sheet-close-button,
+.mobile-sheet .sheet-close-button,
+.quick-add-modal .icon-close{
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+  padding:0!important;
+  flex:0 0 40px!important;
+  border-radius:50%!important;
+  border:1px solid var(--border-color)!important;
+  background:var(--bg-card)!important;
+  color:var(--text-primary)!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+/* Sheet layering and motion are global, above the portaled bottom nav. */
+.mobile-sheet-overlay,
+.quick-add-overlay{z-index:1400!important;overscroll-behavior:none!important;animation:sheetBackdropIn .24s ease both}
+.mobile-sheet,
+.quick-add-modal{animation:sheetRiseIn .28s cubic-bezier(.22,.8,.24,1) both}
+@keyframes sheetBackdropIn{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.52)}}
+@keyframes sheetRiseIn{from{opacity:.96;transform:translateY(34px)}to{opacity:1;transform:translateY(0)}}
+
+/* Performance: exact per-month hit targets, no coordinate guessing. */
+.performance-month-hit{cursor:pointer;touch-action:manipulation}
+.mobile-hint{display:none}
+
+/* Final optical correction requested for Recent Transactions glyphs. */
+.property-list-row.property-transaction-row > .property-category-icon svg{
+  transform:translateY(-4px)!important;
+}
+
+@media(max-width:767px){
+  /* Sheets use the viewport, not the document. The body is already locked in the components. */
+  .mobile-sheet-overlay,
+  .quick-add-overlay{
+    position:fixed!important;
+    inset:0!important;
+    overflow:hidden!important;
+    touch-action:none;
+  }
+  .mobile-sheet,
+  .quick-add-modal{
+    height:min(90dvh,820px)!important;
+    max-height:calc(100dvh - max(10px,env(safe-area-inset-top)))!important;
+    overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overscroll-behavior:contain!important;
+  }
+  .mobile-sheet-head,
+  .quick-add-head{
+    flex:0 0 auto!important;
+    border-bottom:0!important;
+  }
+  .mobile-sheet-body,
+  .quick-add-form{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+  }
+  .mobile-sheet-body{padding-bottom:calc(28px + env(safe-area-inset-bottom))!important}
+  .quick-add-form{padding-bottom:calc(90px + env(safe-area-inset-bottom))!important}
+  .quick-add-footer{
+    position:sticky!important;
+    bottom:calc(-90px - env(safe-area-inset-bottom))!important;
+    margin-top:16px!important;
+    padding:14px 0 max(16px,env(safe-area-inset-bottom))!important;
+    background:var(--bg-card)!important;
+  }
+  .mobile-sheet-submit{
+    position:sticky!important;
+    bottom:0!important;
+    z-index:5!important;
+  }
+
+  /* Robinhood-like period behavior: selected range redraws to one fitted viewport. */
+  .performance-chart-shell .origin-chart-wrap{
+    width:100%!important;
+    overflow:hidden!important;
+    padding-bottom:0!important;
+    touch-action:manipulation!important;
+  }
+  .performance-chart-shell .origin-chart{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:auto!important;
+    display:block!important;
+  }
+  .performance-chart-shell .origin-x-label,
+  .performance-chart-shell .origin-y-label{
+    font-size:16px!important;
+  }
+  .performance-chart-shell .performance-label-secondary{display:none}
+  .performance-selected-summary{font-size:14px!important;min-height:48px}
+  .desktop-hint{display:none}.mobile-hint{display:inline}
+
+  /* Typography floor for meaningful mobile data. */
+  .cashflow-chart text,
+  .cashflow-chart .cashflow-month,
+  .chart-legend,
+  .statement-month>span,
+  .statement-metric>div:first-child,
+  .property-list-row span,
+  .property-doc-summary span,
+  .property-meta,
+  .origin-period{
+    font-size:14px!important;
+  }
+  .statement-month>div{font-size:18px!important}
+  .statement-metric>div:last-child{font-size:16px!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .mobile-sheet-overlay,.quick-add-overlay,.mobile-sheet,.quick-add-modal,.sheet-details-panel,.quick-add-more-panel{animation:none!important}
+  .sheet-details-toggle svg,.quick-add-more svg{transition:none!important}
+}
