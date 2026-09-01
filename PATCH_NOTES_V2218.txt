@@ -1,0 +1,24 @@
+V2.2.18 — Mobile nav + chart usability
+
+NO SQL REQUIRED.
+
+FIXES
+1. Mobile bottom navigation
+- BottomNav is portaled directly to document.body.
+- This prevents iOS from letting a transformed/scrolling ancestor break position: fixed.
+- Nav is explicitly pinned to the viewport bottom with safe-area spacing and a higher z-index.
+- Main content gets matching bottom clearance.
+
+2. Month labels
+- Cash Flow and Performance month labels increased to 15px on mobile.
+- Slightly stronger weight for readability.
+
+3. Performance chart horizontal scrolling
+- Performance chart stays inside a fixed-width card.
+- Chart itself is 760px wide on mobile.
+- Its inner wrapper now scrolls horizontally with native iOS momentum.
+- Whole-page horizontal overflow remains blocked.
+- Vertical page scrolling is still allowed.
+
+UPLOAD
+Upload the contents of this ZIP to the repo root and replace matching files.
