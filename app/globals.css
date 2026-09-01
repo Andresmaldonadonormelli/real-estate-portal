@@ -2986,3 +2986,42 @@ button.ledger-month-head:focus:not(:focus-visible){
 .action-center button.action-row:hover {
   background: var(--surface-hover) !important;
 }
+
+/* ==========================================================
+   V2.2.23 ACTION CENTER CARD MATCH
+   ========================================================== */
+/* Same surface and border thickness as every other card.
+   Action Center gets hierarchy only from a slightly stronger neutral border. */
+.action-center.card,
+.action-center-card,
+.dashboard-action-center {
+  background: var(--bg-secondary) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: color-mix(in srgb, var(--text-primary) 14%, var(--border-color)) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .action-center.card,
+[data-theme="light"] .action-center-card,
+[data-theme="light"] .dashboard-action-center {
+  background: var(--bg-secondary) !important;
+  border-color: color-mix(in srgb, var(--text-primary) 14%, var(--border-color)) !important;
+}
+
+[data-theme="dark"] .action-center.card,
+[data-theme="dark"] .action-center-card,
+[data-theme="dark"] .dashboard-action-center {
+  background: var(--card-bg) !important;
+  border-color: color-mix(in srgb, var(--text-primary) 18%, var(--border-color)) !important;
+}
+
+.action-center .action-list,
+.action-center button.action-row,
+.action-center button.action-row:focus,
+.action-center button.action-row:active {
+  background: transparent !important;
+}
+.action-center button.action-row:hover {
+  background: var(--surface-hover) !important;
+}
