@@ -2947,3 +2947,21 @@ button.ledger-month-head:focus:not(:focus-visible){
   .ledger-modern-amount{grid-column:2!important;grid-row:1!important;}
   .ledger-modern-chevron{grid-column:3!important;grid-row:1!important;}
 }
+/* Action Center: standard card surface + stronger neutral outline */
+
+.action-center {
+  background: var(--bg-card) !important;
+  border: 1.5px solid rgba(0, 0, 0, 0.16) !important;
+}
+
+/* Dark mode */
+[data-theme="dark"] .action-center {
+  background: var(--bg-card) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Light mode */
+[data-theme="light"] .action-center {
+  background: var(--bg-card) !important;
+  border-color: rgba(0, 0, 0, 0.16) !important;
+}
