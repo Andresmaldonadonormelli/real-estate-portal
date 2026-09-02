@@ -1,0 +1,10 @@
+v2.2.31 — KPI + navigation correction
+
+- Removed redundant Performance label above the KPI strip.
+- Period selector is compact and left aligned directly above Performance KPIs.
+- Active property section uses a clearly filled neutral-gray pill with no outline.
+- Unified Dashboard, Overview, and Performance metric typography.
+- Reduced metric values to 22px desktop / 20px mobile and removed truncation.
+- Operating expense ratio now shows only value + status; explanatory gray formula removed.
+- Mobile metrics remain left aligned.
+- No SQL changes.

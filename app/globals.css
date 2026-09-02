@@ -3506,3 +3506,112 @@ button.ledger-month-head:focus:not(:focus-visible){
   }
   .performance-metric-strip .property-metric>small{font-size:12px !important;line-height:16px !important}
 }
+\n\n/* v2.2.31 canonical metric + property navigation rules */
+:root{
+  --metric-label-size:13px;
+  --metric-value-size:22px;
+  --metric-context-size:12px;
+}
+
+/* Property section navigation: selected section is a filled neutral pill, never an outline. */
+.property-subnav button.active{
+  background:#e5e7e9 !important;
+  color:var(--text-primary) !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+[data-theme="dark"] .property-subnav button.active{background:rgba(255,255,255,.14) !important;}
+
+/* Performance range control is a compact left-aligned control immediately above metrics. */
+.performance-toolbar{
+  display:flex !important;
+  justify-content:flex-start !important;
+  align-items:center !important;
+  margin:16px 0 18px !important;
+  min-height:0 !important;
+}
+.performance-toolbar>span{display:none !important;}
+.performance-period-control{
+  width:max-content !important;
+  max-width:100% !important;
+  margin:0 !important;
+  align-self:auto !important;
+  flex:0 0 auto !important;
+}
+
+/* One metric type system across Dashboard, Overview and Performance. */
+.dashboard-metric,
+.property-metric{
+  min-width:0 !important;
+}
+.dashboard-metric>span,
+.property-metric>span{
+  font-size:var(--metric-label-size) !important;
+  line-height:16px !important;
+  font-weight:600 !important;
+}
+.dashboard-metric>strong,
+.property-metric>strong,
+.performance-metric-strip .property-metric:nth-child(3)>strong,
+.performance-metric-strip .property-metric:nth-child(4)>strong{
+  display:block !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  font-size:var(--metric-value-size) !important;
+  line-height:27px !important;
+  letter-spacing:-.02em !important;
+  font-weight:700 !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  font-variant-numeric:tabular-nums !important;
+}
+.dashboard-metric>small,
+.property-metric>small{
+  font-size:var(--metric-context-size) !important;
+  line-height:16px !important;
+  margin-top:5px !important;
+}
+.dashboard-metric-strip{grid-template-columns:repeat(5,minmax(0,1fr)) !important;}
+.dashboard-metric{padding-left:16px !important;padding-right:16px !important;}
+.dashboard-metric:first-child{padding-left:0 !important;}
+.dashboard-metric:last-child{padding-right:0 !important;}
+.performance-metric-strip .property-metric{padding-left:12px !important;padding-right:12px !important;}
+
+/* Ratio status is intentionally only metric + interpretation. */
+.property-metric .kpi-status em{display:none !important;}
+.property-metric .kpi-status{display:block !important;}
+
+/* Ledger remains a quiet secondary action within the identity block. */
+.property-ledger-action{margin-top:8px !important;}
+
+@media(max-width:760px){
+  :root{--metric-value-size:20px;}
+  .performance-toolbar{margin:14px 0 16px !important;}
+  .performance-period-control{
+    width:max-content !important;
+    max-width:100% !important;
+    display:flex !important;
+    grid-auto-flow:unset !important;
+    grid-auto-columns:unset !important;
+    overflow-x:auto !important;
+  }
+  .performance-period-control button{flex:0 0 auto !important;}
+  .property-metric-strip.performance-metric-strip,
+  .overview-metric-strip,
+  .dashboard-metric-strip{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+  .property-metric,
+  .dashboard-metric{
+    text-align:left !important;
+    justify-items:start !important;
+    align-items:start !important;
+  }
+  .property-metric>span,.property-metric>strong,.property-metric>small,
+  .dashboard-metric>span,.dashboard-metric>strong,.dashboard-metric>small{
+    text-align:left !important;
+    justify-self:start !important;
+  }
+  .dashboard-metric:last-child,
+  .performance-metric-strip .property-metric:last-child{grid-column:1/-1 !important;}
+}

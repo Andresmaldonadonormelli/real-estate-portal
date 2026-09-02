@@ -81,7 +81,7 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
       <Kpi label="Expected monthly rent" value={formatCurrency(expectedRent)} sub="Occupied units"/>
       <Kpi label="YTD cash flow" value={formatCurrency(metrics.cashFlow)} sub="After recorded expenses" tone={metrics.cashFlow>=0?'positive':'negative'}/>
       <Kpi label="Mortgage balance" value={formatCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
-      <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} sub={metrics.income>0?'Operating expenses ÷ income':'No YTD income'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
+      <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
 
     </div>
     <div className="property-two-col">
@@ -122,7 +122,7 @@ function Performance({transactions,years,propertyId}:{transactions:Tx[];years:nu
         ? {title:'Maintenance concentration',body:`Repairs & maintenance account for ${Math.round(maintenance.share*100)}% of operating expenses in ${label}.`}
         : null;
   return <div className="property-section-stack performance-origin">
-    <div className="performance-toolbar"><span>Performance</span><div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div></div>
+    <div className="performance-toolbar"><div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
     <div className="property-metric-strip performance-metric-strip performance-kpis">
       <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
       <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
