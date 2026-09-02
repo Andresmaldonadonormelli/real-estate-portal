@@ -62,9 +62,8 @@ export default function PropertyWorkspacePage(){
     <header className="property-workspace-header">
       <div className="property-title-block">
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
-        <div><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div></div>
+        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link></div>
       </div>
-      <div className="property-header-actions"><Link href={`/ledger?property=${property.id}`} className="property-secondary-action">View ledger</Link></div>
     </header>
 
     <nav className="property-subnav" aria-label="Property sections">{(['overview','performance','units','documents'] as Tab[]).map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav>
@@ -123,7 +122,7 @@ function Performance({transactions,years,propertyId}:{transactions:Tx[];years:nu
         ? {title:'Maintenance concentration',body:`Repairs & maintenance account for ${Math.round(maintenance.share*100)}% of operating expenses in ${label}.`}
         : null;
   return <div className="property-section-stack performance-origin">
-    <div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
+    <div className="performance-toolbar"><span>Performance</span><div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div></div>
     <div className="property-metric-strip performance-metric-strip performance-kpis">
       <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
       <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>

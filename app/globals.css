@@ -3379,3 +3379,130 @@ button.ledger-month-head:focus:not(:focus-visible){
   .performance-metric-strip .property-metric:nth-child(3)>strong,
   .performance-metric-strip .property-metric:nth-child(4)>strong{font-size:23px !important;line-height:28px !important}
 }
+
+/* v2.2.30: performance hierarchy + header action polish */
+/* Main property tabs use a visible neutral tint. Period selection remains the black/white control. */
+.property-subnav button.active{
+  background:color-mix(in srgb,var(--text-primary) 8%,var(--bg-card)) !important;
+  color:var(--text-primary) !important;
+  box-shadow:none !important;
+}
+[data-theme="dark"] .property-subnav button.active{
+  background:rgba(255,255,255,.12) !important;
+}
+
+/* Ledger is a secondary property action, kept with the property identity instead of floating at far right. */
+.property-workspace-header{justify-content:flex-start !important}
+.property-title-copy{min-width:0}
+.property-ledger-action{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-top:10px;
+  color:var(--text-primary);
+  text-decoration:none;
+  font-size:12px;
+  line-height:18px;
+  font-weight:650;
+}
+.property-ledger-action:hover{color:var(--text-secondary)}
+
+/* Performance period belongs to the Performance header, not to its own vertical row. */
+.performance-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  margin:0 0 12px;
+}
+.performance-toolbar>span{
+  color:var(--text-secondary);
+  font-size:13px;
+  line-height:18px;
+  font-weight:650;
+}
+.performance-period-control{
+  order:initial !important;
+  align-self:auto !important;
+  width:max-content !important;
+  max-width:100%;
+  margin:0 !important;
+  flex:0 0 auto;
+}
+.performance-kpis{order:initial !important}
+.performance-panels,.performance-watch,.property-insights{order:initial !important}
+
+/* Denser performance strip: five financial metrics should read as data, not display headlines. */
+.performance-metric-strip .property-metric{
+  padding-left:12px !important;
+  padding-right:12px !important;
+  grid-template-rows:34px auto 30px !important;
+}
+.performance-metric-strip .property-metric>span{
+  font-size:13px !important;
+  line-height:16px !important;
+  font-weight:600 !important;
+}
+.performance-metric-strip .property-metric>strong,
+.performance-metric-strip .property-metric:nth-child(3)>strong,
+.performance-metric-strip .property-metric:nth-child(4)>strong{
+  font-size:20px !important;
+  line-height:25px !important;
+  letter-spacing:-.02em !important;
+}
+.performance-metric-strip .property-metric>small{
+  margin-top:4px !important;
+  font-size:12px !important;
+  line-height:16px !important;
+}
+
+@media(max-width:760px){
+  .property-workspace-header{display:block !important}
+  .property-ledger-action{margin-top:9px;font-size:13px}
+
+  .performance-toolbar{
+    display:block;
+    margin:0 0 12px;
+  }
+  .performance-toolbar>span{
+    display:block;
+    margin-bottom:7px;
+    font-size:12px;
+  }
+  .performance-period-control{
+    width:100% !important;
+    display:grid !important;
+    grid-auto-flow:column;
+    grid-auto-columns:1fr;
+    overflow:visible !important;
+  }
+  .performance-period-control button{
+    min-width:0;
+    padding-left:6px !important;
+    padding-right:6px !important;
+  }
+
+  /* Mobile KPI cells are intentionally left aligned. */
+  .performance-metric-strip .property-metric{
+    text-align:left !important;
+    justify-items:start !important;
+    align-items:start !important;
+    padding:10px 12px 12px 0 !important;
+    grid-template-rows:32px auto 28px !important;
+  }
+  .performance-metric-strip .property-metric:nth-child(even){padding-left:14px !important}
+  .performance-metric-strip .property-metric>span,
+  .performance-metric-strip .property-metric>strong,
+  .performance-metric-strip .property-metric>small{
+    text-align:left !important;
+    justify-self:start !important;
+  }
+  .performance-metric-strip .property-metric>span{font-size:13px !important;line-height:16px !important}
+  .performance-metric-strip .property-metric>strong,
+  .performance-metric-strip .property-metric:nth-child(3)>strong,
+  .performance-metric-strip .property-metric:nth-child(4)>strong{
+    font-size:20px !important;
+    line-height:25px !important;
+  }
+  .performance-metric-strip .property-metric>small{font-size:12px !important;line-height:16px !important}
+}

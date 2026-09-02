@@ -1,0 +1,9 @@
+RE Portal v2.2.30 — Performance hierarchy + property header polish
+
+- Moved the Performance period selector into a compact Performance header row.
+- Desktop selector stays compact/right aligned; mobile selector intentionally spans the available width.
+- Reduced Performance KPI label/value/context type so five desktop metrics fit without collisions.
+- Forced mobile Performance KPIs to consistent left alignment.
+- Kept main property tab active state as a stronger neutral-gray tint, while period selection stays black/white.
+- Moved View ledger into the property identity block as a compact secondary text action.
+- No database or SQL changes.
