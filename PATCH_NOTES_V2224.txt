@@ -1,0 +1,23 @@
+RE Portal v2.2.24 — Property + Ledger targeted polish
+
+1. Property header / View ledger
+- Forces the mobile View ledger action to full width on every property.
+- Prevents purchase-date / metadata differences from changing button width.
+
+2. Ledger posting date
+- Mobile transaction rows keep Property · Unit · Category on one metadata line.
+- Transaction/posting date now gets its own visible line below it.
+- Existing Supabase query already sorts transaction_date newest first.
+
+3. Performance KPI status
+- Adds semantic status only to Operating expense ratio:
+  Healthy: under 55% (green)
+  Elevated: 55%–69.9% (amber)
+  High: 70%+ (red)
+- Ordinary KPI totals remain neutral to avoid turning the page into a traffic-light dashboard.
+
+4. Property Overview transaction icons
+- Reapplies true grid centering to the glyph inside the colored square.
+- Adds a 1px optical lift to correct Lucide glyph visual centering.
+
+No SQL / Supabase changes.

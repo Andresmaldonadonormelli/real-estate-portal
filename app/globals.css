@@ -3025,3 +3025,61 @@ button.ledger-month-head:focus:not(:focus-visible){
 .action-center button.action-row:hover {
   background: var(--surface-hover) !important;
 }
+
+/* ==========================================================
+   V2.2.24 PROPERTY + LEDGER TARGETED POLISH
+   ========================================================== */
+
+/* Property header action should be identical on every property, regardless
+   of how many metadata rows the header contains. */
+@media(max-width:720px){
+  .property-workspace-header{width:100%!important;justify-items:stretch!important;}
+  .property-header-actions{width:100%!important;max-width:none!important;justify-self:stretch!important;}
+  .property-header-actions .property-secondary-action{
+    width:100%!important;
+    max-width:none!important;
+    flex:0 0 100%!important;
+  }
+}
+
+/* Performance KPI semantic status. Only metrics with a real interpretation
+   receive status color; ordinary financial totals remain neutral. */
+.kpi-warning{color:var(--color-warning,var(--category-review))!important;}
+.kpi-status{display:flex!important;align-items:center!important;gap:8px!important;flex-wrap:wrap!important;}
+.kpi-status b{font:inherit;font-weight:700;}
+.kpi-status em{font:inherit;font-style:normal;color:var(--text-secondary);font-weight:400;}
+.kpi-status-positive b{color:var(--positive);}
+.kpi-status-warning b{color:var(--color-warning,var(--category-review));}
+.kpi-status-negative b{color:var(--negative);}
+
+/* Mobile ledger: transaction metadata gets its full line; posting date is a
+   separate, dependable line so it never disappears through truncation. */
+.ledger-mobile-posted-date{display:none;}
+@media(max-width:767px){
+  .ledger-mobile-inline-date{display:none!important;}
+  .ledger-mobile-posted-date{
+    display:block!important;
+    margin-top:5px!important;
+    color:var(--text-secondary)!important;
+    font-size:14px!important;
+    line-height:1.25!important;
+    white-space:nowrap!important;
+  }
+}
+
+/* Property overview category glyphs: center the SVG in its colored square,
+   then apply the tiny optical lift Lucide glyphs need on mobile. */
+.property-list-row.property-transaction-row > .property-category-icon{
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  line-height:0!important;
+}
+.property-list-row.property-transaction-row > .property-category-icon svg{
+  display:block!important;
+  width:16px!important;
+  height:16px!important;
+  margin:0!important;
+  position:static!important;
+  transform:translateY(-1px)!important;
+}
