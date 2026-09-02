@@ -1,0 +1,12 @@
+RE Portal v2.2.26 — Property preview refinement
+
+- Makes property tiles feel more unified by reducing the contrast of the nested performance surface.
+- Removes the black/strong hover outline and matches the Utilities hover treatment.
+- Uses a responsive 3-column desktop / 2-column medium / 1-column mobile grid.
+- Makes the health bar represent a real metric:
+  * occupied properties: operating expense ratio fill
+  * partially occupied properties: occupancy-rate fill
+  * fully vacant properties: empty gray track
+- Keeps semantic green/yellow/orange/red status colors.
+- Vacant properties no longer claim $0 is “potential rent.” If no rent is stored, they show “Rent not set” / “Performance pending.”
+- No SQL changes.

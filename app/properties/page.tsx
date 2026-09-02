@@ -252,11 +252,11 @@ export default function PropertiesPage() {
                 </div>
                 <span className="property-preview-chevron" aria-hidden="true"><ChevronRight size={20}/></span>
               </div>
-              <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{formatCurrency(monthlyRent)}/mo rent</span></div>
+              <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{occupied===0 && potentialRent<=0 ? 'Rent not set' : `${formatCurrency(occupied===0?potentialRent:monthlyRent)}/mo ${occupied===0?'potential':'rent'}`}</span></div>
               <div className="property-preview-performance">
                 <div className="property-preview-metric">
-                  <span>{occupied===0?'Potential monthly rent':'YTD cash flow'}</span>
-                  <strong className={occupied===0?'':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{formatCurrency(occupied===0?potentialRent:cashFlow)}</strong>
+                  <span>{occupied===0 ? (potentialRent>0?'Potential monthly rent':'Performance') : 'YTD cash flow'}</span>
+                  <strong className={occupied===0?'':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{occupied===0 ? (potentialRent>0?formatCurrency(potentialRent):'Pending') : formatCurrency(cashFlow)}</strong>
                 </div>
                 <div className={`property-health-track health-${health.tone}`}><i style={{width:`${health.fill}%`}}/></div>
                 <div className="property-health-caption"><strong>{health.label}</strong><span>{health.detail}</span></div>
@@ -339,14 +339,18 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 function getPropertyHealth({occupied,total,cashFlow,expenseRatio}:{occupied:number;total:number;cashFlow:number;expenseRatio:number|null}){
   if(total===0 || occupied===0) return {tone:'vacant',fill:0,label:'Vacant',detail:'Performance pending'};
-  if(occupied<total) return {tone:'red',fill:28,label:'Vacancy needs attention',detail:`${total-occupied} ${total-occupied===1?'unit':'units'} vacant`};
-  if(cashFlow<0) return {tone:'red',fill:28,label:'Negative cash flow',detail:'Review expenses and financing'};
-  if(expenseRatio==null) return {tone:'yellow',fill:58,label:'Building performance history',detail:'More posted activity needed'};
+  if(occupied<total){
+    const occupancyPct=Math.round((occupied/Math.max(total,1))*100);
+    return {tone:'red',fill:occupancyPct,label:'Vacancy needs attention',detail:`${occupancyPct}% occupied`};
+  }
+  if(expenseRatio==null) return {tone:'yellow',fill:0,label:'Building performance history',detail:'More posted activity needed'};
   const pct=Math.round(expenseRatio*100);
-  if(expenseRatio>0.8) return {tone:'red',fill:30,label:'Expenses are very high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.65) return {tone:'orange',fill:48,label:'Expenses high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.5) return {tone:'yellow',fill:68,label:'Performance to watch',detail:`${pct}% operating expense ratio`};
-  return {tone:'green',fill:88,label:'Performing well',detail:`${pct}% operating expense ratio`};
+  const fill=Math.max(0,Math.min(100,pct));
+  if(cashFlow<0) return {tone:'red',fill,label:'Negative cash flow',detail:`${pct}% operating expense ratio`};
+  if(expenseRatio>0.8) return {tone:'red',fill,label:'Expenses are very high',detail:`${pct}% operating expense ratio`};
+  if(expenseRatio>0.65) return {tone:'orange',fill,label:'Expenses high',detail:`${pct}% operating expense ratio`};
+  if(expenseRatio>0.5) return {tone:'yellow',fill,label:'Performance to watch',detail:`${pct}% operating expense ratio`};
+  return {tone:'green',fill,label:'Performing well',detail:`${pct}% operating expense ratio`};
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };

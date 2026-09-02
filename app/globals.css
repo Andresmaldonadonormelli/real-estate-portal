@@ -3138,3 +3138,38 @@ button.ledger-month-head:focus:not(:focus-visible){
 .property-health-track{height:6px;border-radius:999px;background:var(--border-color);overflow:hidden}.property-health-track i{display:block;height:100%;border-radius:inherit;background:var(--text-secondary)}.property-health-track.health-green i{background:var(--color-positive)}.property-health-track.health-yellow i{background:var(--color-warning)}.property-health-track.health-orange i{background:var(--category-maintenance)}.property-health-track.health-red i{background:var(--color-negative)}.property-health-track.health-vacant i{width:0!important}
 .property-health-caption{justify-content:space-between;gap:12px;margin-top:9px;font-size:12px}.property-health-caption strong{font-size:12px}.compact-properties-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media(max-width:760px){.compact-properties-list{grid-template-columns:1fr;gap:12px}.property-preview-card{padding:16px}.property-preview-performance{padding:13px}.property-preview-identity strong{font-size:16px}.property-preview-meta{margin-top:14px}}
+
+/* v2.2.26 property preview refinement */
+.property-preview-card{
+  border-color:var(--border-color) !important;
+  box-shadow:var(--card-shadow);
+  transform:none !important;
+}
+.property-preview-performance{
+  background:color-mix(in srgb,var(--bg-secondary) 96%,var(--bg-page) 4%) !important;
+  border-color:color-mix(in srgb,var(--border-color) 82%,transparent) !important;
+}
+.property-health-track{
+  background:color-mix(in srgb,var(--border-color) 78%,transparent) !important;
+}
+@media (hover:hover) and (pointer:fine){
+  .property-preview-card:hover{
+    background:color-mix(in srgb,var(--accent-soft) 45%,var(--bg-secondary)) !important;
+    border-color:var(--border-color) !important;
+    box-shadow:var(--card-shadow);
+    transform:none !important;
+  }
+  .property-preview-card:hover .property-preview-performance{
+    background:color-mix(in srgb,var(--bg-secondary) 94%,var(--surface-hover) 6%) !important;
+  }
+}
+.compact-properties-list{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:14px;
+}
+@media(max-width:1050px){
+  .compact-properties-list{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media(max-width:760px){
+  .compact-properties-list{grid-template-columns:1fr !important}
+}
