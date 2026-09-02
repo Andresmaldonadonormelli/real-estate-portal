@@ -1,0 +1,22 @@
+RE Portal v2.2.27 — Property hierarchy refinement
+
+1. Properties page
+- Desktop property previews are now one wide card per row instead of 3-up.
+- Cards remain vertically stacked at all breakpoints.
+- Retains v2.2.26 unified surface, semantic performance bar, chevron and subtle hover treatment.
+
+2. Property Overview metrics
+- Replaces oversized KPI cards with a compact cardless metric strip.
+- Desktop: four horizontal metrics with subtle separators.
+- Mobile: compact two-column metric layout.
+- Main values stay neutral except existing meaningful cash-flow tone.
+
+3. Property Performance metrics
+- Replaces five large KPI cards with a compact cardless metric strip.
+- Adds small semantic comparison/status lines beneath values.
+- Positive changes are green; negative changes red; expense changes use inverse logic.
+- Expense ratio keeps Healthy / Elevated / High semantic status.
+- NOI and cash flow receive slightly stronger numeric emphasis.
+- Existing period selector still controls the metrics.
+
+No SQL changes.
