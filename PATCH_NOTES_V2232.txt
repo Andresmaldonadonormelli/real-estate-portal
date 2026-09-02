@@ -1,0 +1,11 @@
+v2.2.32 — KPI system normalization
+
+- Introduces one shared metric-cell anatomy used by Dashboard, Property Overview and Property Performance.
+- Canonical KPI typography: 13px semibold label, responsive 19–22px desktop value / 20px mobile value, 13px context.
+- Canonical spacing: fixed 32px bottom-aligned label slot, 5px label-to-value gap, 5px value-to-context gap.
+- Keeps values aligned even when labels wrap to two lines, without the large detached gap on Performance.
+- Normalizes separator/padding treatment across all KPI strips.
+- Keeps operating expense ratio status to value + High only.
+- Makes the Performance period selector visually quieter than the main property navigation by removing its outer capsule and keeping only a compact black active period pill.
+- Tightens Performance selector-to-KPI spacing.
+- No SQL changes.

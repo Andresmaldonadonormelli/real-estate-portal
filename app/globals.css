@@ -3615,3 +3615,194 @@ button.ledger-month-head:focus:not(:focus-visible){
   .dashboard-metric:last-child,
   .performance-metric-strip .property-metric:last-child{grid-column:1/-1 !important;}
 }
+
+/* v2.2.32: canonical KPI system + performance density
+   One shared metric anatomy across Dashboard, Property Overview and Property Performance. */
+:root{
+  --kpi-label-size:13px;
+  --kpi-label-line:16px;
+  --kpi-value-size:clamp(19px,1.55vw,22px);
+  --kpi-value-line:27px;
+  --kpi-context-size:13px;
+  --kpi-context-line:17px;
+  --kpi-label-slot:32px;
+  --kpi-label-value-gap:5px;
+  --kpi-value-context-gap:5px;
+}
+
+/* Shared KPI cell. The label slot is fixed and bottom-aligned so values share a baseline
+   without creating the detached label/value gap seen in Performance. */
+.metric-cell{
+  min-width:0 !important;
+  display:grid !important;
+  grid-template-rows:var(--kpi-label-slot) auto auto !important;
+  align-content:start !important;
+  text-align:left !important;
+}
+.metric-cell>span{
+  display:flex !important;
+  align-items:flex-end !important;
+  align-self:stretch !important;
+  min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  color:var(--text-secondary) !important;
+  font-size:var(--kpi-label-size) !important;
+  line-height:var(--kpi-label-line) !important;
+  font-weight:600 !important;
+}
+.metric-cell>strong,
+.performance-metric-strip .metric-cell:nth-child(3)>strong,
+.performance-metric-strip .metric-cell:nth-child(4)>strong{
+  display:block !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  margin:var(--kpi-label-value-gap) 0 0 !important;
+  padding:0 !important;
+  color:var(--text-primary);
+  font-size:var(--kpi-value-size) !important;
+  line-height:var(--kpi-value-line) !important;
+  letter-spacing:-.02em !important;
+  font-weight:700 !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  font-variant-numeric:tabular-nums !important;
+}
+.metric-cell>small{
+  display:block !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  margin:var(--kpi-value-context-gap) 0 0 !important;
+  padding:0 !important;
+  color:var(--text-secondary);
+  font-size:var(--kpi-context-size) !important;
+  line-height:var(--kpi-context-line) !important;
+  font-weight:400 !important;
+  font-style:normal !important;
+}
+.metric-cell>small em{font-style:normal !important;color:inherit !important;font-weight:inherit !important}
+.metric-cell .kpi-status{display:block !important}
+.metric-cell .kpi-status em{display:none !important}
+.metric-cell .kpi-status b{font-size:inherit !important;line-height:inherit !important;font-weight:700 !important}
+.metric-cell .kpi-status-negative b{color:var(--negative) !important}
+.metric-cell .kpi-status-warning b{color:var(--category-review) !important}
+.metric-cell .kpi-status-positive b{color:var(--positive) !important}
+.dashboard-metric>small.metric-positive{color:var(--positive) !important}
+.dashboard-metric>small.metric-negative{color:var(--negative) !important}
+
+/* The three KPI strips share the same cell spacing and separator language. */
+.dashboard-metric-strip,
+.overview-metric-strip,
+.performance-metric-strip{
+  gap:0 !important;
+  padding-top:0 !important;
+  border-bottom:0 !important;
+}
+.dashboard-metric,
+.overview-metric-strip .property-metric,
+.performance-metric-strip .property-metric{
+  padding:0 16px !important;
+  border-right:1px solid var(--border-color) !important;
+  border-bottom:0 !important;
+}
+.dashboard-metric:first-child,
+.overview-metric-strip .property-metric:first-child,
+.performance-metric-strip .property-metric:first-child{padding-left:0 !important}
+.dashboard-metric:last-child,
+.overview-metric-strip .property-metric:last-child,
+.performance-metric-strip .property-metric:last-child{
+  padding-right:0 !important;
+  border-right:0 !important;
+}
+
+/* Performance period control is a filter, not a second navigation bar. */
+.performance-toolbar{
+  display:block !important;
+  min-height:0 !important;
+  margin:10px 0 14px !important;
+}
+.performance-toolbar>span{display:none !important}
+.performance-period-control{
+  display:flex !important;
+  align-items:center !important;
+  width:max-content !important;
+  max-width:100% !important;
+  gap:3px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow-x:auto !important;
+}
+.performance-period-control button{
+  flex:0 0 auto !important;
+  padding:6px 10px !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:transparent !important;
+  color:var(--text-secondary) !important;
+  font-size:12px !important;
+  line-height:16px !important;
+  font-weight:650 !important;
+}
+.performance-period-control button.active{
+  background:var(--text-primary) !important;
+  color:var(--bg-card) !important;
+}
+.performance-kpis{margin-bottom:24px !important}
+
+/* Property section navigation remains the higher-level navigation. */
+.property-subnav button.active{
+  background:#e5e7e9 !important;
+  color:var(--text-primary) !important;
+  border-color:transparent !important;
+  outline:0 !important;
+  box-shadow:none !important;
+}
+[data-theme="dark"] .property-subnav button.active{background:rgba(255,255,255,.14) !important}
+
+@media(max-width:760px){
+  :root{
+    --kpi-value-size:20px;
+    --kpi-value-line:25px;
+    --kpi-label-slot:32px;
+  }
+  .dashboard-metric-strip,
+  .overview-metric-strip,
+  .performance-metric-strip{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    column-gap:0 !important;
+    row-gap:24px !important;
+  }
+  .dashboard-metric,
+  .overview-metric-strip .property-metric,
+  .performance-metric-strip .property-metric{
+    padding:0 14px 0 0 !important;
+    border:0 !important;
+    text-align:left !important;
+    justify-items:start !important;
+  }
+  .dashboard-metric:nth-child(even),
+  .overview-metric-strip .property-metric:nth-child(even),
+  .performance-metric-strip .property-metric:nth-child(even){
+    padding:0 0 0 14px !important;
+    border-left:1px solid var(--border-color) !important;
+  }
+  .dashboard-metric:last-child,
+  .performance-metric-strip .property-metric:last-child{
+    grid-column:1/-1 !important;
+    padding-left:0 !important;
+    border-left:0 !important;
+  }
+  .metric-cell>span,.metric-cell>strong,.metric-cell>small{
+    text-align:left !important;
+    justify-self:start !important;
+  }
+  .performance-toolbar{margin:8px 0 12px !important}
+  .performance-period-control{width:max-content !important}
+  .performance-period-control button{padding:6px 9px !important;font-size:12px !important}
+  .performance-kpis{margin-bottom:20px !important}
+}
