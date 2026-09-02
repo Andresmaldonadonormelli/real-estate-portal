@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import StatCard from '@/components/common/StatCard';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -185,8 +184,13 @@ export default function Dashboard() {
     <div className="dashboard-header"><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><div className="dashboard-header-actions"><button className="test-action-button" onClick={()=>setTestActionsActive(v=>!v)} style={secondaryButton}>{testActionsActive?'Hide test actions':'Test action'}</button><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div></div>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <div className="dashboard-stats dashboard-stats-top"><StatCard label="Properties" value={stats.totalProperties}/><StatCard label="Occupied Units" value={`${stats.occupiedUnits}/${stats.totalUnits}`}/><StatCard label="Vacant Units" value={stats.vacantUnits}/></div>
-      <div className="dashboard-stats dashboard-stats-money"><StatCard label="Income This Month" value={formatCurrency(monthlyTotals.income)} color="accent"/><StatCard label="Expenses This Month" value={formatCurrency(monthlyTotals.expense)} color="danger"/><StatCard label="Net Cash Flow" value={formatCurrency(monthlyTotals.net)} color={monthlyTotals.net>=0?'accent':'danger'}/><StatCard label="Mortgage Balance" value={formatCurrency(stats.totalMortgageBalance)}/></div>
+      <div className="dashboard-metric-strip" aria-label="Portfolio overview">
+        <DashboardMetric label="Occupancy" value={`${stats.occupiedUnits}/${stats.totalUnits}`} sub={stats.totalUnits?`${Math.round(stats.occupiedUnits/stats.totalUnits*100)}% occupied`:'No units yet'}/>
+        <DashboardMetric label="Income this month" value={formatCurrency(monthlyTotals.income)} sub="Posted income"/>
+        <DashboardMetric label="Expenses this month" value={formatCurrency(monthlyTotals.expense)} sub="Posted expenses" tone="negative"/>
+        <DashboardMetric label="Net cash flow" value={formatCurrency(monthlyTotals.net)} sub="Income − expenses" tone={monthlyTotals.net>=0?'positive':'negative'}/>
+        <DashboardMetric label="Mortgage balance" value={formatCurrency(stats.totalMortgageBalance)} sub="Portfolio balance"/>
+      </div>
       {actionItems.length>0&&<section className="action-center card"><div className="section-heading-row"><div><div className="eyebrow">NEEDS YOU</div><h2>Action Center</h2></div><div style={{display:'flex',alignItems:'center',gap:8}}>{testActionsActive&&<span className="test-badge">TEST</span>}{actionItems.length>3&&<span className="muted-small">{actionItems.length} open</span>}</div></div><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">{item.kind==='rent'||item.kind==='review'?'Review':'Open'} <span aria-hidden="true">→</span></span></button>)}</div><div className="action-center-footer"><button className="action-center-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></div></section>}
       <section className="dashboard-main-grid">
         <div className="cashflow-card card"><div className="section-heading-row cashflow-head"><div><h2>Cash Flow</h2><p>Trailing 12 months · posted ledger activity</p></div><div className="cashflow-controls"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><div className="segmented"><button className={cashMode==='monthly'?'active':''} onClick={()=>setCashMode('monthly')}>Monthly</button><button className={cashMode==='cumulative'?'active':''} onClick={()=>setCashMode('cumulative')}>Cumulative</button></div></div></div><CashFlowChart rows={cashFlow} mode={cashMode}/></div>
@@ -206,6 +210,7 @@ export default function Dashboard() {
     </div></div></div>}
   </div>;
 }
+function DashboardMetric({label,value,sub,tone}:{label:string;value:string;sub?:string;tone?:'positive'|'negative'}){return <div className="dashboard-metric"><span>{label}</span><strong>{value}</strong><small className={tone?`metric-${tone}`:''}>{sub||' '}</small></div>}
 function DashboardCategoryIcon({category}:{category:string}){const props={size:19,strokeWidth:1.8};const key=categoryKey(category);const Icon=key==='rent'?Banknote:key.startsWith('mortgage')?Landmark:key==='maintenance'?Wrench:key==='utilities'?Zap:key==='insurance'?ShieldCheck:key==='management'?ClipboardCheck:key==='leasing'?Receipt:key==='taxes'?Building2:key==='capex'?Hammer:key==='legal'?Scale:key==='distribution'?WalletCards:key==='other-income'?CircleDollarSign:key==='refund'?RotateCcw:key==='review'?ClipboardCheck:FileText;return <span className="ledger-category-icon recent-category-icon" data-category={key} aria-hidden="true"><Icon {...props}/></span>}
 function ActionIcon({kind,title}:{kind:'rent'|'document'|'review';title:string}){const props={size:19,strokeWidth:1.8};const lower=title.toLowerCase();const Icon=kind==='rent'?Banknote:kind==='review'?ClipboardCheck:lower.includes('insurance')?ShieldCheck:lower.includes('lease')?FileText:ClipboardCheck;const actionTone=kind==='rent'?'rent':kind==='review'?'review':lower.includes('insurance')?'insurance':lower.includes('lease')?'lease':'document';return <span className="action-icon" data-action={actionTone} aria-hidden="true"><Icon {...props}/></span>}
 

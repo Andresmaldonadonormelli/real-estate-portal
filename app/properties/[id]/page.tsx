@@ -62,7 +62,7 @@ export default function PropertyWorkspacePage(){
     <header className="property-workspace-header">
       <div className="property-title-block">
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
-        <div><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div></div>
+        <div><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div></div>
       </div>
       <div className="property-header-actions"><Link href={`/ledger?property=${property.id}`} className="property-secondary-action">View ledger</Link></div>
     </header>
@@ -79,10 +79,11 @@ export default function PropertyWorkspacePage(){
 function Overview({property,units,transactions,documents,occupied,expectedRent,metrics}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];imageUrl:string;occupied:number;expectedRent:number;metrics:ReturnType<typeof calculateMetrics>}){
   return <div className="property-section-stack">
     <div className="property-metric-strip overview-metric-strip">
-      <Kpi label="Occupancy" value={units.length?`${occupied}/${units.length}`:'—'} sub={units.length?`${Math.round(occupied/units.length*100)}% occupied`:'No units yet'}/>
       <Kpi label="Expected monthly rent" value={formatCurrency(expectedRent)} sub="Occupied units"/>
-      <Kpi label="Mortgage balance" value={formatCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
       <Kpi label="YTD cash flow" value={formatCurrency(metrics.cashFlow)} sub="After recorded expenses" tone={metrics.cashFlow>=0?'positive':'negative'}/>
+      <Kpi label="Mortgage balance" value={formatCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
+      <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} sub={metrics.income>0?'Operating expenses ÷ income':'No YTD income'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
+
     </div>
     <div className="property-two-col">
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(3)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>

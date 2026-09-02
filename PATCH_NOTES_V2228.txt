@@ -1,0 +1,14 @@
+V2.2.28 — Unified KPI + hierarchy cleanup
+
+- Dashboard giant KPI cards replaced with one compact 5-metric strip:
+  Occupancy, Income this month, Expenses this month, Net cash flow, Mortgage balance.
+- Removed Properties and Vacant Units dashboard KPIs.
+- Overview occupancy moved into property metadata beside property type/unit count.
+- Overview metrics are now Expected monthly rent, YTD cash flow, Mortgage balance, Operating expense ratio.
+- Property tabs use a neutral segmented/pill treatment with no full-width underline.
+- KPI labels use a fixed two-line label zone so all primary values share a baseline.
+- Removed horizontal divider below KPI strips; whitespace separates sections.
+- Vertical KPI separators retained.
+- Primary KPI values no longer ellipsize.
+- Unified KPI label/value/context typography across Dashboard, Overview, and Performance.
+- No database/SQL changes.
