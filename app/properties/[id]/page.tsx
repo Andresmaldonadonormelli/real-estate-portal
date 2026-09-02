@@ -20,6 +20,8 @@ const categoryVar:Record<string,string> = {
   rent:'var(--category-rent)', management:'var(--category-management)', leasing:'var(--category-management)', maintenance:'var(--category-maintenance)', utilities:'var(--category-utilities)', insurance:'var(--category-insurance)', taxes:'var(--category-taxes)', capex:'var(--category-capex)', legal:'var(--category-legal)', 'mortgage-interest':'var(--category-mortgage)', 'mortgage-principal':'var(--category-mortgage)', mortgage:'var(--category-mortgage)', review:'var(--category-review)', neutral:'var(--category-neutral)', 'other-income':'var(--category-rent)'
 };
 
+const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
+
 export default function PropertyWorkspacePage(){
   const params=useParams<{id:string}>();
   const propertyId=String(params?.id || '');
@@ -78,9 +80,9 @@ export default function PropertyWorkspacePage(){
 function Overview({property,units,transactions,documents,occupied,expectedRent,metrics}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];imageUrl:string;occupied:number;expectedRent:number;metrics:ReturnType<typeof calculateMetrics>}){
   return <div className="property-section-stack">
     <div className="property-metric-strip overview-metric-strip">
-      <Kpi label="Expected monthly rent" value={formatCurrency(expectedRent)} sub="Occupied units"/>
-      <Kpi label="YTD cash flow" value={formatCurrency(metrics.cashFlow)} sub="After recorded expenses" tone={metrics.cashFlow>=0?'positive':'negative'}/>
-      <Kpi label="Mortgage balance" value={formatCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
+      <Kpi label="Expected monthly rent" value={formatKpiCurrency(expectedRent)} sub="Occupied units"/>
+      <Kpi label="YTD cash flow" value={formatKpiCurrency(metrics.cashFlow)} sub="After recorded expenses" tone={metrics.cashFlow>=0?'positive':'negative'}/>
+      <Kpi label="Mortgage balance" value={formatKpiCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
       <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
 
     </div>
@@ -126,10 +128,10 @@ function Performance({transactions,years,propertyId}:{transactions:Tx[];years:nu
       <div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
     </div>
     <div className="property-metric-strip performance-metric-strip performance-kpis">
-      <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
-      <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
-      <Kpi label="NOI" value={formatCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
-      <Kpi label="Cash flow after mortgage" value={formatCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
+      <Kpi label="Gross income" value={formatKpiCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
+      <Kpi label="Operating expenses" value={formatKpiCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
+      <Kpi label="NOI" value={formatKpiCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
+      <Kpi label="Cash flow after mortgage" value={formatKpiCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
       <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={undefined} tone={expenseRatio>=0.70?'negative':expenseRatio>=0.55?'warning':'positive'} status={expenseRatio>=0.70?'High':expenseRatio>=0.55?'Elevated':'Healthy'}/>
     </div>
     <div className="property-performance-grid performance-panels">

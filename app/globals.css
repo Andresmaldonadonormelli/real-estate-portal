@@ -3806,3 +3806,40 @@ button.ledger-month-head:focus:not(:focus-visible){
   .performance-period-control button{padding:6px 9px !important;font-size:12px !important}
   .performance-kpis{margin-bottom:20px !important}
 }
+
+/* v2.2.33: mobile KPI density inspired by finance-app information hierarchy.
+   Same KPI system, responsive typography. No card/divider chrome on mobile. */
+@media(max-width:760px){
+  :root{
+    --kpi-label-size:13px;
+    --kpi-label-line:16px;
+    --kpi-value-size:18px;
+    --kpi-value-line:22px;
+    --kpi-context-size:13px;
+    --kpi-context-line:16px;
+    --kpi-label-slot:16px;
+    --kpi-label-value-gap:6px;
+    --kpi-value-context-gap:4px;
+  }
+  .dashboard-metric-strip,
+  .overview-metric-strip,
+  .performance-metric-strip{
+    row-gap:22px !important;
+  }
+  .metric-cell>span{font-weight:500 !important;}
+  .metric-cell>strong,
+  .performance-metric-strip .metric-cell:nth-child(3)>strong,
+  .performance-metric-strip .metric-cell:nth-child(4)>strong{
+    font-weight:600 !important;
+    letter-spacing:-.01em !important;
+  }
+  .dashboard-metric,
+  .overview-metric-strip .property-metric,
+  .performance-metric-strip .property-metric,
+  .dashboard-metric:nth-child(even),
+  .overview-metric-strip .property-metric:nth-child(even),
+  .performance-metric-strip .property-metric:nth-child(even){
+    border-left:0 !important;
+    border-right:0 !important;
+  }
+}

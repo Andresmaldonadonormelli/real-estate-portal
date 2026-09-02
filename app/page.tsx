@@ -140,6 +140,7 @@ export default function Dashboard() {
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
   const currentMonth=new Date().toISOString().slice(0,7);
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
+  const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
   const monthlyTotals=useMemo(()=>calculateMonthlyTotals(postedThisMonth),[postedThisMonth]);
   const pendingRents=useMemo(()=>transactions.filter(t=>t.status==='pending'&&t.category==='Rent'),[transactions]);
@@ -186,10 +187,10 @@ export default function Dashboard() {
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="dashboard-metric-strip" aria-label="Portfolio overview">
         <DashboardMetric label="Occupancy" value={`${stats.occupiedUnits}/${stats.totalUnits}`} sub={stats.totalUnits?`${Math.round(stats.occupiedUnits/stats.totalUnits*100)}% occupied`:'No units yet'}/>
-        <DashboardMetric label="Income this month" value={formatCurrency(monthlyTotals.income)} sub="Posted income"/>
-        <DashboardMetric label="Expenses this month" value={formatCurrency(monthlyTotals.expense)} sub="Posted expenses" tone="negative"/>
-        <DashboardMetric label="Net cash flow" value={formatCurrency(monthlyTotals.net)} sub="Income − expenses" tone={monthlyTotals.net>=0?'positive':'negative'}/>
-        <DashboardMetric label="Mortgage balance" value={formatCurrency(stats.totalMortgageBalance)} sub="Portfolio balance"/>
+        <DashboardMetric label="Income this month" value={formatKpiCurrency(monthlyTotals.income)} sub="Posted income"/>
+        <DashboardMetric label="Expenses this month" value={formatKpiCurrency(monthlyTotals.expense)} sub="Posted expenses" tone="negative"/>
+        <DashboardMetric label="Net cash flow" value={formatKpiCurrency(monthlyTotals.net)} sub="Income − expenses" tone={monthlyTotals.net>=0?'positive':'negative'}/>
+        <DashboardMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)} sub="Portfolio balance"/>
       </div>
       {actionItems.length>0&&<section className="action-center card"><div className="section-heading-row"><div><div className="eyebrow">NEEDS YOU</div><h2>Action Center</h2></div><div style={{display:'flex',alignItems:'center',gap:8}}>{testActionsActive&&<span className="test-badge">TEST</span>}{actionItems.length>3&&<span className="muted-small">{actionItems.length} open</span>}</div></div><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">{item.kind==='rent'||item.kind==='review'?'Review':'Open'} <span aria-hidden="true">→</span></span></button>)}</div><div className="action-center-footer"><button className="action-center-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></div></section>}
       <section className="dashboard-main-grid">

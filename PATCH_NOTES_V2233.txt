@@ -1,0 +1,12 @@
+v2.2.33 — Mobile KPI density + whole-dollar KPI formatting
+
+- Mobile KPI labels: 13px medium
+- Mobile KPI values: 18px semibold
+- Mobile KPI context: 13px regular
+- Tightened label/value/context spacing and KPI row spacing
+- Removed mobile KPI divider lines
+- Dashboard, Overview and Performance continue to share one KPI system
+- Dashboard and property KPI currency values now display whole dollars
+- Ledger, transactions and detailed accounting views retain cents
+- Ratios retain decimal precision
+- No SQL changes
