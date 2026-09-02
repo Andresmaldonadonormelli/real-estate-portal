@@ -3302,3 +3302,80 @@ button.ledger-month-head:focus:not(:focus-visible){
   .dashboard-metric>span{font-size:14px}.dashboard-metric>strong{font-size:24px;line-height:29px}.dashboard-metric>small{font-size:13px}
   .dashboard-metric:last-child{padding-left:0;border-left:0}
 }
+\n\n/* v2.2.29: performance + mobile density polish */
+/* Current property location: quiet neutral tint, not an outline. */
+.property-subnav button.active{
+  background:var(--surface-hover) !important;
+  box-shadow:none !important;
+  color:var(--text-primary) !important;
+}
+[data-theme="dark"] .property-subnav button.active{background:rgba(255,255,255,.10) !important}
+
+/* Performance period is a page-level control: right aligned immediately above KPIs. */
+.performance-origin{display:flex;flex-direction:column}
+.performance-period-control{
+  align-self:flex-end !important;
+  margin:0 0 18px !important;
+  order:1 !important;
+}
+.performance-kpis{order:2 !important}
+.performance-panels{order:3 !important}
+.performance-watch{order:4 !important}
+.property-insights{order:5 !important}
+
+/* Five-up performance data strip needs denser type and spacing. */
+.performance-metric-strip .property-metric{padding-left:16px !important;padding-right:16px !important}
+.performance-metric-strip .property-metric:first-child{padding-left:0 !important}
+.performance-metric-strip .property-metric:last-child{padding-right:0 !important}
+.performance-metric-strip .property-metric>strong,
+.performance-metric-strip .property-metric:nth-child(3)>strong,
+.performance-metric-strip .property-metric:nth-child(4)>strong{
+  font-size:23px !important;
+  line-height:28px !important;
+  letter-spacing:-.025em !important;
+}
+.performance-metric-strip .property-metric>small{margin-top:5px !important}
+.performance-metric-strip .kpi-status{display:block !important}
+.performance-metric-strip .kpi-status em:empty{display:none !important}
+
+@media(max-width:760px){
+  /* Dashboard: two-column rhythm replaces divider lines on mobile. */
+  .dashboard-metric-strip{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    column-gap:22px !important;
+    row-gap:28px !important;
+    margin:4px 0 42px !important;
+    padding:0 !important;
+  }
+  .dashboard-metric{
+    display:grid !important;
+    grid-template-rows:30px auto auto !important;
+    padding:0 !important;
+    border:0 !important;
+    min-height:0 !important;
+  }
+  .dashboard-metric:nth-child(even),.dashboard-metric:last-child{
+    padding:0 !important;
+    border:0 !important;
+  }
+  .dashboard-metric>span{line-height:18px !important}
+  .dashboard-metric>strong{font-size:24px !important;line-height:29px !important}
+  .dashboard-metric>small{margin-top:5px !important;line-height:17px !important}
+  .dashboard-metric:last-child{grid-column:1/-1}
+
+  /* Performance remains selector → KPI strip → chart on mobile. */
+  .performance-period-control{
+    order:1 !important;
+    align-self:stretch !important;
+    width:100% !important;
+    margin:0 0 18px !important;
+  }
+  .performance-kpis{order:2 !important}
+  .performance-chart-panel{order:3 !important}
+  .performance-breakdown-panel{order:4 !important}
+  .performance-watch{order:5 !important}
+  .property-insights{order:6 !important}
+  .performance-metric-strip .property-metric>strong,
+  .performance-metric-strip .property-metric:nth-child(3)>strong,
+  .performance-metric-strip .property-metric:nth-child(4)>strong{font-size:23px !important;line-height:28px !important}
+}

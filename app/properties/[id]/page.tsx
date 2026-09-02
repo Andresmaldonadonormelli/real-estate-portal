@@ -124,12 +124,12 @@ function Performance({transactions,years,propertyId}:{transactions:Tx[];years:nu
         : null;
   return <div className="property-section-stack performance-origin">
     <div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
-    <div className="property-metric-strip performance-metric-strip">
+    <div className="property-metric-strip performance-metric-strip performance-kpis">
       <Kpi label="Gross income" value={formatCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
       <Kpi label="Operating expenses" value={formatCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
       <Kpi label="NOI" value={formatCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
       <Kpi label="Cash flow after mortgage" value={formatCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
-      <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={priorMetrics.income?`${((expenseRatio-priorExpenseRatio)*100).toFixed(1)} pp ${compareLabel}`:'Operating expenses ÷ income'} tone={expenseRatio>=0.70?'negative':expenseRatio>=0.55?'warning':'positive'} status={expenseRatio>=0.70?'High':expenseRatio>=0.55?'Elevated':'Healthy'}/>
+      <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={undefined} tone={expenseRatio>=0.70?'negative':expenseRatio>=0.55?'warning':'positive'} status={expenseRatio>=0.70?'High':expenseRatio>=0.55?'Elevated':'Healthy'}/>
     </div>
     <div className="property-performance-grid performance-panels">
       <section className="card origin-panel performance-chart-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{label}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>

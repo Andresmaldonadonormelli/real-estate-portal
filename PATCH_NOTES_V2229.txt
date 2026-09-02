@@ -1,0 +1,11 @@
+v2.2.29 — Performance + mobile density polish
+
+- Active property tab now uses a subtle neutral gray tint.
+- Performance period selector is right-aligned directly above the KPI strip.
+- Performance KPI values reduced for clean five-column fit.
+- Operating expense ratio KPI simplified to value + status only.
+- Empty comparison labels are no longer shown as filler copy.
+- Mobile Dashboard KPI spacing tightened substantially.
+- Mobile Dashboard KPI divider lines removed; whitespace provides separation.
+- Mortgage balance no longer sits in an oversized empty block.
+- No SQL changes.
