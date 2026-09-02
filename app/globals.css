@@ -3855,3 +3855,82 @@ button.ledger-month-head:focus:not(:focus-visible){
   color:#111311 !important;
   -webkit-text-fill-color:#111311 !important;
 }
+
+/* v2.2.35: mobile Performance hierarchy + density correction
+   Selected period -> compact KPI summary -> chart -> warnings/trends -> breakdown. */
+@media(max-width:760px){
+  .performance-origin{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:0 !important;
+  }
+
+  /* Keep the period filter visually attached to the KPI summary. */
+  .performance-toolbar{
+    order:1 !important;
+    margin:8px 0 16px !important;
+  }
+  .performance-period-control{
+    width:max-content !important;
+    max-width:100% !important;
+    margin:0 !important;
+    align-self:flex-start !important;
+  }
+
+  /* KPI summary comes immediately after the selected period. */
+  .performance-kpis{
+    order:2 !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    column-gap:28px !important;
+    row-gap:18px !important;
+    margin:0 0 22px !important;
+    padding:0 !important;
+  }
+  .performance-kpis .property-metric,
+  .performance-kpis .property-metric:nth-child(even),
+  .performance-kpis .property-metric:last-child{
+    display:grid !important;
+    grid-template-rows:auto auto auto !important;
+    align-content:start !important;
+    min-height:0 !important;
+    padding:0 !important;
+    border:0 !important;
+  }
+  .performance-kpis .metric-cell>span{
+    min-height:0 !important;
+    height:auto !important;
+    align-self:auto !important;
+    align-items:initial !important;
+    margin:0 !important;
+  }
+  .performance-kpis .metric-cell>strong{
+    margin:5px 0 0 !important;
+  }
+  .performance-kpis .metric-cell>small{
+    min-height:0 !important;
+    margin:3px 0 0 !important;
+  }
+  .performance-kpis .property-metric:last-child{
+    grid-column:1/-1 !important;
+    margin-top:0 !important;
+  }
+
+  /* Flatten the desktop panel wrapper so mobile can tell one clear story. */
+  .performance-panels{display:contents !important;}
+  .performance-chart-panel{
+    order:3 !important;
+    margin:0 0 16px !important;
+  }
+  .performance-watch{
+    order:4 !important;
+    margin:0 0 16px !important;
+  }
+  .property-insights{
+    order:5 !important;
+    margin:0 0 16px !important;
+  }
+  .performance-breakdown-panel{
+    order:6 !important;
+    margin:0 !important;
+  }
+}

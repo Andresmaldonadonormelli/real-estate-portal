@@ -1,0 +1,11 @@
+RE Portal v2.2.35 — Mobile Performance hierarchy + density correction
+
+Changes
+- Mobile Performance order is now: period selector → KPI summary → income/expense chart → warning → What to watch → operating expense breakdown.
+- Fixes the chart being pushed below warnings/trends by older conflicting mobile order rules.
+- Compresses mobile Performance KPI rows by removing legacy fixed row heights and oversized internal spacing.
+- Tightens selector-to-KPI and KPI-to-chart spacing so the selected period feels connected to the data it controls.
+- Desktop behavior is unchanged.
+
+SQL
+- No SQL changes.
