@@ -3843,3 +3843,15 @@ button.ledger-month-head:focus:not(:focus-visible){
     border-right:0 !important;
   }
 }
+
+/* v2.2.34: period-filter active state contrast fix */
+.performance-period-control button.active{
+  background:#111311 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+[data-theme="dark"] .performance-period-control button.active{
+  background:#ffffff !important;
+  color:#111311 !important;
+  -webkit-text-fill-color:#111311 !important;
+}

@@ -1,0 +1,5 @@
+RE Portal v2.2.34
+- Fixes Performance period selector active-state contrast.
+- Light mode: active period is black with white text.
+- Dark mode: active period is white with dark text.
+- No SQL changes.
