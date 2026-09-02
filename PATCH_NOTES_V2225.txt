@@ -1,0 +1,10 @@
+RE Portal v2.2.25 - Property performance previews
+
+- Redesigns Properties list into clickable performance-preview tiles inspired by the supplied reference.
+- Whole tile opens the property; top-right chevron reinforces clickability.
+- Removes list-level Open/Edit/+ Unit controls. Editing remains inside the property workflow.
+- Shows occupancy, current monthly rent, YTD cash flow, and a compact property-health preview.
+- Health bar uses green/yellow/orange/red based on occupancy, cash flow, and operating expense ratio.
+- Fully vacant properties intentionally show an empty gray bar and "Performance pending" instead of a fake red performance score.
+- Vacant properties show potential monthly rent based on unit rents.
+- No SQL required.

@@ -2,13 +2,14 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
+import { categoryKey } from '@/lib/accounting';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -23,6 +24,7 @@ export default function PropertiesPage() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPropertyForm, setShowPropertyForm] = useState(false);
@@ -43,14 +45,16 @@ export default function PropertiesPage() {
     setLoading(true);
     setError('');
     try {
-      const [{ data: props, error: propError }, { data: unitRows, error: unitError }] = await withTimeout(Promise.all([
+      const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }] = await withTimeout(Promise.all([
         supabase.from('properties').select('*').is('archived_at',null).order('address'),
         supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
+        supabase.from('transactions').select('id,property_id,transaction_date,type,category,amount').is('archived_at',null).order('transaction_date',{ascending:false}),
       ]), 8000, 'Properties took too long to load. Please retry.');
-      if (propError || unitError) throw (propError || unitError);
+      if (propError || unitError || txError) throw (propError || unitError || txError);
       const propertyRows = (props || []) as Property[];
       setProperties(propertyRows);
       setUnits((unitRows || []) as Unit[]);
+      setTransactions(txRows || []);
       setLoading(false);
       void (async()=>{
         const urls: Record<string,string> = {};
@@ -223,15 +227,41 @@ export default function PropertiesPage() {
           {properties.map((property) => {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
-            const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((s,u)=>s+Number(u.current_rent||0),0);
-            return <section key={property.id} className="card compact-property-row">
-              <Link href={`/properties/${property.id}`} className="compact-property-main">
-                {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="compact-property-thumb"/> : <div className="compact-property-thumb compact-property-placeholder">⌂</div>}
-                <div className="compact-property-copy"><strong>{property.address}</strong><span>{property.city}, {property.state} · {propertyUnits.length} {propertyUnits.length===1?'unit':'units'} · {occupied}/{propertyUnits.length||0} occupied</span></div>
-                <div className="compact-property-rent"><strong>{formatCurrency(monthlyRent)}</strong><span>/mo scheduled rent</span></div>
-              </Link>
-              <div className="compact-property-actions"><Link href={`/properties/${property.id}`} className="property-open-button">Open</Link><button onClick={()=>startEditProperty(property)} style={secondaryButton}>Edit</button><button onClick={()=>startAddUnit(property.id)} style={secondaryButton}>+ Unit</button></div>
-            </section>;
+            const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);
+            const potentialRent = propertyUnits.reduce((sum,u)=>sum+Number(u.current_rent||0),0);
+            const year = new Date().getFullYear();
+            const propertyTx = transactions.filter(t=>t.property_id===property.id && Number(String(t.transaction_date||'').slice(0,4))===year);
+            let income=0, expenses=0, operatingExpenses=0;
+            for(const tx of propertyTx){
+              const amount=Math.abs(Number(tx.amount||0));
+              if(tx.type==='income') income+=amount;
+              if(tx.type==='expense'){
+                expenses+=amount;
+                const key=categoryKey(tx.category||'');
+                if(!['mortgage-interest','mortgage-principal','mortgage','capex','distribution'].includes(key)) operatingExpenses+=amount;
+              }
+            }
+            const cashFlow=income-expenses;
+            const expenseRatio=income>0 ? operatingExpenses/income : null;
+            const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio});
+            return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card card">
+              <div className="property-preview-head">
+                <div className="property-preview-identity">
+                  {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
+                  <div><strong>{property.address}</strong><span>{property.city}, {property.state}</span></div>
+                </div>
+                <span className="property-preview-chevron" aria-hidden="true"><ChevronRight size={20}/></span>
+              </div>
+              <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{formatCurrency(monthlyRent)}/mo rent</span></div>
+              <div className="property-preview-performance">
+                <div className="property-preview-metric">
+                  <span>{occupied===0?'Potential monthly rent':'YTD cash flow'}</span>
+                  <strong className={occupied===0?'':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{formatCurrency(occupied===0?potentialRent:cashFlow)}</strong>
+                </div>
+                <div className={`property-health-track health-${health.tone}`}><i style={{width:`${health.fill}%`}}/></div>
+                <div className="property-health-caption"><strong>{health.label}</strong><span>{health.detail}</span></div>
+              </div>
+            </Link>;
           })}
         </div>
       )}
@@ -305,6 +335,18 @@ function ErrorBox({ message }: { message: string }) { return <div style={{ margi
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
   return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
+}
+
+function getPropertyHealth({occupied,total,cashFlow,expenseRatio}:{occupied:number;total:number;cashFlow:number;expenseRatio:number|null}){
+  if(total===0 || occupied===0) return {tone:'vacant',fill:0,label:'Vacant',detail:'Performance pending'};
+  if(occupied<total) return {tone:'red',fill:28,label:'Vacancy needs attention',detail:`${total-occupied} ${total-occupied===1?'unit':'units'} vacant`};
+  if(cashFlow<0) return {tone:'red',fill:28,label:'Negative cash flow',detail:'Review expenses and financing'};
+  if(expenseRatio==null) return {tone:'yellow',fill:58,label:'Building performance history',detail:'More posted activity needed'};
+  const pct=Math.round(expenseRatio*100);
+  if(expenseRatio>0.8) return {tone:'red',fill:30,label:'Expenses are very high',detail:`${pct}% operating expense ratio`};
+  if(expenseRatio>0.65) return {tone:'orange',fill:48,label:'Expenses high',detail:`${pct}% operating expense ratio`};
+  if(expenseRatio>0.5) return {tone:'yellow',fill:68,label:'Performance to watch',detail:`${pct}% operating expense ratio`};
+  return {tone:'green',fill:88,label:'Performing well',detail:`${pct}% operating expense ratio`};
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
