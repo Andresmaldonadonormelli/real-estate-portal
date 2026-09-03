@@ -1,0 +1,10 @@
+v2.2.38 — Improve property decision system
+
+- Adds a new Improve tab to each property workspace.
+- Uses actual property, unit, transaction, YTD expense and management-fee data already in the app.
+- Current → target → scenario cash-flow planning.
+- Ranks realistic opportunities instead of making generic recommendations.
+- Marks rent changes as At renewal rather than immediately controllable.
+- Adds what-if controls for rent, management fee, maintenance and other operating costs.
+- Adds a deterministic “realistic path” with projected monthly impact.
+- No database or SQL changes.
