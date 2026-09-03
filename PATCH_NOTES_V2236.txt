@@ -1,0 +1,14 @@
+RE Portal v2.2.36 — Apple-like KPI density + surface-only cards
+
+Changes
+- Keeps the open, cardless KPI treatment on mobile.
+- Tightens KPI row spacing and label/value/context spacing.
+- Makes KPI labels quieter so values carry the hierarchy.
+- Compresses Performance period selector -> KPI -> chart spacing.
+- Compresses Overview tabs -> KPI -> content spacing.
+- Converts the fifth Performance KPI (Operating expense ratio) into a compact horizontal summary row on mobile.
+- Removes visible outer outlines from .card surfaces, including Action Center, while preserving surface colors and internal separators.
+- No database or SQL changes.
+
+Install
+Overlay these files at the repository root and deploy normally through Vercel.

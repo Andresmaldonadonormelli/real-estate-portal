@@ -3934,3 +3934,92 @@ button.ledger-month-head:focus:not(:focus-visible){
     margin:0 !important;
   }
 }
+
+/* v2.2.36: Apple-like mobile density + surface-only cards
+   Keep KPI information open on the page, tighten the rhythm, and let card surfaces
+   distinguish content without an extra outline. */
+
+/* Test the quieter surface-only card language across the product. Internal row dividers
+   and semantic controls remain intact; only the outer card/tile outline disappears. */
+.card,
+.action-center.card{
+  border-color:transparent !important;
+}
+
+@media(max-width:760px){
+  /* Quieter KPI hierarchy: labels support the values instead of competing with them. */
+  :root{
+    --kpi-label-size:13px;
+    --kpi-label-line:16px;
+    --kpi-value-size:18px;
+    --kpi-value-line:22px;
+    --kpi-context-size:13px;
+    --kpi-context-line:16px;
+    --kpi-label-value-gap:5px;
+    --kpi-value-context-gap:3px;
+  }
+  .metric-cell>span{font-weight:450 !important;}
+  .metric-cell>strong,
+  .performance-metric-strip .metric-cell:nth-child(3)>strong,
+  .performance-metric-strip .metric-cell:nth-child(4)>strong{font-weight:600 !important;}
+
+  /* The KPI group should read as one compact summary, not five vertically stacked widgets. */
+  .dashboard-metric-strip,
+  .overview-metric-strip,
+  .performance-metric-strip{
+    row-gap:16px !important;
+  }
+
+  /* Property pages: pull the information closer to the primary tabs. */
+  .property-subnav{margin-bottom:12px !important;}
+  .overview-metric-strip{margin:0 0 14px !important;}
+  .property-section-stack{gap:12px !important;}
+
+  /* Performance: period -> KPIs -> chart should feel like one continuous module. */
+  .performance-toolbar{
+    margin:4px 0 10px !important;
+  }
+  .performance-kpis{
+    column-gap:28px !important;
+    row-gap:16px !important;
+    margin:0 0 14px !important;
+  }
+  .performance-kpis .metric-cell>strong{margin-top:5px !important;}
+  .performance-kpis .metric-cell>small{margin-top:3px !important;}
+
+  /* The fifth Performance KPI no longer consumes a full third row. Treat it as a compact
+     summary line: label on the left, value + status on the right. */
+  .performance-kpis .property-metric:last-child{
+    grid-column:1/-1 !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto auto !important;
+    grid-template-rows:auto !important;
+    align-items:baseline !important;
+    column-gap:10px !important;
+    margin-top:0 !important;
+  }
+  .performance-kpis .property-metric:last-child>span,
+  .performance-kpis .property-metric:last-child>strong,
+  .performance-kpis .property-metric:last-child>small{
+    margin:0 !important;
+    min-height:0 !important;
+    align-self:baseline !important;
+  }
+  .performance-kpis .property-metric:last-child>strong{
+    font-size:18px !important;
+    line-height:22px !important;
+  }
+  .performance-kpis .property-metric:last-child>small{
+    font-size:12px !important;
+    line-height:16px !important;
+  }
+
+  /* Dashboard uses the same compact KPI rhythm. The final balance remains readable but
+     no longer feels like an isolated third card-row. */
+  .dashboard-metric-strip{row-gap:16px !important;}
+  .dashboard-metric:last-child{margin-top:-1px !important;}
+
+  /* Pull first content surfaces up after the KPI summary. */
+  .performance-chart-panel{margin-top:0 !important;}
+  .property-two-col{margin-top:0 !important;}
+}
