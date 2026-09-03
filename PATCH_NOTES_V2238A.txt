@@ -1,0 +1,6 @@
+RE Portal v2.2.38a — Improve planner build fix
+
+- Fixed TypeScript prop collision in ImproveLever.
+- Split the rendered text value (`displayValue`) from the numeric slider value (`rangeValue`).
+- Preserves the full v2.2.38 Improve experience and styling.
+- No SQL/database changes.
