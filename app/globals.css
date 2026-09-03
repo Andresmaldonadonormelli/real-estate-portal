@@ -4023,3 +4023,97 @@ button.ledger-month-head:focus:not(:focus-visible){
   .performance-chart-panel{margin-top:0 !important;}
   .property-two-col{margin-top:0 !important;}
 }
+
+/* v2.2.37: property header scale, quieter period state, truthful skeletons, surface-only hover */
+
+/* Give the property identity image enough presence to balance the title block. */
+.property-workspace-image{
+  width:128px !important;
+  height:101px !important;
+  border:0 !important;
+  border-radius:18px !important;
+}
+
+/* Period selection should read as state, not as the brightest control on the page. */
+.performance-period-control button.active{
+  background:#2b2d2b !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+[data-theme="dark"] .performance-period-control button.active{
+  background:rgba(255,255,255,.16) !important;
+  color:var(--text-primary) !important;
+  -webkit-text-fill-color:var(--text-primary) !important;
+}
+
+/* Action Center hierarchy comes from a very small surface lift, never an outline. */
+.action-center.card,
+.action-center.card:hover,
+.action-center.card:focus-within{
+  border:0 !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  background:color-mix(in srgb,var(--bg-secondary) 97%,var(--text-primary) 3%) !important;
+}
+[data-theme="dark"] .action-center.card,
+[data-theme="dark"] .action-center.card:hover,
+[data-theme="dark"] .action-center.card:focus-within{
+  background:color-mix(in srgb,var(--bg-secondary) 96%,white 4%) !important;
+}
+
+/* Property preview hover is surface-only. Never introduce a ring/border on hover. */
+.property-preview-card,
+.property-preview-card:hover,
+.property-preview-card:focus,
+.property-preview-card:focus-visible{
+  border-color:transparent !important;
+  outline:0 !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+@media (hover:hover) and (pointer:fine){
+  .property-preview-card:hover{
+    background:color-mix(in srgb,var(--bg-secondary) 94%,var(--surface-hover) 6%) !important;
+  }
+}
+
+/* Property loading state mirrors the real loaded Overview composition to prevent layout deception/jump. */
+.property-workspace-skeleton{display:block}
+.property-skeleton-back{width:132px;height:16px;border-radius:6px;margin-bottom:22px}
+.property-skeleton-header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.property-skeleton-image{width:128px;height:101px;border-radius:18px;flex:0 0 auto}
+.property-skeleton-title-copy{display:grid;gap:8px;min-width:0;width:min(520px,60vw)}
+.property-skeleton-title{width:min(360px,80%);height:32px;border-radius:8px}
+.property-skeleton-city{width:min(210px,55%);height:17px;border-radius:6px}
+.property-skeleton-meta{width:min(330px,75%);height:16px;border-radius:6px}
+.property-skeleton-ledger{width:88px;height:15px;border-radius:6px}
+.property-skeleton-tabs{width:480px;max-width:100%;height:48px;border-radius:999px;margin-bottom:30px}
+.property-skeleton-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:40px}
+.property-skeleton-kpi{display:grid;gap:8px;padding:0 18px;border-right:1px solid var(--border-color)}
+.property-skeleton-kpi:first-child{padding-left:0}.property-skeleton-kpi:last-child{border-right:0;padding-right:0}
+.property-skeleton-kpi .skeleton-block:nth-child(1){width:72%;height:14px;border-radius:5px}
+.property-skeleton-kpi .skeleton-block:nth-child(2){width:48%;height:24px;border-radius:6px}
+.property-skeleton-kpi .skeleton-block:nth-child(3){width:62%;height:13px;border-radius:5px}
+.property-skeleton-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.property-skeleton-panel{min-height:310px;padding:20px;border-radius:18px;background:var(--bg-secondary);display:grid;align-content:start;gap:18px}
+.property-skeleton-panel .skeleton-block:nth-child(1){width:34%;height:20px;border-radius:6px}
+.property-skeleton-panel .skeleton-block:nth-child(2),.property-skeleton-panel .skeleton-block:nth-child(3){width:100%;height:62px;border-radius:10px}
+
+@media(max-width:760px){
+  .property-workspace-image{width:106px !important;height:87px !important;border-radius:16px !important}
+  .property-skeleton-back{margin-bottom:24px}
+  .property-skeleton-header{align-items:flex-start;gap:16px;margin-bottom:18px}
+  .property-skeleton-image{width:106px;height:87px;border-radius:16px}
+  .property-skeleton-title-copy{width:calc(100% - 122px);gap:7px}
+  .property-skeleton-title{width:100%;height:26px}
+  .property-skeleton-city{width:82%;height:16px}
+  .property-skeleton-meta{width:94%;height:15px}
+  .property-skeleton-ledger{width:84px;height:15px}
+  .property-skeleton-tabs{width:100%;height:43px;margin-bottom:28px}
+  .property-skeleton-kpis{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;row-gap:18px;margin-bottom:24px}
+  .property-skeleton-kpi,.property-skeleton-kpi:first-child,.property-skeleton-kpi:last-child{padding:0;border:0}
+  .property-skeleton-kpi .skeleton-block:nth-child(1){height:13px}
+  .property-skeleton-kpi .skeleton-block:nth-child(2){height:20px}
+  .property-skeleton-panels{grid-template-columns:1fr;gap:12px}
+  .property-skeleton-panel{min-height:280px;padding:16px;border-radius:18px}
+}

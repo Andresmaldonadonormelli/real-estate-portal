@@ -1,0 +1,8 @@
+RE Portal v2.2.37
+
+- Property workspace image enlarged about 40% on desktop and mobile.
+- Performance period active state softened, especially in dark mode.
+- Property loading skeleton rebuilt to mirror the real loaded property Overview layout: header, tabs, KPI strip, and two content panels.
+- Action Center outer outline and hover outline removed; hierarchy now comes from a very subtle surface lift.
+- Property preview cards no longer gain an outline/ring on hover or focus; hover is surface-only.
+- No database / SQL changes.

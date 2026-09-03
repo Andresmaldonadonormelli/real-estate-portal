@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
-import PageSkeleton from '@/components/common/PageSkeleton';
 
 type Tab = 'overview' | 'performance' | 'units' | 'documents';
 type Tx = {
@@ -55,7 +54,26 @@ export default function PropertyWorkspacePage(){
   const occupied=units.filter(u=>u.occupied).length;
   const expectedRent=units.filter(u=>u.occupied).reduce((s,u)=>s+Number(u.current_rent||0),0);
 
-  if(loading) return <div className="property-workspace"><PageSkeleton variant="properties"/></div>;
+  if(loading) return <div className="property-workspace property-workspace-skeleton" aria-busy="true" aria-label="Loading property">
+    <div className="property-skeleton-back skeleton-block"/>
+    <div className="property-skeleton-header">
+      <div className="property-skeleton-image skeleton-block"/>
+      <div className="property-skeleton-title-copy">
+        <div className="property-skeleton-title skeleton-block"/>
+        <div className="property-skeleton-city skeleton-block"/>
+        <div className="property-skeleton-meta skeleton-block"/>
+        <div className="property-skeleton-ledger skeleton-block"/>
+      </div>
+    </div>
+    <div className="property-skeleton-tabs skeleton-block"/>
+    <div className="property-skeleton-kpis">
+      {[0,1,2,3].map(i=><div className="property-skeleton-kpi" key={i}><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>)}
+    </div>
+    <div className="property-skeleton-panels">
+      <div className="property-skeleton-panel"><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>
+      <div className="property-skeleton-panel"><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>
+    </div>
+  </div>;
   if(error || !property) return <div className="property-workspace"><Link href="/properties" className="property-back"><ArrowLeft size={16}/> Properties</Link><div className="card property-empty">{error || 'Property not found.'}</div></div>;
 
   return <div className="property-workspace">
