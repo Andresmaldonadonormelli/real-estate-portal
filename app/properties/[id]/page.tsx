@@ -267,7 +267,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
 
 function rangeTrack(value:number,min:number,max:number){
   const pct=max<=min?0:Math.max(0,Math.min(100,((value-min)/(max-min))*100));
-  return `linear-gradient(to right, var(--positive) 0%, var(--positive) ${pct}%, color-mix(in srgb,var(--text-secondary) 34%,transparent) ${pct}%, color-mix(in srgb,var(--text-secondary) 34%,transparent) 100%)`;
+  return { '--range-fill': `${pct}%` } as React.CSSProperties;
 }
 function ImproveLever({label,displayValue,meta,min,max,step,rangeValue,onChange,status,disabled}:{label:string;displayValue:string;meta:string;min:number;max:number;step:number;rangeValue:number;onChange:(v:number)=>void;status:string;disabled?:boolean}){
   return <div className={`improve-lever ${disabled?'disabled':''}`}><div className="improve-lever-top"><div><strong>{label}</strong><span>{meta}</span></div><div><b>{displayValue}</b><small>{status}</small></div></div><input className="improve-range" aria-label={label} type="range" min={min} max={max} step={step} value={rangeValue} style={{background:rangeTrack(rangeValue,min,max)}} disabled={disabled} onChange={e=>onChange(Number(e.target.value))}/></div>;

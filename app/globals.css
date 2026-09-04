@@ -4287,3 +4287,76 @@ button.ledger-month-head:focus:not(:focus-visible){
     padding:13px!important;
   }
 }
+
+/* v2.2.40 Improve theme + shared range control correction */
+/* Light mode: major Improve sections read as clean surfaces against the page. */
+[data-theme="light"] .improve-hero,
+[data-theme="light"] .improve-path{
+  background:#fff!important;
+}
+[data-theme="light"] .improve-hero-metrics>div{
+  background:#f7f7f8!important;
+}
+
+/* One range treatment for Target and every scenario lever. */
+.improve-range{
+  --range-track:#c9cdcb;
+  height:5px!important;
+  border-radius:999px!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:linear-gradient(to right,
+    var(--positive) 0%,
+    var(--positive) var(--range-fill,0%),
+    var(--range-track) var(--range-fill,0%),
+    var(--range-track) 100%)!important;
+}
+.improve-range::-webkit-slider-runnable-track{
+  height:5px;
+  border-radius:999px;
+  background:transparent;
+  border:0;
+}
+.improve-range::-moz-range-track{
+  height:5px;
+  border-radius:999px;
+  background:var(--range-track);
+  border:0;
+}
+.improve-range::-moz-range-progress{
+  height:5px;
+  border-radius:999px;
+  background:var(--positive);
+}
+.improve-range::-webkit-slider-thumb{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  width:20px!important;
+  height:20px!important;
+  margin-top:-7.5px;
+  border-radius:50%!important;
+  border:1px solid rgba(0,0,0,.06)!important;
+  background:#fff!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.22)!important;
+}
+.improve-range::-moz-range-thumb{
+  width:20px!important;
+  height:20px!important;
+  border-radius:50%!important;
+  border:1px solid rgba(0,0,0,.06)!important;
+  background:#fff!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.22)!important;
+}
+[data-theme="dark"] .improve-range{
+  --range-track:#343837;
+}
+[data-theme="dark"] .improve-range::-moz-range-track{
+  background:#343837;
+}
+[data-theme="dark"] .improve-range::-webkit-slider-thumb,
+[data-theme="dark"] .improve-range::-moz-range-thumb{
+  background:#f7f7f7!important;
+  border-color:rgba(255,255,255,.08)!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.5)!important;
+}

@@ -1,0 +1,7 @@
+v2.2.40 Improve theme + slider system
+- Dark mode range tracks are visibly muted instead of disappearing into the surface.
+- Every Improve range uses the same live green fill from min to current value.
+- Slider thumbs are white with a soft shadow in light and dark modes.
+- Improve this property is lighter in light mode.
+- Start here regains a visible white section surface in light mode.
+- No SQL changes.
