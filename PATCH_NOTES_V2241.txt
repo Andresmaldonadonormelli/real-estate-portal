@@ -1,0 +1,7 @@
+v2.2.41 Dark-mode Improve slider fix
+- Moves the progress gradient onto the actual browser slider track.
+- Adds an explicit visible charcoal unfilled track in dark mode.
+- Adds explicit green filled progress in dark mode.
+- Keeps white slider thumbs with subtle shadow.
+- Applies to Target and every scenario slider through the shared .improve-range style.
+- No SQL changes.
