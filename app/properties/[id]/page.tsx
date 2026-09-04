@@ -38,15 +38,16 @@ async function syncLegacyUnitLeases(propertyId:string,unitRows:any[],docRows:any
   const nextUnits=[...unitRows];
   const nextDocs=[...docRows];
   for(let i=0;i<nextUnits.length;i++){
-    const unit=nextUnits[i];
+    let unit=nextUnits[i];
     if(!unit?.lease_document_path)continue;
-    const existing=nextDocs.find((d:any)=>d.unit_id===unit.id&&d.category==='Lease'&&!d.archived_at);
-    if(existing)continue;
+
     let ref=leaseStorageRef(unit.lease_document_path);
     let storagePath=ref.path;
     let mimeType='application/pdf';
     let fileSize:number|null=null;
     let fileName=leaseFileName(storagePath);
+
+    // Move legacy unit-leases files into the central property-documents bucket first.
     if(ref.bucket!=='property-documents'){
       const signed=await supabase.storage.from(ref.bucket).createSignedUrl(ref.path,120);
       if(signed.error||!signed.data?.signedUrl)continue;
@@ -60,15 +61,33 @@ async function syncLegacyUnitLeases(propertyId:string,unitRows:any[],docRows:any
       if(moved.error)continue;
       const newLeasePath=`${LEASE_DOC_PREFIX}${storagePath}`;
       const unitUpdate=await supabase.from('units').update({lease_document_path:newLeasePath}).eq('id',unit.id);
-      if(!unitUpdate.error)nextUnits[i]={...unit,lease_document_path:newLeasePath};
+      if(unitUpdate.error)continue;
+      unit={...unit,lease_document_path:newLeasePath};
+      nextUnits[i]=unit;
     }
+
+    const title=`${unit.unit_number||'Unit'} Lease${unit.tenant_name?` · ${unit.tenant_name}`:''}`;
     const row={
       user_id:user.id, property_id:propertyId, unit_id:unit.id, category:'Lease',
-      title:`${unit.unit_number||'Unit'} lease${unit.tenant_name?` · ${unit.tenant_name}`:''}`,
-      file_name:fileName, storage_path:storagePath, mime_type:mimeType, file_size:fileSize,
+      title, file_name:fileName, storage_path:storagePath, mime_type:mimeType, file_size:fileSize,
       document_date:unit.lease_start_date||null, expires_at:unit.lease_end_date||null,
-      reminder_days:60, notes:unit.tenant_name?`Signed lease for ${unit.tenant_name}`:null,
+      reminder_days:60, notes:unit.tenant_name?`Signed lease for ${unit.tenant_name}`:null, archived_at:null,
     };
+
+    // The actual unit lease path is the source of truth. Do not treat any random
+    // Lease record for the unit as "already synced" unless it points to this file.
+    const exact=nextDocs.find((d:any)=>d.storage_path===storagePath&&!d.archived_at);
+    const unitLease=nextDocs.find((d:any)=>d.unit_id===unit.id&&d.category==='Lease'&&!d.archived_at);
+    const target=exact||unitLease;
+    if(target){
+      const updated=await supabase.from('documents').update(row).eq('id',target.id).select('*').single();
+      if(!updated.error&&updated.data){
+        const idx=nextDocs.findIndex((d:any)=>d.id===target.id);
+        if(idx>=0)nextDocs[idx]=updated.data;
+      }
+      continue;
+    }
+
     const inserted=await supabase.from('documents').insert(row).select('*').single();
     if(!inserted.error&&inserted.data)nextDocs.unshift(inserted.data);
   }
@@ -166,7 +185,7 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
     <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
     <div className="property-two-col">
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(4)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>
-        <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div><strong>{u.unit_number||'Unit'}</strong><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right"><strong>{formatKpiCurrency(Number(u.current_rent||0))}</strong><span className={`status-pill ${u.occupied?'occupied':'vacant'}`}>{u.occupied?'Occupied':'Vacant'}</span></div></div>):<Empty text="No units yet."/>}</div>
+        <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div className="rent-roll-identity"><div className="rent-roll-title-line" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}><strong>{u.unit_number||'Unit'}</strong><span className={`status-pill rent-roll-status ${u.occupied?'occupied':'vacant'}`} style={{fontSize:12,padding:'3px 8px'}}>{u.occupied?'Occupied':'Vacant'}</span></div><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right rent-roll-rent"><strong>{formatKpiCurrency(Number(u.current_rent||0))}</strong></div></div>):<Empty text="No units yet."/>}</div>
       </section>
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div>
         <div className="property-list">{transactions.slice(0,5).map(t=><TransactionRow key={t.id} tx={t}/>) }{!transactions.length&&<Empty text="No transactions yet."/>}</div>
@@ -463,9 +482,11 @@ function UnitEditModal({unit,propertyId,onClose,onSaved,onLeaseSynced}:{unit:any
       const patch={unit_number:form.unit_number.trim(),tenant_name:form.tenant_name.trim(),current_rent:form.current_rent?Number(form.current_rent):0,bedroom_count:form.bedroom_count?Number(form.bedroom_count):0,bathroom_count:form.bathroom_count?Number(form.bathroom_count):0,sqft:form.sqft?Number(form.sqft):0,occupied:form.occupied,lease_start_date:form.lease_start_date||null,lease_end_date:form.lease_end_date||null,lease_document_path:leasePath};
       const r=await supabase.from('units').update(patch).eq('id',unit.id); if(r.error)throw r.error;
       if(uploadedDoc){
-        const existing=await supabase.from('documents').select('id').eq('property_id',propertyId).eq('unit_id',unit.id).eq('category','Lease').is('archived_at',null).order('created_at',{ascending:false}).limit(1).maybeSingle();
-        const docPatch={user_id:user.id,property_id:propertyId,unit_id:unit.id,category:'Lease',title:`${patch.unit_number||'Unit'} lease${patch.tenant_name?` · ${patch.tenant_name}`:''}`,file_name:uploadedDoc.fileName,storage_path:uploadedDoc.storagePath,mime_type:uploadedDoc.mimeType,file_size:uploadedDoc.fileSize,document_date:patch.lease_start_date,expires_at:patch.lease_end_date,reminder_days:60,notes:patch.tenant_name?`Signed lease for ${patch.tenant_name}`:null,archived_at:null};
-        const docSave=existing.data?.id?await supabase.from('documents').update(docPatch).eq('id',existing.data.id):await supabase.from('documents').insert(docPatch);
+        const exact=await supabase.from('documents').select('id').eq('property_id',propertyId).eq('storage_path',uploadedDoc.storagePath).is('archived_at',null).limit(1).maybeSingle();
+        const byUnit=exact.data?.id?{data:null,error:null}:await supabase.from('documents').select('id').eq('property_id',propertyId).eq('unit_id',unit.id).eq('category','Lease').is('archived_at',null).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        const existingId=exact.data?.id||byUnit.data?.id||null;
+        const docPatch={user_id:user.id,property_id:propertyId,unit_id:unit.id,category:'Lease',title:`${patch.unit_number||'Unit'} Lease${patch.tenant_name?` · ${patch.tenant_name}`:''}`,file_name:uploadedDoc.fileName,storage_path:uploadedDoc.storagePath,mime_type:uploadedDoc.mimeType,file_size:uploadedDoc.fileSize,document_date:patch.lease_start_date,expires_at:patch.lease_end_date,reminder_days:60,notes:patch.tenant_name?`Signed lease for ${patch.tenant_name}`:null,archived_at:null};
+        const docSave=existingId?await supabase.from('documents').update(docPatch).eq('id',existingId):await supabase.from('documents').insert(docPatch);
         if(docSave.error)throw new Error(`Unit saved, but the lease could not be added to Documents: ${docSave.error.message}`);
         await onLeaseSynced();
       }

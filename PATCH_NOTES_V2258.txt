@@ -1,0 +1,18 @@
+RE Portal v2.2.58 — Rent roll + lease document source fix
+
+1. Rent Roll status is moved out of the rent column and rendered beside the unit name.
+   Rent now stands alone at the right edge.
+
+2. Unit lease_document_path is now the source of truth for central Documents sync.
+   - Existing central records are matched by exact storage_path first.
+   - A Lease record for the unit is updated to the actual current lease file.
+   - Missing records are created, one per unit lease.
+   - Titles are normalized to “Unit # Lease · Tenant” instead of using raw filenames.
+   - Legacy unit-leases files are migrated into property-documents.
+
+3. Documents now has an explicit nullable unit_id link (SQL migration included).
+
+RUN SQL ONCE:
+  supabase/V2258_DOCUMENT_UNIT_LINK.sql
+
+Then upload the patch contents to the GitHub repo root.
