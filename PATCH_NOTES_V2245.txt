@@ -1,0 +1,13 @@
+v2.2.45 — Utilities directory + multi-property assignment
+
+IMPORTANT: Run supabase/V2245_UTILITY_MULTI_PROPERTY.sql once before using this version.
+The migration is additive and copies every existing utility's current property assignment into the new relationship table. No utility records are deleted.
+
+UI changes:
+- Utilities grouped by property
+- One utility can be assigned to multiple properties via checkboxes
+- Utility type is the card title; provider is secondary
+- Semantic utility icons
+- Whole card opens a read-only detail sheet
+- Provider link + Edit live inside detail sheet
+- No front-card buttons
