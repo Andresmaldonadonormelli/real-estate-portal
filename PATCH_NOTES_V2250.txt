@@ -1,0 +1,10 @@
+V2.2.50 — Mortgage + Ledger review polish
+
+- Mortgage split now accepts lender-statement rounding differences up to 2 cents.
+- When a split is within that tolerance, the exact split total becomes the saved recurring payment amount so future entries balance exactly.
+- Completed mortgage split now reads “Split configured”.
+- Current mortgage balance remains editable in Overview > Mortgage > Manage and feeds the Mortgage balance KPI.
+- Mortgage summary values are reduced in size so they no longer compete with the card title.
+- Ledger Needs review switch is larger and has explicit high-contrast light/dark states.
+
+No SQL changes.

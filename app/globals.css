@@ -4776,3 +4776,79 @@ button.ledger-month-head:focus:not(:focus-visible){
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* ==========================================================
+   v2.2.50 — mortgage split tolerance + hierarchy + review switch
+   ========================================================== */
+
+/* Mortgage summary is supporting information, not a second headline. */
+.mortgage-overview-summary strong{
+  font-size:18px!important;
+  line-height:1.25!important;
+  font-weight:650!important;
+  letter-spacing:-.015em!important;
+}
+.mortgage-overview-summary span{
+  font-size:13px!important;
+  line-height:1.35!important;
+  font-weight:500!important;
+}
+.mortgage-overview-summary small{
+  font-size:12px!important;
+  line-height:1.4!important;
+}
+
+/* Larger, high-contrast monochrome review toggle. */
+.ledger-review-toggle{
+  gap:10px!important;
+  min-height:44px!important;
+}
+.ledger-review-switch{
+  width:52px!important;
+  height:30px!important;
+  flex:0 0 52px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(0,0,0,.10)!important;
+  background:#e2e3e3!important;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.04)!important;
+  transition:background .2s ease,border-color .2s ease!important;
+}
+.ledger-review-switch i{
+  width:26px!important;
+  height:26px!important;
+  left:1px!important;
+  top:1px!important;
+  background:#fff!important;
+  box-shadow:0 1px 4px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.05)!important;
+  transition:transform .2s cubic-bezier(.25,.8,.25,1),background .2s ease!important;
+}
+.ledger-review-toggle input:checked + .ledger-review-switch{
+  background:#111313!important;
+  border-color:#111313!important;
+}
+.ledger-review-toggle input:checked + .ledger-review-switch i{
+  transform:translateX(22px)!important;
+  background:#fff!important;
+}
+
+[data-theme="dark"] .ledger-review-switch{
+  background:#3a3d3d!important;
+  border-color:#4a4d4d!important;
+  box-shadow:none!important;
+}
+[data-theme="dark"] .ledger-review-switch i{
+  background:#f7f7f5!important;
+  box-shadow:0 1px 5px rgba(0,0,0,.55)!important;
+}
+[data-theme="dark"] .ledger-review-toggle input:checked + .ledger-review-switch{
+  background:#f2f2ef!important;
+  border-color:#f2f2ef!important;
+}
+[data-theme="dark"] .ledger-review-toggle input:checked + .ledger-review-switch i{
+  background:#111313!important;
+}
+
+@media(max-width:767px){
+  .mortgage-overview-summary strong{font-size:17px!important;}
+  .ledger-review-toggle{min-height:44px!important;}
+}
