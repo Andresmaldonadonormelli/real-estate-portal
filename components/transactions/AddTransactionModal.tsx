@@ -19,7 +19,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
     property_id:transaction?.property_id||properties[0]?.id||'', unit_id:transaction?.unit_id||'',
     transaction_date:transaction?.transaction_date||new Date().toISOString().slice(0,10), type:(transaction?.type||'expense') as TxType,
     category:transaction?.category||'Needs Review', description:transaction?.description||'', payee_source:transaction?.payee_source||'',
-    amount:transaction?String(Math.abs(Number(transaction.amount||0))):'', needs_review:transaction?Boolean(transaction.needs_review)||categoryNeedsReview(transaction.category):true,
+    amount:transaction?String(Math.abs(Number(transaction.amount||0))):'', needs_review:transaction?Boolean(transaction.needs_review):true,
   });
   const [receipt,setReceipt]=useState<File|null>(null);
   const [documents,setDocuments]=useState<Doc[]>([]);
@@ -31,6 +31,25 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [error,setError]=useState('');
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
+  const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
+  const recurringMortgage=Boolean(editing&&transaction?.source==='recurring'&&transaction?.category==='Mortgage Payment (Unsplit)');
+  const [recurringEnabled,setRecurringEnabled]=useState(()=>selectedProperty?(selectedProperty as any).mortgage_recurring_enabled!==false:true);
+
+  useEffect(()=>{if(selectedProperty)setRecurringEnabled((selectedProperty as any).mortgage_recurring_enabled!==false)},[selectedProperty?.id]);
+
+  const reviewReason=form.category==='Mortgage Payment (Unsplit)'
+    ? 'Principal, interest and escrow have not been split. The payment itself can still be confirmed and marked reviewed.'
+    : form.category==='Needs Review'
+      ? 'Choose the correct accounting category before year-end reporting, or mark reviewed if this classification is intentional.'
+      : 'This transaction was flagged for an owner accounting check. Review the category and supporting details, then mark it reviewed.';
+
+  async function toggleRecurringMortgage(){
+    if(!selectedProperty)return;
+    const next=!recurringEnabled;
+    setRecurringEnabled(next);
+    const r=await supabase.from('properties').update({mortgage_recurring_enabled:next}).eq('id',selectedProperty.id);
+    if(r.error){setRecurringEnabled(!next);setError(r.error.message);}
+  }
 
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
 
@@ -46,7 +65,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
       let receiptPath=transaction?.receipt_path||null;
       if(receipt){const safe=receipt.name.replace(/[^a-zA-Z0-9._-]/g,'-');receiptPath=`${userId}/${crypto.randomUUID()}-${safe}`;const upload=await supabase.storage.from('transaction-receipts').upload(receiptPath,receipt,{upsert:false});if(upload.error)throw upload.error;}
       const entered=Math.abs(Number(form.amount||0));
-      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-entered:entered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:form.needs_review||categoryNeedsReview(form.category),receipt_path:receiptPath};
+      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-entered:entered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:form.needs_review,receipt_path:receiptPath};
       let transactionId=transaction?.id||'';
       if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
       else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
@@ -70,6 +89,18 @@ export default function AddTransactionModal({ userId, properties, units, transac
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
         <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>setForm({...form,category:e.target.value,needs_review:categoryNeedsReview(e.target.value)})}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         <div className="quick-add-two"><label><span className="quick-add-label-title">Type</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select></label></div>
+        {recurringMortgage&&<div style={{padding:'14px 15px',borderRadius:16,background:'var(--surface-subtle, rgba(127,127,127,.08))',display:'grid',gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}>
+            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · 1st of each month{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · $${Number((selectedProperty as any).monthly_mortgage_payment).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:''}</small></div>
+            <button type="button" onClick={toggleRecurringMortgage} style={{border:0,borderRadius:999,padding:'7px 11px',background:'var(--surface-strong, rgba(127,127,127,.14))',color:'var(--text-primary)',fontWeight:650,cursor:'pointer'}}>{recurringEnabled?'Pause':'Resume'}</button>
+          </div>
+          <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
+        </div>}
+        {(form.needs_review||transaction?.needs_review)&&<div style={{padding:'14px 15px',borderRadius:16,background:'rgba(196,127,0,.09)',display:'grid',gap:8}}>
+          <div><strong style={{display:'block',fontSize:14}}>Why this needs review</strong><small style={{display:'block',marginTop:5,color:'var(--text-secondary)',lineHeight:1.45}}>{reviewReason}</small></div>
+          {form.needs_review&&<button type="button" onClick={()=>setForm({...form,needs_review:false})} style={{justifySelf:'start',border:0,borderRadius:999,padding:'8px 12px',background:'var(--text-primary)',color:'var(--bg-primary)',fontWeight:700,cursor:'pointer'}}>Mark reviewed</button>}
+          {!form.needs_review&&<small style={{color:'var(--text-secondary)'}}>Marked reviewed. Save changes to keep it cleared.</small>}
+        </div>}
         <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
         {showMore&&<div className="quick-add-more-panel">
           <label><span className="quick-add-label-title">Vendor / payee <em>(optional)</em></span><input value={form.payee_source} onChange={e=>setForm({...form,payee_source:e.target.value})}/></label>
@@ -80,7 +111,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
             {receipt&&<small className="selected-file"><Check size={13}/> {receipt.name}</small>}
             {showDocumentPicker&&<div className="document-picker"><div className="document-search"><Search size={14}/><input placeholder="Search property documents" value={docSearch} onChange={e=>setDocSearch(e.target.value)}/></div>{filteredDocs.length?filteredDocs.map(d=><button type="button" key={d.id} className={linkedDocumentIds.includes(d.id)?'selected':''} onClick={()=>toggleDocument(d.id)}><span><FileText size={15}/><span><strong>{d.title||d.file_name}</strong><small>{d.category}</small></span></span>{linkedDocumentIds.includes(d.id)&&<Check size={15}/>}</button>):<div className="document-picker-empty">No documents for this property yet.</div>}</div>}
           </div>
-          <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Use only when the accounting category is genuinely uncertain.</small></span></label>
+          <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Turn this on only when you want this transaction to return to the review queue.</small></span></label>
         </div>}
         <div className="quick-add-footer">{editing?<button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>{transaction?.source==='recurring'?'Skip month':'Archive'}</button>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
       </form>

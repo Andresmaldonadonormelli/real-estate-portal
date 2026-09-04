@@ -1,0 +1,9 @@
+RE Portal v2.2.46 — Recurring mortgage + review workflow
+
+- Fixes Needs Review persistence: a manually cleared review flag now stays cleared.
+- Ledger review badges/filter/count now follow the stored needs_review flag instead of re-flagging by category.
+- Mortgage Payment (Unsplit) shows a clear review reason: principal / interest / escrow have not been split.
+- Adds a one-click Mark reviewed action; save the transaction to persist it.
+- Recurring mortgage transactions now show their monthly schedule and current property mortgage amount.
+- Adds Pause / Resume for future recurring mortgage entries directly in the transaction window.
+- No database migration required.
