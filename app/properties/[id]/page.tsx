@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Banknote, Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, ClipboardCheck, FileText, Gauge, Hammer, Home, Landmark, LockKeyhole, Receipt, RotateCcw, Scale, ShieldCheck, Target, TrendingDown, TrendingUp, Users, WalletCards, Wrench, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Banknote, Building2, CalendarDays, ChevronDown, ChevronRight, CircleDollarSign, ClipboardCheck, FileText, Gauge, Hammer, Home, Landmark, LockKeyhole, Receipt, RotateCcw, Scale, ShieldCheck, TrendingDown, TrendingUp, Users, WalletCards, Wrench, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
@@ -185,8 +185,6 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const maintenanceMonthly=maintenanceYtd/monthsElapsed;
   const otherOperatingMonthly=(utilitiesYtd+otherOperatingYtd)/monthsElapsed;
 
-  const initialTarget=Math.max(0,Math.ceil((currentMonthly+250)/50)*50);
-  const [target,setTarget]=useState(initialTarget);
   const [rentIncrease,setRentIncrease]=useState(0);
   const [managementTarget,setManagementTarget]=useState(currentMgmt);
   const [maintenanceReduction,setMaintenanceReduction]=useState(0);
@@ -197,8 +195,6 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const maintenanceGain=maintenanceMonthly*maintenanceReduction/100;
   const otherGain=otherOperatingMonthly*otherReduction/100;
   const projected=currentMonthly+rentGain+managementGain+maintenanceGain+otherGain;
-  const gap=target-currentMonthly;
-  const projectedGap=target-projected;
 
   const suggestedRent=occupiedUnits.length?50:0;
   const suggestedMgmt=currentMgmt>6?Math.max(0,currentMgmt-1):currentMgmt;
@@ -214,21 +210,26 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
     otherOperatingMonthly>0?{key:'other',title:'Trim controllable operating costs',detail:`${formatKpiCurrency(utilitiesYtd+otherOperatingYtd)} recorded YTD`,potential:otherOperatingMonthly*.10,status:'Investigate',icon:<Gauge size={18}/>,tone:'neutral'}:null,
   ].filter(Boolean).sort((a:any,b:any)=>b.potential-a.potential) as {key:string;title:string;detail:string;potential:number;status:string;icon:React.ReactNode;tone:string}[];
 
-  const targetMax=Math.max(1000,Math.ceil((Math.max(target,currentMonthly)+1000)/100)*100);
   return <div className="improve-page">
     <section className="improve-hero">
       <div className="improve-hero-copy"><span className="improve-eyebrow">PROPERTY PLAN</span><h2>Improve this property</h2><p>Focus on the few changes that can actually move cash flow. Rent changes are treated as renewal decisions, not something you can change today.</p></div>
       <div className="improve-hero-metrics">
         <div><span>Current monthly cash flow</span><strong className={currentMonthly>=0?'amount-positive':'amount-negative'}>{formatKpiCurrency(currentMonthly)}</strong><small>YTD monthly average</small></div>
-        <div><span>Target</span><strong>{formatKpiCurrency(target)}</strong><small>{gap>0?`${formatKpiCurrency(gap)} gap`:'Target reached'}</small></div>
-        <div><span>Scenario</span><strong className={projected>=currentMonthly?'amount-positive':'amount-negative'}>{formatKpiCurrency(projected)}</strong><small>{formatKpiCurrency(projected-currentMonthly)} / month</small></div>
+        <div><span>Scenario cash flow</span><strong className={projected>=currentMonthly?'amount-positive':'amount-negative'}>{formatKpiCurrency(projected)}</strong><small>Based on your changes</small></div>
+        <div><span>Improvement</span><strong className={projected-currentMonthly>=0?'amount-positive':'amount-negative'}>{projected-currentMonthly>=0?'+':''}{formatKpiCurrency(projected-currentMonthly)}</strong><small>per month</small></div>
       </div>
     </section>
 
-    <section className="improve-target-section">
-      <div className="improve-section-head"><div><span className="improve-eyebrow">TARGET</span><h3>What would success look like?</h3></div><div className="improve-target-value">{formatKpiCurrency(target)}<span>/mo</span></div></div>
-      <input className="improve-range improve-target-range" aria-label="Target monthly cash flow" type="range" min="0" max={targetMax} step="50" value={target} style={rangeTrack(target,0,targetMax)} onChange={e=>setTarget(Number(e.target.value))}/>
-      <div className="improve-range-labels"><span>{formatKpiCurrency(0)}</span><span>{formatKpiCurrency(targetMax)}</span></div>
+    <section className="improve-planner">
+      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div><div className="improve-live-result"><span>Projected cash flow</span><strong>{formatKpiCurrency(projected)}<small>/mo</small></strong></div></div>
+      <div className="improve-levers">
+        <ImproveLever label="Rent at next renewal" displayValue={rentIncrease?`+${formatKpiCurrency(rentIncrease)} / unit`:'No change'} meta={occupiedUnits.length?`${occupiedUnits.length} occupied ${occupiedUnits.length===1?'unit':'units'} · locked until renewal`:'No occupied units'} min={0} max={250} step={25} rangeValue={rentIncrease} onChange={setRentIncrease} status="At renewal"/>
+        <ImproveLever label="Management fee" displayValue={`${managementTarget.toFixed(managementTarget%1?1:0)}%`} meta={currentMgmt?`Current ${currentMgmt.toFixed(currentMgmt%1?1:0)}% · scenario savings ${formatKpiCurrency(managementGain)}/mo`:'No management fee recorded'} min={0} max={Math.max(12,currentMgmt)} step={0.5} rangeValue={managementTarget} onChange={setManagementTarget} status="Investigate" disabled={!currentMgmt}/>
+        <ImproveLever label="Maintenance" displayValue={maintenanceReduction?`−${maintenanceReduction}%`:'Current run rate'} meta={maintenanceMonthly?`${formatKpiCurrency(maintenanceMonthly)}/mo YTD average`:'No maintenance recorded YTD'} min={0} max={50} step={5} rangeValue={maintenanceReduction} onChange={setMaintenanceReduction} status="Available now" disabled={!maintenanceMonthly}/>
+        <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
+      </div>
+      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${Math.max(4,Math.min(100,projected>0?currentMonthly/projected*100:4))}%`}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
+      <div className={`improve-gap-message ${projected>currentMonthly?'reached':''}`}>{projected>currentMonthly?<><TrendingUp size={17}/><span>Your scenario improves cash flow by <strong>{formatKpiCurrency(projected-currentMonthly)}/mo</strong>.</span></>:<><Gauge size={17}/><span>Adjust a lever above to model a stronger monthly cash flow.</span></>}</div>
     </section>
 
     <section className="improve-opportunities-section">
@@ -240,18 +241,6 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
       </div>)}</div>
     </section>
 
-    <section className="improve-planner">
-      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div><div className="improve-live-result"><span>Projected cash flow</span><strong>{formatKpiCurrency(projected)}<small>/mo</small></strong></div></div>
-      <div className="improve-levers">
-        <ImproveLever label="Rent at next renewal" displayValue={rentIncrease?`+${formatKpiCurrency(rentIncrease)} / unit`:'No change'} meta={occupiedUnits.length?`${occupiedUnits.length} occupied ${occupiedUnits.length===1?'unit':'units'} · locked until renewal`:'No occupied units'} min={0} max={250} step={25} rangeValue={rentIncrease} onChange={setRentIncrease} status="At renewal"/>
-        <ImproveLever label="Management fee" displayValue={`${managementTarget.toFixed(managementTarget%1?1:0)}%`} meta={currentMgmt?`Current ${currentMgmt.toFixed(currentMgmt%1?1:0)}% · scenario savings ${formatKpiCurrency(managementGain)}/mo`:'No management fee recorded'} min={0} max={Math.max(12,currentMgmt)} step={0.5} rangeValue={managementTarget} onChange={setManagementTarget} status="Investigate" disabled={!currentMgmt}/>
-        <ImproveLever label="Maintenance" displayValue={maintenanceReduction?`−${maintenanceReduction}%`:'Current run rate'} meta={maintenanceMonthly?`${formatKpiCurrency(maintenanceMonthly)}/mo YTD average`:'No maintenance recorded YTD'} min={0} max={50} step={5} rangeValue={maintenanceReduction} onChange={setMaintenanceReduction} status="Available now" disabled={!maintenanceMonthly}/>
-        <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
-      </div>
-      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${Math.max(4,Math.min(100,target?projected/target*100:100))}%`}}/></i><div><span>Target</span><strong>{formatKpiCurrency(target)}</strong></div></div>
-      <div className={`improve-gap-message ${projectedGap<=0?'reached':''}`}>{projectedGap<=0?<><CheckCircle2 size={17}/><span>This scenario reaches your target by <strong>{formatKpiCurrency(Math.abs(projectedGap))}/mo</strong>.</span></>:<><Target size={17}/><span>This scenario is still <strong>{formatKpiCurrency(projectedGap)}/mo</strong> short of your target.</span></>}</div>
-    </section>
-
     <section className="improve-path">
       <div className="improve-path-header"><div><span className="improve-eyebrow">A REALISTIC PATH</span><h3>Start here</h3></div><div><span>Projected</span><strong>{formatKpiCurrency(suggestedProjected)}/mo</strong></div></div>
       <div className="improve-path-steps">
@@ -260,7 +249,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         {suggestedRent>0&&<ImprovePathStep number="3" title={`Model +${formatKpiCurrency(suggestedRent)} per occupied unit`} impact={occupiedUnits.length*suggestedRent} note="At renewal only · validate against market rent first"/>}
         {suggestedOther>0&&<ImprovePathStep number="4" title={`Reduce other controllable costs ${suggestedOther}%`} impact={otherOperatingMonthly*suggestedOther/100} note="Investigate utilities, services and recurring charges"/>}
       </div>
-      <div className="improve-path-footer"><p>{suggestedProjected>=target?`This path could clear your ${formatKpiCurrency(target)}/mo target based on current YTD run rates.`:`This path gets you to about ${formatKpiCurrency(suggestedProjected)}/mo. Reaching ${formatKpiCurrency(target)}/mo would likely require a larger rent change, lower costs, refinancing, or a different target.`}</p><span>Scenario estimates use recorded YTD data. They are planning tools, not guaranteed savings.</span></div>
+      <div className="improve-path-footer"><p>This path could improve monthly cash flow by about <strong>{formatKpiCurrency(suggestedGain)}/mo</strong>, based on current YTD run rates.</p><span>Scenario estimates use recorded YTD data. Validate rent, vendor and financing assumptions before acting.</span></div>
     </section>
   </div>;
 }

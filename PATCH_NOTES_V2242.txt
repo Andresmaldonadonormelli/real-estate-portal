@@ -1,0 +1,9 @@
+RE Portal v2.2.42 — Improve flow simplification
+
+- Removed the standalone Target / "What would success look like?" section.
+- Improve summary is now Current monthly cash flow / Scenario cash flow / Improvement.
+- Moved "Build a better scenario" directly below the Improve summary.
+- Scenario comparison now uses Current vs Scenario, with no artificial target.
+- "Best places to look first" follows the scenario builder.
+- "Start here" remains the actionable plan and now describes projected improvement without target-based language.
+- No database or SQL changes.
