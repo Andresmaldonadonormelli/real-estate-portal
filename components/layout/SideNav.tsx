@@ -33,7 +33,7 @@ export default function SideNav() {
   ];
 
   return <nav className="side-nav">
-    <div className="side-nav-brand">RE Portal</div>
+    <div className="side-nav-brand" aria-label="RE Portal"><img src="/brand-logo.png" alt="" /></div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><Gauge size={18}/>Dashboard</Link>
 

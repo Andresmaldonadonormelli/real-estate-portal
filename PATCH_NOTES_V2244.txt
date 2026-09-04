@@ -1,0 +1,6 @@
+V2.2.44 — Brand identity + neutral slider progress
+
+- Replaces the RE Portal wordmark in desktop navigation with the new house ribbon logo only.
+- Replaces favicon, Apple touch icon, and PWA manifest icons with the same logo.
+- Makes Improve sliders monochrome UI chrome: black progress in light mode, near-white progress in dark mode, with neutral remainder tracks.
+- No database changes.

@@ -4423,3 +4423,27 @@ button.ledger-month-head:focus:not(:focus-visible){
 .improve-impact-strip strong small{display:inline;color:var(--text-secondary);font-size:13px;font-weight:600;margin:0 3px}
 .improve-impact-strip>div>small{display:block;color:var(--text-secondary);font-size:11px;margin-top:5px}
 @media(max-width:760px){.improve-impact-strip{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:18px}.improve-impact-strip>div{padding:0 12px}.improve-impact-strip>div:nth-child(odd){padding-left:0;border-left:0}.improve-impact-strip strong{font-size:16px;white-space:normal}}
+
+
+/* v2.2.44 brand mark + neutral Improve controls */
+.side-nav-brand{
+  display:flex !important;
+  align-items:center !important;
+  min-height:42px !important;
+}
+.side-nav-brand img{
+  display:block;
+  width:40px;
+  height:40px;
+  object-fit:contain;
+}
+
+/* Slider progress is UI chrome, not a semantic positive state. */
+.improve-range{
+  --range-fill-color:#111312 !important;
+  --range-track:#cfd2d0 !important;
+}
+[data-theme="dark"] .improve-range{
+  --range-fill-color:#f4f5f4 !important;
+  --range-track:#343837 !important;
+}
