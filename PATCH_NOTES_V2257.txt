@@ -1,0 +1,9 @@
+RE Portal v2.2.57 — Lease document sync
+
+- Unit lease uploads now use the same property-documents storage/library as Ledger > Documents.
+- Uploading or replacing a lease from Edit unit creates/updates a Lease document record automatically.
+- Existing leases previously stored only on the Unit are reconciled into Documents when the property opens.
+- Existing legacy unit-leases files remain viewable while reconciliation migrates them to property-documents.
+- Lease document records carry property, unit, tenant, lease start/end, and 60-day expiration reminder metadata.
+
+No SQL changes.

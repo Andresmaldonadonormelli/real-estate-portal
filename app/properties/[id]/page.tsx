@@ -21,6 +21,60 @@ const categoryVar:Record<string,string> = {
 
 const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
 
+
+const LEASE_DOC_PREFIX='property-documents:';
+function leaseStorageRef(value?:string|null){
+  const path=String(value||'');
+  return path.startsWith(LEASE_DOC_PREFIX)?{bucket:'property-documents',path:path.slice(LEASE_DOC_PREFIX.length)}:{bucket:'unit-leases',path};
+}
+function leaseFileName(path:string){
+  const raw=path.split('/').pop()||'lease.pdf';
+  return raw.replace(/^\d+-/,'')||'lease.pdf';
+}
+async function syncLegacyUnitLeases(propertyId:string,unitRows:any[],docRows:any[]){
+  const auth=await supabase.auth.getUser();
+  const user=auth.data.user;
+  if(!user)return {units:unitRows,documents:docRows};
+  const nextUnits=[...unitRows];
+  const nextDocs=[...docRows];
+  for(let i=0;i<nextUnits.length;i++){
+    const unit=nextUnits[i];
+    if(!unit?.lease_document_path)continue;
+    const existing=nextDocs.find((d:any)=>d.unit_id===unit.id&&d.category==='Lease'&&!d.archived_at);
+    if(existing)continue;
+    let ref=leaseStorageRef(unit.lease_document_path);
+    let storagePath=ref.path;
+    let mimeType='application/pdf';
+    let fileSize:number|null=null;
+    let fileName=leaseFileName(storagePath);
+    if(ref.bucket!=='property-documents'){
+      const signed=await supabase.storage.from(ref.bucket).createSignedUrl(ref.path,120);
+      if(signed.error||!signed.data?.signedUrl)continue;
+      const response=await fetch(signed.data.signedUrl);
+      if(!response.ok)continue;
+      const blob=await response.blob();
+      mimeType=blob.type||mimeType; fileSize=blob.size||null;
+      const safe=fileName.replace(/[^a-zA-Z0-9._-]+/g,'-');
+      storagePath=`${user.id}/${propertyId}/${unit.id}/${Date.now()}-${safe}`;
+      const moved=await supabase.storage.from('property-documents').upload(storagePath,blob,{upsert:false,contentType:mimeType});
+      if(moved.error)continue;
+      const newLeasePath=`${LEASE_DOC_PREFIX}${storagePath}`;
+      const unitUpdate=await supabase.from('units').update({lease_document_path:newLeasePath}).eq('id',unit.id);
+      if(!unitUpdate.error)nextUnits[i]={...unit,lease_document_path:newLeasePath};
+    }
+    const row={
+      user_id:user.id, property_id:propertyId, unit_id:unit.id, category:'Lease',
+      title:`${unit.unit_number||'Unit'} lease${unit.tenant_name?` · ${unit.tenant_name}`:''}`,
+      file_name:fileName, storage_path:storagePath, mime_type:mimeType, file_size:fileSize,
+      document_date:unit.lease_start_date||null, expires_at:unit.lease_end_date||null,
+      reminder_days:60, notes:unit.tenant_name?`Signed lease for ${unit.tenant_name}`:null,
+    };
+    const inserted=await supabase.from('documents').insert(row).select('*').single();
+    if(!inserted.error&&inserted.data)nextDocs.unshift(inserted.data);
+  }
+  return {units:nextUnits,documents:nextDocs};
+}
+
 export default function PropertyWorkspacePage(){
   const params=useParams<{id:string}>();
   const propertyId=String(params?.id || '');
@@ -43,7 +97,9 @@ export default function PropertyWorkspacePage(){
       supabase.from('documents').select('*').eq('property_id',propertyId).is('archived_at',null).order('created_at',{ascending:false}),
     ]);
     if(p.error){ setError(p.error.message); setLoading(false); return; }
-    const prop=p.data as Property; setProperty(prop); setUnits((u.data||[]) as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments((d.data||[]) as PropertyDocument[]);
+    const prop=p.data as Property;
+    const synced=await syncLegacyUnitLeases(propertyId,(u.data||[]) as Unit[],(d.data||[]) as PropertyDocument[]);
+    setProperty(prop); setUnits(synced.units as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments(synced.documents as PropertyDocument[]);
     if(prop.image_path){ const signed=await supabase.storage.from('property-images').createSignedUrl(prop.image_path,3600); if(signed.data?.signedUrl) setImageUrl(signed.data.signedUrl); }
     setLoading(false);
   })(); },[propertyId]);
@@ -92,7 +148,7 @@ export default function PropertyWorkspacePage(){
     {tab==='overview' && <Overview property={property} units={units} transactions={transactions} documents={documents} imageUrl={imageUrl} occupied={occupied} expectedRent={expectedRent} metrics={metrics} onPropertyUpdated={patch=>setProperty(prev=>prev?({...prev,...patch} as Property):prev)}/>} 
     {tab==='performance' && <Performance transactions={transactions} years={years} propertyId={property.id}/>} 
     {tab==='improve' && <Improve property={property} units={units} transactions={transactions}/>} 
-    {tab==='units' && <Units units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)}/>} 
+    {tab==='units' && <Units units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select('*').eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>} 
     {tab==='documents' && <Documents documents={documents} propertyId={property.id}/>} 
     {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);}}/>}
   </div>;
@@ -325,7 +381,7 @@ function ImproveLever({label,displayValue,meta,min,max,step,rangeValue,onChange,
 }
 function ImprovePathStep({number,title,impact,note}:{number:string;title:string;impact:number;note:string}){return <div className="improve-path-step"><span className="improve-step-number">{number}</span><div><strong>{title}</strong><p>{note}</p></div><b>+{formatKpiCurrency(impact)}<small>/mo</small></b></div>}
 
-function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string;onUnitsUpdated:(units:Unit[])=>void}){
+function Units({units,propertyId,onUnitsUpdated,onLeaseSynced}:{units:Unit[];propertyId:string;onUnitsUpdated:(units:Unit[])=>void;onLeaseSynced:()=>void|Promise<void>}){
   const [editingUnitId,setEditingUnitId]=useState<string|null>(null);
   const editingUnit=(units.find(u=>u.id===editingUnitId)||null) as any;
   const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
@@ -374,7 +430,7 @@ function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string
         })}
       </div>}
     </section>
-    {editingUnit&&<UnitEditModal unit={editingUnit} propertyId={propertyId} onClose={()=>setEditingUnitId(null)} onSaved={(patch)=>handleSaved(editingUnit.id,patch)}/>}
+    {editingUnit&&<UnitEditModal unit={editingUnit} propertyId={propertyId} onClose={()=>setEditingUnitId(null)} onSaved={(patch)=>handleSaved(editingUnit.id,patch)} onLeaseSynced={onLeaseSynced}/>}
   </>;
 }
 
@@ -386,14 +442,40 @@ function PropertyEditModal({property,onClose,onSaved}:{property:Property;onClose
   return <div className="workspace-modal-overlay"><div className="workspace-modal property-edit-modal"><div className="workspace-modal-head"><div><div className="eyebrow">PROPERTY</div><h2>Edit property</h2></div><button type="button" className="workspace-modal-close" onClick={onClose}>×</button></div>{error&&<div className="workspace-form-error">{error}</div>}<form onSubmit={save} className="workspace-form"><div className="workspace-form-grid two"><label>Address<input required value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label><label>Property type<select value={form.property_type} onChange={e=>setForm({...form,property_type:e.target.value})}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></label></div><div className="workspace-form-grid three"><label>City<input required value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/></label><label>State<input required value={form.state} onChange={e=>setForm({...form,state:e.target.value})}/></label><label>ZIP<input required value={form.zip} onChange={e=>setForm({...form,zip:e.target.value})}/></label></div><div className="workspace-form-grid two"><label>Purchase price<input type="number" min="0" step="0.01" value={form.purchase_price} onChange={e=>setForm({...form,purchase_price:e.target.value})}/></label><label>Purchase date<input type="date" value={form.purchase_date} onChange={e=>setForm({...form,purchase_date:e.target.value})}/></label></div><div className="workspace-modal-footer"><button type="button" className="property-secondary-action" onClick={onClose}>Cancel</button><button disabled={saving} className="workspace-primary-button">{saving?'Saving…':'Save property'}</button></div></form></div></div>;
 }
 
-function UnitEditModal({unit,propertyId,onClose,onSaved}:{unit:any;propertyId:string;onClose:()=>void;onSaved:(patch:Record<string,unknown>)=>void}){
+function UnitEditModal({unit,propertyId,onClose,onSaved,onLeaseSynced}:{unit:any;propertyId:string;onClose:()=>void;onSaved:(patch:Record<string,unknown>)=>void;onLeaseSynced:()=>void|Promise<void>}){
   const [form,setForm]=useState({unit_number:unit.unit_number||'',tenant_name:unit.tenant_name||'',current_rent:String(Number(unit.current_rent||0)||''),bedroom_count:String(unit.bedroom_count??''),bathroom_count:String(unit.bathroom_count??''),sqft:String(unit.sqft??''),occupied:Boolean(unit.occupied),lease_start_date:unit.lease_start_date||'',lease_end_date:unit.lease_end_date||''});
   const [file,setFile]=useState<File|null>(null); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
-  const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setError('');let leasePath=unit.lease_document_path||null;try{if(file){const auth=await supabase.auth.getUser();const user=auth.data.user;if(!user)throw new Error('You need to be signed in.');const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');leasePath=`${user.id}/${propertyId}/${unit.id}/${Date.now()}-${safe}`;const upload=await supabase.storage.from('unit-leases').upload(leasePath,file,{upsert:true});if(upload.error)throw upload.error;}const patch={unit_number:form.unit_number.trim(),tenant_name:form.tenant_name.trim(),current_rent:form.current_rent?Number(form.current_rent):0,bedroom_count:form.bedroom_count?Number(form.bedroom_count):0,bathroom_count:form.bathroom_count?Number(form.bathroom_count):0,sqft:form.sqft?Number(form.sqft):0,occupied:form.occupied,lease_start_date:form.lease_start_date||null,lease_end_date:form.lease_end_date||null,lease_document_path:leasePath};const r=await supabase.from('units').update(patch).eq('id',unit.id);if(r.error)throw r.error;onSaved(patch);}catch(err:any){setError(err?.message||'Could not save unit.');}finally{setSaving(false);}};
+  const save=async(e:React.FormEvent)=>{
+    e.preventDefault(); setSaving(true); setError('');
+    let leasePath=unit.lease_document_path||null;
+    try{
+      const auth=await supabase.auth.getUser(); const user=auth.data.user;
+      if(!user)throw new Error('You need to be signed in.');
+      let uploadedDoc:{storagePath:string;fileName:string;mimeType:string|null;fileSize:number}|null=null;
+      if(file){
+        const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');
+        const storagePath=`${user.id}/${propertyId}/${unit.id}/${Date.now()}-${safe}`;
+        const upload=await supabase.storage.from('property-documents').upload(storagePath,file,{upsert:false,contentType:file.type||undefined});
+        if(upload.error)throw upload.error;
+        leasePath=`${LEASE_DOC_PREFIX}${storagePath}`;
+        uploadedDoc={storagePath,fileName:file.name,mimeType:file.type||null,fileSize:file.size};
+      }
+      const patch={unit_number:form.unit_number.trim(),tenant_name:form.tenant_name.trim(),current_rent:form.current_rent?Number(form.current_rent):0,bedroom_count:form.bedroom_count?Number(form.bedroom_count):0,bathroom_count:form.bathroom_count?Number(form.bathroom_count):0,sqft:form.sqft?Number(form.sqft):0,occupied:form.occupied,lease_start_date:form.lease_start_date||null,lease_end_date:form.lease_end_date||null,lease_document_path:leasePath};
+      const r=await supabase.from('units').update(patch).eq('id',unit.id); if(r.error)throw r.error;
+      if(uploadedDoc){
+        const existing=await supabase.from('documents').select('id').eq('property_id',propertyId).eq('unit_id',unit.id).eq('category','Lease').is('archived_at',null).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        const docPatch={user_id:user.id,property_id:propertyId,unit_id:unit.id,category:'Lease',title:`${patch.unit_number||'Unit'} lease${patch.tenant_name?` · ${patch.tenant_name}`:''}`,file_name:uploadedDoc.fileName,storage_path:uploadedDoc.storagePath,mime_type:uploadedDoc.mimeType,file_size:uploadedDoc.fileSize,document_date:patch.lease_start_date,expires_at:patch.lease_end_date,reminder_days:60,notes:patch.tenant_name?`Signed lease for ${patch.tenant_name}`:null,archived_at:null};
+        const docSave=existing.data?.id?await supabase.from('documents').update(docPatch).eq('id',existing.data.id):await supabase.from('documents').insert(docPatch);
+        if(docSave.error)throw new Error(`Unit saved, but the lease could not be added to Documents: ${docSave.error.message}`);
+        await onLeaseSynced();
+      }
+      onSaved(patch);
+    }catch(err:any){setError(err?.message||'Could not save unit.');}finally{setSaving(false);}
+  };
   return <div className="workspace-modal-overlay"><div className="workspace-modal unit-edit-modal"><div className="workspace-modal-head"><div><div className="eyebrow">UNIT</div><h2>Edit {unit.unit_number||'unit'}</h2></div><button type="button" className="workspace-modal-close" onClick={onClose}>×</button></div>{error&&<div className="workspace-form-error">{error}</div>}<form onSubmit={save} className="workspace-form"><div className="workspace-form-grid two"><label>Unit name / number<input required value={form.unit_number} onChange={e=>setForm({...form,unit_number:e.target.value})}/></label><label>Monthly rent<input type="number" min="0" step="0.01" value={form.current_rent} onChange={e=>setForm({...form,current_rent:e.target.value})}/></label></div><label>Tenant<input value={form.tenant_name} onChange={e=>setForm({...form,tenant_name:e.target.value})}/></label><label className="workspace-checkbox"><input type="checkbox" checked={form.occupied} onChange={e=>setForm({...form,occupied:e.target.checked})}/><span>Occupied</span></label><div className="workspace-form-grid two"><label>Lease start<input type="date" value={form.lease_start_date} onChange={e=>setForm({...form,lease_start_date:e.target.value})}/></label><label>Lease end<input type="date" value={form.lease_end_date} onChange={e=>setForm({...form,lease_end_date:e.target.value})}/></label></div><div className="workspace-form-grid three"><label>Bedrooms<input type="number" min="0" step="1" value={form.bedroom_count} onChange={e=>setForm({...form,bedroom_count:e.target.value})}/></label><label>Bathrooms<input type="number" min="0" step="0.5" value={form.bathroom_count} onChange={e=>setForm({...form,bathroom_count:e.target.value})}/></label><label>Sqft<input type="number" min="0" step="1" value={form.sqft} onChange={e=>setForm({...form,sqft:e.target.value})}/></label></div><label className="workspace-file-field"><span>Lease document</span><input type="file" accept="application/pdf,image/*" onChange={e=>setFile(e.target.files?.[0]||null)}/><small>{file?file.name:unit.lease_document_path?'Current lease will be kept unless you choose a replacement.':'Upload the signed lease or lease PDF.'}</small></label><div className="workspace-modal-footer"><button type="button" className="property-secondary-action" onClick={onClose}>Cancel</button><button disabled={saving} className="workspace-primary-button">{saving?'Saving…':'Save unit'}</button></div></form></div></div>;
 }
 
-function LeaseViewButton({path}:{path:string}){const [opening,setOpening]=useState(false);const open=async()=>{setOpening(true);const r=await supabase.storage.from('unit-leases').createSignedUrl(path,120);setOpening(false);if(r.data?.signedUrl)window.open(r.data.signedUrl,'_blank','noopener,noreferrer');};return <button type="button" className="property-secondary-action" disabled={opening} onClick={open}>{opening?'Opening…':'View lease'}</button>}
+function LeaseViewButton({path}:{path:string}){const [opening,setOpening]=useState(false);const open=async()=>{setOpening(true);const ref=leaseStorageRef(path);const r=await supabase.storage.from(ref.bucket).createSignedUrl(ref.path,120);setOpening(false);if(r.data?.signedUrl)window.open(r.data.signedUrl,'_blank','noopener,noreferrer');};return <button type="button" className="property-secondary-action" disabled={opening} onClick={open}>{opening?'Opening…':'View lease'}</button>}
 
 function leaseStatus(start?:string|null,end?:string|null,occupied?:boolean){if(!occupied)return{label:'Vacant',short:'Vacant',tone:'neutral'};if(!end)return{label:'Lease dates not set',short:'Not set',tone:'neutral'};const today=new Date();today.setHours(0,0,0,0);const endDate=new Date(`${end.slice(0,10)}T12:00:00`);const days=Math.ceil((endDate.getTime()-today.getTime())/86400000);if(days<0)return{label:`Lease expired ${Math.abs(days)} days ago`,short:'Expired',tone:'danger'};if(days===0)return{label:'Lease ends today',short:'Ends today',tone:'warning'};if(days<=60)return{label:`Lease ends in ${days} days`,short:`${days} days left`,tone:'warning'};return{label:`${days} days remaining on lease`,short:`${days} days left`,tone:'good'};}
 function shortDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
