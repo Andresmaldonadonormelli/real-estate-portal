@@ -4654,3 +4654,125 @@ button.ledger-month-head:focus:not(:focus-visible){
 }
 .actions-page-item{background:var(--card-bg,var(--bg-secondary))!important;}
 .actions-page-item:hover{background:var(--surface-hover)!important;}
+
+/* ==========================================================
+   V2.2.49 MORTGAGE BALANCE + LEDGER REVIEW CONTROL
+   ========================================================== */
+
+/* Keep the ledger view controls on the left and review workflow on the far right. */
+.ledger-view-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  width:100%!important;
+}
+.ledger-view-mode-group{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.ledger-review-toggle{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:38px;
+  color:var(--text-secondary);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  user-select:none;
+  white-space:nowrap;
+}
+.ledger-review-toggle input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.ledger-review-switch{
+  position:relative;
+  width:34px;
+  height:20px;
+  flex:0 0 34px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--text-primary) 13%,var(--bg-secondary));
+  transition:background .18s ease;
+}
+.ledger-review-switch i{
+  position:absolute;
+  width:16px;
+  height:16px;
+  left:2px;
+  top:2px;
+  border-radius:50%;
+  background:var(--bg-card);
+  box-shadow:0 1px 3px rgba(0,0,0,.2);
+  transition:transform .18s ease,background .18s ease;
+}
+.ledger-review-toggle input:checked + .ledger-review-switch{
+  background:var(--text-primary);
+}
+.ledger-review-toggle input:checked + .ledger-review-switch i{
+  transform:translateX(14px);
+  background:var(--bg-primary);
+}
+.ledger-review-toggle input:focus-visible + .ledger-review-switch{
+  outline:2px solid color-mix(in srgb,var(--text-primary) 35%,transparent);
+  outline-offset:2px;
+}
+.ledger-review-label{color:var(--text-primary);}
+.ledger-review-toggle em{
+  font-style:normal;
+  min-width:22px;
+  height:22px;
+  padding:0 6px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:var(--surface-subtle, color-mix(in srgb,var(--text-primary) 7%,transparent));
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:700;
+}
+
+/* Metadata starts under the transaction title, not under the category icon. */
+.ledger-modern-secondary{
+  padding-left:36px!important;
+}
+
+/* Four-column mortgage summary remains balanced when Current balance is shown. */
+.mortgage-overview-summary{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+
+@media(max-width:900px){
+  .mortgage-overview-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:767px){
+  .ledger-view-actions{
+    align-items:flex-start!important;
+    gap:10px!important;
+  }
+  .ledger-view-mode-group{
+    gap:7px;
+  }
+  .ledger-review-toggle{
+    min-height:40px;
+    gap:6px;
+  }
+  .ledger-review-label{
+    display:none;
+  }
+  .ledger-modern-secondary{
+    padding-left:36px!important;
+  }
+  .mortgage-overview-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}

@@ -1,0 +1,8 @@
+V2.2.49 — Mortgage balance + ledger review control
+
+- Adds Current mortgage balance to Overview > Mortgage > Manage.
+- Shows the saved current balance inside the Mortgage summary and existing KPI.
+- Keeps mortgage split review behavior: a fully allocated principal + interest + escrow payment can leave Needs Review.
+- Replaces the amber Needs Review filter chip with a neutral switch at the far right of the Table / Months / Export row.
+- Aligns ledger row secondary metadata under the transaction title rather than under the category icon, desktop and mobile.
+- No SQL changes. Uses the existing properties.mortgage_balance field.
