@@ -1,0 +1,11 @@
+v2.2.53 — Property + Unit Management
+
+- Removes Dashboard Test action and top-right Open ledger shortcut.
+- Adds Edit property action to each property workspace.
+- Unit tab now shows rent, lease period, days remaining/status, layout, and size.
+- Edit unit works in-place rather than navigating back to Properties.
+- Unit editor controls tenant, occupancy, rent, lease dates, layout, and size.
+- Lease PDF/image can be uploaded and viewed from the Unit tab.
+- Adds unit lease fields and private unit-leases storage bucket.
+
+SQL required: run supabase/V2253_UNIT_LEASE_FIELDS.sql once.

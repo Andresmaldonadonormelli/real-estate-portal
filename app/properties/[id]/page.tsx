@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Banknote, Building2, CalendarDays, ChevronDown, ChevronRight, CircleDollarSign, ClipboardCheck, FileText, Gauge, Hammer, Home, Landmark, LockKeyhole, Receipt, RotateCcw, Scale, ShieldCheck, TrendingDown, TrendingUp, Users, WalletCards, Wrench, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Banknote, Building2, CalendarDays, ChevronDown, ChevronRight, CircleDollarSign, ClipboardCheck, FileText, Gauge, Hammer, Home, Landmark, LockKeyhole, PencilLine, Receipt, RotateCcw, Scale, ShieldCheck, TrendingDown, TrendingUp, Upload, Users, WalletCards, Wrench, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
@@ -32,6 +32,7 @@ export default function PropertyWorkspacePage(){
   const [imageUrl,setImageUrl]=useState('');
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
+  const [editingProperty,setEditingProperty]=useState(false);
 
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');
@@ -82,7 +83,7 @@ export default function PropertyWorkspacePage(){
     <header className="property-workspace-header">
       <div className="property-title-block">
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
-        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link></div>
+        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><div className="property-header-actions"><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link><button type="button" className="property-edit-inline" onClick={()=>setEditingProperty(true)}><PencilLine size={13}/> Edit property</button></div></div>
       </div>
     </header>
 
@@ -91,8 +92,9 @@ export default function PropertyWorkspacePage(){
     {tab==='overview' && <Overview property={property} units={units} transactions={transactions} documents={documents} imageUrl={imageUrl} occupied={occupied} expectedRent={expectedRent} metrics={metrics} onPropertyUpdated={patch=>setProperty(prev=>prev?({...prev,...patch} as Property):prev)}/>} 
     {tab==='performance' && <Performance transactions={transactions} years={years} propertyId={property.id}/>} 
     {tab==='improve' && <Improve property={property} units={units} transactions={transactions}/>} 
-    {tab==='units' && <Units units={units}/>} 
+    {tab==='units' && <Units units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)}/>} 
     {tab==='documents' && <Documents documents={documents} propertyId={property.id}/>} 
+    {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);}}/>}
   </div>;
 }
 
@@ -107,7 +109,7 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
     </div>
     <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
     <div className="property-two-col">
-      <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(3)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>
+      <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(4)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>
         <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div><strong>{u.unit_number||'Unit'}</strong><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right"><strong>{formatCurrency(Number(u.current_rent||0))}</strong><span className={`status-pill ${u.occupied?'occupied':'vacant'}`}>{u.occupied?'Occupied':'Vacant'}</span></div></div>):<Empty text="No units yet."/>}</div>
       </section>
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div>
@@ -123,6 +125,7 @@ function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(pat
   const [editing,setEditing]=useState(false);
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
+  const [editingProperty,setEditingProperty]=useState(false);
   const [form,setForm]=useState({payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false});
   useEffect(()=>setForm({payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false}),[property.id,p.monthly_mortgage_payment,p.mortgage_balance,p.mortgage_principal_amount,p.mortgage_interest_amount,p.mortgage_escrow_amount,p.mortgage_recurring_enabled]);
   const payment=Math.max(0,Number(form.payment||0));
@@ -319,7 +322,54 @@ function ImproveLever({label,displayValue,meta,min,max,step,rangeValue,onChange,
 }
 function ImprovePathStep({number,title,impact,note}:{number:string;title:string;impact:number;note:string}){return <div className="improve-path-step"><span className="improve-step-number">{number}</span><div><strong>{title}</strong><p>{note}</p></div><b>+{formatKpiCurrency(impact)}<small>/mo</small></b></div>}
 
-function Units({units}:{units:Unit[]}){ const [selected,setSelected]=useState(units[0]?.id||''); const unit=units.find(u=>u.id===selected)||units[0]; return <section className="card property-panel property-tab-panel compact-units-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div><Link href="/properties" className="property-secondary-action">Edit units</Link></div>{!unit?<Empty text="No units yet."/>:<><div className="property-unit-tabs">{units.map(u=><button type="button" key={u.id} className={u.id===unit.id?'active':''} onClick={()=>setSelected(u.id)}>{u.unit_number||'Unit'}</button>)}</div><div className="compact-unit-detail"><div><span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span><h3>{unit.unit_number||'Unit'}</h3><p>{unit.tenant_name||'No tenant assigned'}</p></div><div className="compact-unit-stats"><div><span>Rent</span><strong>{formatCurrency(Number(unit.current_rent||0))}/mo</strong></div><div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div><div><span>Size</span><strong>{unit.sqft||0} sqft</strong></div></div></div></>}</section>; }
+function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string;onUnitsUpdated:(units:Unit[])=>void}){
+  const [selected,setSelected]=useState(units[0]?.id||'');
+  const [editing,setEditing]=useState(false);
+  useEffect(()=>{ if(!units.some(u=>u.id===selected)) setSelected(units[0]?.id||''); },[units,selected]);
+  const unit=(units.find(u=>u.id===selected)||units[0]) as any;
+  const lease=unit?leaseStatus(unit.lease_start_date,unit.lease_end_date,unit.occupied):null;
+  const handleSaved=(patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unit.id?({...u,...patch} as Unit):u)); setEditing(false); };
+  return <>
+    <section className="card property-panel property-tab-panel compact-units-panel">
+      <div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div><button type="button" className="property-secondary-action" onClick={()=>setEditing(true)}>Edit unit</button></div>
+      {!unit?<Empty text="No units yet."/>:<>
+        <div className="property-unit-tabs">{units.map(u=><button type="button" key={u.id} className={u.id===unit.id?'active':''} onClick={()=>setSelected(u.id)}>{u.unit_number||'Unit'}</button>)}</div>
+        <div className="compact-unit-detail unit-detail-expanded">
+          <div className="unit-identity-block"><span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span><h3>{unit.unit_number||'Unit'}</h3><p>{unit.tenant_name||'No tenant assigned'}</p>{lease&&<div className={`lease-status-line ${lease.tone}`}><CalendarDays size={15}/><span>{lease.label}</span></div>}</div>
+          <div className="compact-unit-stats unit-stats-five">
+            <div><span>Rent</span><strong>{formatCurrency(Number(unit.current_rent||0))}/mo</strong></div>
+            <div><span>Lease period</span><strong>{unit.lease_start_date&&unit.lease_end_date?`${shortDate(unit.lease_start_date)} – ${shortDate(unit.lease_end_date)}`:unit.occupied?'Not set':'—'}</strong></div>
+            <div><span>Lease status</span><strong>{lease?.short||'—'}</strong></div>
+            <div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>
+            <div><span>Size</span><strong>{unit.sqft||0} sqft</strong></div>
+          </div>
+        </div>
+        <div className="unit-lease-row"><div><FileText size={18}/><span><strong>Lease document</strong><small>{unit.lease_document_path?'Lease uploaded':'No lease uploaded'}</small></span></div>{unit.lease_document_path?<LeaseViewButton path={unit.lease_document_path}/>:<button type="button" className="property-text-action" onClick={()=>setEditing(true)}>Upload lease <ChevronRight size={15}/></button>}</div>
+      </>}
+    </section>
+    {editing&&unit&&<UnitEditModal unit={unit} propertyId={propertyId} onClose={()=>setEditing(false)} onSaved={handleSaved}/>} 
+  </>;
+}
+
+function PropertyEditModal({property,onClose,onSaved}:{property:Property;onClose:()=>void;onSaved:(patch:Record<string,unknown>)=>void}){
+  const p=property as any;
+  const [form,setForm]=useState({address:p.address||'',city:p.city||'',state:p.state||'',zip:p.zip||'',property_type:p.property_type||'duplex',purchase_price:String(p.purchase_price||''),purchase_date:p.purchase_date||''});
+  const [saving,setSaving]=useState(false); const [error,setError]=useState('');
+  const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setError('');const patch={address:form.address.trim(),city:form.city.trim(),state:form.state.trim(),zip:form.zip.trim(),property_type:form.property_type,purchase_price:form.purchase_price?Number(form.purchase_price):null,purchase_date:form.purchase_date||null};const r=await supabase.from('properties').update(patch).eq('id',property.id);setSaving(false);if(r.error){setError(r.error.message);return;}onSaved(patch);};
+  return <div className="workspace-modal-overlay"><div className="workspace-modal property-edit-modal"><div className="workspace-modal-head"><div><div className="eyebrow">PROPERTY</div><h2>Edit property</h2></div><button type="button" className="workspace-modal-close" onClick={onClose}>×</button></div>{error&&<div className="workspace-form-error">{error}</div>}<form onSubmit={save} className="workspace-form"><div className="workspace-form-grid two"><label>Address<input required value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label><label>Property type<select value={form.property_type} onChange={e=>setForm({...form,property_type:e.target.value})}><option value="duplex">Duplex</option><option value="single_family">Single family</option><option value="triplex">Triplex</option><option value="multi_unit">Multi-unit</option></select></label></div><div className="workspace-form-grid three"><label>City<input required value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/></label><label>State<input required value={form.state} onChange={e=>setForm({...form,state:e.target.value})}/></label><label>ZIP<input required value={form.zip} onChange={e=>setForm({...form,zip:e.target.value})}/></label></div><div className="workspace-form-grid two"><label>Purchase price<input type="number" min="0" step="0.01" value={form.purchase_price} onChange={e=>setForm({...form,purchase_price:e.target.value})}/></label><label>Purchase date<input type="date" value={form.purchase_date} onChange={e=>setForm({...form,purchase_date:e.target.value})}/></label></div><div className="workspace-modal-footer"><button type="button" className="property-secondary-action" onClick={onClose}>Cancel</button><button disabled={saving} className="workspace-primary-button">{saving?'Saving…':'Save property'}</button></div></form></div></div>;
+}
+
+function UnitEditModal({unit,propertyId,onClose,onSaved}:{unit:any;propertyId:string;onClose:()=>void;onSaved:(patch:Record<string,unknown>)=>void}){
+  const [form,setForm]=useState({unit_number:unit.unit_number||'',tenant_name:unit.tenant_name||'',current_rent:String(Number(unit.current_rent||0)||''),bedroom_count:String(unit.bedroom_count??''),bathroom_count:String(unit.bathroom_count??''),sqft:String(unit.sqft??''),occupied:Boolean(unit.occupied),lease_start_date:unit.lease_start_date||'',lease_end_date:unit.lease_end_date||''});
+  const [file,setFile]=useState<File|null>(null); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
+  const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setError('');let leasePath=unit.lease_document_path||null;try{if(file){const auth=await supabase.auth.getUser();const user=auth.data.user;if(!user)throw new Error('You need to be signed in.');const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');leasePath=`${user.id}/${propertyId}/${unit.id}/${Date.now()}-${safe}`;const upload=await supabase.storage.from('unit-leases').upload(leasePath,file,{upsert:true});if(upload.error)throw upload.error;}const patch={unit_number:form.unit_number.trim(),tenant_name:form.tenant_name.trim(),current_rent:form.current_rent?Number(form.current_rent):0,bedroom_count:form.bedroom_count?Number(form.bedroom_count):0,bathroom_count:form.bathroom_count?Number(form.bathroom_count):0,sqft:form.sqft?Number(form.sqft):0,occupied:form.occupied,lease_start_date:form.lease_start_date||null,lease_end_date:form.lease_end_date||null,lease_document_path:leasePath};const r=await supabase.from('units').update(patch).eq('id',unit.id);if(r.error)throw r.error;onSaved(patch);}catch(err:any){setError(err?.message||'Could not save unit.');}finally{setSaving(false);}};
+  return <div className="workspace-modal-overlay"><div className="workspace-modal unit-edit-modal"><div className="workspace-modal-head"><div><div className="eyebrow">UNIT</div><h2>Edit {unit.unit_number||'unit'}</h2></div><button type="button" className="workspace-modal-close" onClick={onClose}>×</button></div>{error&&<div className="workspace-form-error">{error}</div>}<form onSubmit={save} className="workspace-form"><div className="workspace-form-grid two"><label>Unit name / number<input required value={form.unit_number} onChange={e=>setForm({...form,unit_number:e.target.value})}/></label><label>Monthly rent<input type="number" min="0" step="0.01" value={form.current_rent} onChange={e=>setForm({...form,current_rent:e.target.value})}/></label></div><label>Tenant<input value={form.tenant_name} onChange={e=>setForm({...form,tenant_name:e.target.value})}/></label><label className="workspace-checkbox"><input type="checkbox" checked={form.occupied} onChange={e=>setForm({...form,occupied:e.target.checked})}/><span>Occupied</span></label><div className="workspace-form-grid two"><label>Lease start<input type="date" value={form.lease_start_date} onChange={e=>setForm({...form,lease_start_date:e.target.value})}/></label><label>Lease end<input type="date" value={form.lease_end_date} onChange={e=>setForm({...form,lease_end_date:e.target.value})}/></label></div><div className="workspace-form-grid three"><label>Bedrooms<input type="number" min="0" step="1" value={form.bedroom_count} onChange={e=>setForm({...form,bedroom_count:e.target.value})}/></label><label>Bathrooms<input type="number" min="0" step="0.5" value={form.bathroom_count} onChange={e=>setForm({...form,bathroom_count:e.target.value})}/></label><label>Sqft<input type="number" min="0" step="1" value={form.sqft} onChange={e=>setForm({...form,sqft:e.target.value})}/></label></div><label className="workspace-file-field"><span>Lease document</span><input type="file" accept="application/pdf,image/*" onChange={e=>setFile(e.target.files?.[0]||null)}/><small>{file?file.name:unit.lease_document_path?'Current lease will be kept unless you choose a replacement.':'Upload the signed lease or lease PDF.'}</small></label><div className="workspace-modal-footer"><button type="button" className="property-secondary-action" onClick={onClose}>Cancel</button><button disabled={saving} className="workspace-primary-button">{saving?'Saving…':'Save unit'}</button></div></form></div></div>;
+}
+
+function LeaseViewButton({path}:{path:string}){const [opening,setOpening]=useState(false);const open=async()=>{setOpening(true);const r=await supabase.storage.from('unit-leases').createSignedUrl(path,120);setOpening(false);if(r.data?.signedUrl)window.open(r.data.signedUrl,'_blank','noopener,noreferrer');};return <button type="button" className="property-secondary-action" disabled={opening} onClick={open}>{opening?'Opening…':'View lease'}</button>}
+
+function leaseStatus(start?:string|null,end?:string|null,occupied?:boolean){if(!occupied)return{label:'Vacant',short:'Vacant',tone:'neutral'};if(!end)return{label:'Lease dates not set',short:'Not set',tone:'neutral'};const today=new Date();today.setHours(0,0,0,0);const endDate=new Date(`${end.slice(0,10)}T12:00:00`);const days=Math.ceil((endDate.getTime()-today.getTime())/86400000);if(days<0)return{label:`Lease expired ${Math.abs(days)} days ago`,short:'Expired',tone:'danger'};if(days===0)return{label:'Lease ends today',short:'Ends today',tone:'warning'};if(days<=60)return{label:`Lease ends in ${days} days`,short:`${days} days left`,tone:'warning'};return{label:`${days} days remaining on lease`,short:`${days} days left`,tone:'good'};}
+function shortDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
 
 function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
 

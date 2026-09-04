@@ -190,7 +190,7 @@ export default function Dashboard() {
   },[transactions,cashMode,cashPropertyId]);
 
   return <div className="dashboard-page" style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
-    <div className="dashboard-header"><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1><div className="dashboard-header-actions"><button className="test-action-button" onClick={()=>setTestActionsActive(v=>!v)} style={secondaryButton}>{testActionsActive?'Hide test actions':'Test action'}</button><Link href="/ledger" style={{fontSize:14}}>Open ledger →</Link></div></div>
+    <div className="dashboard-header"><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1></div>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="dashboard-metric-strip" aria-label="Portfolio overview">
