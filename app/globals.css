@@ -4243,3 +4243,47 @@ button.ledger-month-head:focus:not(:focus-visible){
   .improve-path-step{grid-template-columns:25px minmax(0,1fr) auto;gap:9px;padding:13px 0}
   .improve-path-step>b{font-size:12px}
 }
+
+/* v2.2.39 Improve planner controls + mobile action spacing */
+.improve-hero-metrics{
+  gap:10px!important;
+}
+.improve-hero-metrics>div{
+  padding:14px 15px!important;
+  border-left:0!important;
+  border-radius:14px;
+  background:color-mix(in srgb,var(--bg-primary) 48%,var(--bg-secondary));
+}
+[data-theme="dark"] .improve-hero-metrics>div{
+  background:rgba(255,255,255,.045);
+}
+.improve-range{
+  height:5px!important;
+  background:color-mix(in srgb,var(--text-secondary) 34%,transparent);
+  transition:background .12s ease;
+}
+.improve-range:disabled{
+  opacity:.5!important;
+}
+
+@media(max-width:767px){
+  .add-transaction-fab{
+    bottom:calc(94px + env(safe-area-inset-bottom))!important;
+  }
+}
+
+@media(max-width:760px){
+  .improve-hero-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    row-gap:8px!important;
+    margin-top:20px!important;
+  }
+  .improve-hero-metrics>div{
+    padding:13px!important;
+  }
+  .improve-hero-metrics>div:nth-child(3){
+    grid-column:1/-1;
+    padding:13px!important;
+  }
+}

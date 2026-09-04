@@ -1,0 +1,7 @@
+v2.2.39 Improve controls polish
+- Adds breathing room between mobile Add transaction FAB and bottom navigation.
+- Boxes Current / Target / Scenario as three quiet summary surfaces.
+- Makes Improve sliders use a clearly visible muted track with filled progress on the left.
+- Fixes Opportunities count to match the three suggestions actually shown.
+- Applies filled slider treatment to both target and scenario levers.
+- No database changes.

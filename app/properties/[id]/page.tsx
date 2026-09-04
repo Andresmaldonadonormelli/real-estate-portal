@@ -227,12 +227,12 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
 
     <section className="improve-target-section">
       <div className="improve-section-head"><div><span className="improve-eyebrow">TARGET</span><h3>What would success look like?</h3></div><div className="improve-target-value">{formatKpiCurrency(target)}<span>/mo</span></div></div>
-      <input className="improve-range improve-target-range" aria-label="Target monthly cash flow" type="range" min="0" max={targetMax} step="50" value={target} onChange={e=>setTarget(Number(e.target.value))}/>
+      <input className="improve-range improve-target-range" aria-label="Target monthly cash flow" type="range" min="0" max={targetMax} step="50" value={target} style={{background:rangeTrack(target,0,targetMax)}} onChange={e=>setTarget(Number(e.target.value))}/>
       <div className="improve-range-labels"><span>{formatKpiCurrency(0)}</span><span>{formatKpiCurrency(targetMax)}</span></div>
     </section>
 
     <section className="improve-opportunities-section">
-      <div className="improve-section-head"><div><span className="improve-eyebrow">OPPORTUNITIES</span><h3>Best places to look first</h3></div><span className="improve-count">{opportunities.length} identified</span></div>
+      <div className="improve-section-head"><div><span className="improve-eyebrow">OPPORTUNITIES</span><h3>Best places to look first</h3></div><span className="improve-count">{Math.min(opportunities.length,3)} identified</span></div>
       <div className="improve-opportunity-list">{opportunities.slice(0,3).map((o,i)=><div className="improve-opportunity" key={o.key}>
         <div className={`improve-opportunity-icon ${o.tone}`}>{o.icon}</div>
         <div className="improve-opportunity-copy"><div className="improve-opportunity-title"><span>{String(i+1).padStart(2,'0')}</span><strong>{o.title}</strong></div><p>{o.detail}</p><span className={`improve-status ${o.status==='Available now'?'available':o.status==='At renewal'?'renewal':'investigate'}`}>{o.status}</span></div>
@@ -265,8 +265,12 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   </div>;
 }
 
+function rangeTrack(value:number,min:number,max:number){
+  const pct=max<=min?0:Math.max(0,Math.min(100,((value-min)/(max-min))*100));
+  return `linear-gradient(to right, var(--positive) 0%, var(--positive) ${pct}%, color-mix(in srgb,var(--text-secondary) 34%,transparent) ${pct}%, color-mix(in srgb,var(--text-secondary) 34%,transparent) 100%)`;
+}
 function ImproveLever({label,displayValue,meta,min,max,step,rangeValue,onChange,status,disabled}:{label:string;displayValue:string;meta:string;min:number;max:number;step:number;rangeValue:number;onChange:(v:number)=>void;status:string;disabled?:boolean}){
-  return <div className={`improve-lever ${disabled?'disabled':''}`}><div className="improve-lever-top"><div><strong>{label}</strong><span>{meta}</span></div><div><b>{displayValue}</b><small>{status}</small></div></div><input className="improve-range" aria-label={label} type="range" min={min} max={max} step={step} value={rangeValue} disabled={disabled} onChange={e=>onChange(Number(e.target.value))}/></div>;
+  return <div className={`improve-lever ${disabled?'disabled':''}`}><div className="improve-lever-top"><div><strong>{label}</strong><span>{meta}</span></div><div><b>{displayValue}</b><small>{status}</small></div></div><input className="improve-range" aria-label={label} type="range" min={min} max={max} step={step} value={rangeValue} style={{background:rangeTrack(rangeValue,min,max)}} disabled={disabled} onChange={e=>onChange(Number(e.target.value))}/></div>;
 }
 function ImprovePathStep({number,title,impact,note}:{number:string;title:string;impact:number;note:string}){return <div className="improve-path-step"><span className="improve-step-number">{number}</span><div><strong>{title}</strong><p>{note}</p></div><b>+{formatKpiCurrency(impact)}<small>/mo</small></b></div>}
 
