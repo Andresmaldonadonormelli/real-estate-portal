@@ -1,0 +1,10 @@
+v2.2.47 — Mortgage setup + split
+
+- Overview now owns mortgage setup: payment, due day, recurring on/off, and default principal / interest / escrow split.
+- Recurring mortgage transactions inherit the property split.
+- Ledger category picker now has one user-facing category: Mortgage Payment.
+- Mortgage Payment opens a split section directly inside Add/Edit Transaction.
+- A fully allocated split automatically clears Needs Review.
+- Existing Mortgage Payment (Unsplit) rows are renamed safely; historical Principal/Interest rows are preserved.
+
+Run supabase/V2247_MORTGAGE_SPLIT.sql once before deploying the UI patch.

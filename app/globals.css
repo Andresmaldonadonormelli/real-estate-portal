@@ -4501,3 +4501,28 @@ button.ledger-month-head:focus:not(:focus-visible){
   .utility-detail-actions button{width:100%;}
   .utility-property-picker{grid-template-columns:1fr;}
 }
+
+/* v2.2.47 mortgage setup + split */
+.mortgage-overview-panel{display:grid;gap:18px}
+.mortgage-overview-summary{display:grid;grid-template-columns:1fr 1fr 2fr;gap:0}
+.mortgage-overview-summary>div{min-width:0;padding:4px 22px;border-left:1px solid var(--border-subtle)}
+.mortgage-overview-summary>div:first-child{padding-left:0;border-left:0}
+.mortgage-overview-summary span,.mortgage-overview-summary small,.mortgage-split-title small{display:block;color:var(--text-secondary);font-size:13px;line-height:1.45}
+.mortgage-overview-summary strong{display:block;margin-top:5px;font-size:20px;letter-spacing:-.02em}
+.mortgage-overview-summary small{margin-top:5px}
+.mortgage-manage-form,.mortgage-split-box{display:grid;gap:16px;padding:18px;border-radius:18px;background:var(--surface-subtle)}
+.mortgage-manage-grid,.mortgage-split-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mortgage-manage-grid.three,.mortgage-split-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mortgage-manage-grid label,.mortgage-split-fields label{display:grid;gap:7px;font-size:13px;font-weight:650;color:var(--text-secondary)}
+.mortgage-manage-grid input,.mortgage-split-fields input{width:100%;min-width:0;border:1px solid var(--border-subtle);border-radius:12px;background:var(--surface);color:var(--text-primary);padding:11px 12px;font:inherit;font-weight:550}
+.mortgage-split-title,.mortgage-split-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.mortgage-split-title strong,.mortgage-split-head strong{display:block;font-size:14px}
+.mortgage-split-title>span,.mortgage-split-head>span{white-space:nowrap;color:var(--text-secondary);font-size:13px;font-weight:650}
+.mortgage-split-title>span.complete,.mortgage-split-head>span.complete,.mortgage-split-ok{color:var(--positive)}
+.mortgage-split-note,.mortgage-split-ok{font-size:12px}
+.mortgage-recurring-toggle{display:flex;align-items:flex-start;gap:10px;padding-top:3px}
+.mortgage-recurring-toggle input{margin-top:3px}
+.mortgage-recurring-toggle span strong,.mortgage-recurring-toggle span small{display:block}
+.mortgage-recurring-toggle span small{margin-top:3px;color:var(--text-secondary)}
+.mortgage-manage-actions{display:flex;justify-content:flex-end}
+@media(max-width:760px){.mortgage-overview-summary{grid-template-columns:1fr}.mortgage-overview-summary>div{padding:14px 0;border-left:0;border-top:1px solid var(--border-subtle)}.mortgage-overview-summary>div:first-child{border-top:0;padding-top:0}.mortgage-manage-grid,.mortgage-manage-grid.three,.mortgage-split-fields{grid-template-columns:1fr}.mortgage-split-title,.mortgage-split-head{align-items:flex-start;flex-direction:column;gap:6px}}

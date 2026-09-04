@@ -88,7 +88,7 @@ export default function PropertyWorkspacePage(){
 
     <nav className="property-subnav" aria-label="Property sections">{(['overview','performance','improve','units','documents'] as Tab[]).map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav>
 
-    {tab==='overview' && <Overview property={property} units={units} transactions={transactions} documents={documents} imageUrl={imageUrl} occupied={occupied} expectedRent={expectedRent} metrics={metrics}/>} 
+    {tab==='overview' && <Overview property={property} units={units} transactions={transactions} documents={documents} imageUrl={imageUrl} occupied={occupied} expectedRent={expectedRent} metrics={metrics} onPropertyUpdated={patch=>setProperty(prev=>prev?({...prev,...patch} as Property):prev)}/>} 
     {tab==='performance' && <Performance transactions={transactions} years={years} propertyId={property.id}/>} 
     {tab==='improve' && <Improve property={property} units={units} transactions={transactions}/>} 
     {tab==='units' && <Units units={units}/>} 
@@ -96,7 +96,7 @@ export default function PropertyWorkspacePage(){
   </div>;
 }
 
-function Overview({property,units,transactions,documents,occupied,expectedRent,metrics}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];imageUrl:string;occupied:number;expectedRent:number;metrics:ReturnType<typeof calculateMetrics>}){
+function Overview({property,units,transactions,documents,occupied,expectedRent,metrics,onPropertyUpdated}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];imageUrl:string;occupied:number;expectedRent:number;metrics:ReturnType<typeof calculateMetrics>;onPropertyUpdated:(patch:Record<string,unknown>)=>void}){
   return <div className="property-section-stack">
     <div className="property-metric-strip overview-metric-strip">
       <Kpi label="Expected monthly rent" value={formatKpiCurrency(expectedRent)} sub="Occupied units"/>
@@ -105,6 +105,7 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
       <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
 
     </div>
+    <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
     <div className="property-two-col">
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(3)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>
         <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div><strong>{u.unit_number||'Unit'}</strong><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right"><strong>{formatCurrency(Number(u.current_rent||0))}</strong><span className={`status-pill ${u.occupied?'occupied':'vacant'}`}>{u.occupied?'Occupied':'Vacant'}</span></div></div>):<Empty text="No units yet."/>}</div>
@@ -115,6 +116,28 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
     </div>
     <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property paperwork</h2></div><Link href={`/ledger?tab=documents&property=${property.id}`} className="property-text-action">Open documents <ChevronRight size={15}/></Link></div><div className="property-doc-summary"><FileText size={22}/><div><strong>{documents.length} {documents.length===1?'document':'documents'}</strong><span>Leases, insurance, registrations, invoices and property records.</span></div></div></section>
   </div>;
+}
+
+function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(patch:Record<string,unknown>)=>void}){
+  const p=property as any;
+  const [editing,setEditing]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState('');
+  const [form,setForm]=useState({payment:String(Number(p.monthly_mortgage_payment||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false});
+  useEffect(()=>setForm({payment:String(Number(p.monthly_mortgage_payment||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false}),[property.id,p.monthly_mortgage_payment,p.mortgage_principal_amount,p.mortgage_interest_amount,p.mortgage_escrow_amount,p.mortgage_recurring_enabled]);
+  const payment=Math.max(0,Number(form.payment||0)); const allocated=['principal','interest','escrow'].reduce((n,k)=>n+Math.max(0,Number((form as any)[k]||0)),0); const complete=payment>0&&Math.abs(payment-allocated)<0.01;
+  async function save(){setSaving(true);setError('');const patch={monthly_mortgage_payment:payment||0,mortgage_due_day:Math.min(28,Math.max(1,Number(form.dueDay||1))),mortgage_recurring_enabled:form.recurring,mortgage_principal_amount:Number(form.principal||0)||null,mortgage_interest_amount:Number(form.interest||0)||null,mortgage_escrow_amount:Number(form.escrow||0)||null};const r=await supabase.from('properties').update(patch).eq('id',property.id);setSaving(false);if(r.error){setError(r.error.message);return;}onUpdated(patch);setEditing(false);}
+  return <section className="card property-panel mortgage-overview-panel">
+    <div className="property-panel-head"><div><div className="eyebrow">MORTGAGE</div><h2>Mortgage payment</h2></div><button type="button" className="property-text-action" onClick={()=>setEditing(v=>!v)}>{editing?'Cancel':'Manage'}</button></div>
+    {!editing?<div className="mortgage-overview-summary"><div><span>Monthly payment</span><strong>{payment?formatCurrency(payment):'Not set'}</strong></div><div><span>Schedule</span><strong>{form.recurring?`Monthly · day ${form.dueDay}`:'Paused'}</strong></div><div><span>Payment split</span><strong>{complete?'Complete':'Needs setup'}</strong><small>{complete?`${formatCurrency(Number(form.principal||0))} principal · ${formatCurrency(Number(form.interest||0))} interest · ${formatCurrency(Number(form.escrow||0))} escrow`:'Add principal, interest and escrow so recurring payments post already reviewed.'}</small></div></div>:
+    <div className="mortgage-manage-form">
+      <div className="mortgage-manage-grid"><label>Monthly payment<input type="number" min="0" step="0.01" value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}/></label><label>Due day<input type="number" min="1" max="28" step="1" value={form.dueDay} onChange={e=>setForm({...form,dueDay:e.target.value})}/></label></div>
+      <div className="mortgage-split-title"><div><strong>Default payment split</strong><small>New recurring mortgage transactions inherit this breakdown.</small></div><span className={complete?'complete':''}>{formatCurrency(allocated)} / {formatCurrency(payment)}</span></div>
+      <div className="mortgage-manage-grid three"><label>Principal<input type="number" min="0" step="0.01" value={form.principal} onChange={e=>setForm({...form,principal:e.target.value})}/></label><label>Interest<input type="number" min="0" step="0.01" value={form.interest} onChange={e=>setForm({...form,interest:e.target.value})}/></label><label>Escrow<input type="number" min="0" step="0.01" value={form.escrow} onChange={e=>setForm({...form,escrow:e.target.value})}/></label></div>
+      <label className="mortgage-recurring-toggle"><input type="checkbox" checked={form.recurring} onChange={e=>setForm({...form,recurring:e.target.checked})}/><span><strong>Recurring monthly payment</strong><small>Create the mortgage transaction automatically each month.</small></span></label>
+      {error&&<div className="quick-add-error">{error}</div>}<div className="mortgage-manage-actions"><button type="button" className="quick-add-submit" disabled={saving} onClick={save}>{saving?'Saving…':'Save mortgage'}</button></div>
+    </div>}
+  </section>;
 }
 
 function Performance({transactions,years,propertyId}:{transactions:Tx[];years:number[];propertyId:string}){

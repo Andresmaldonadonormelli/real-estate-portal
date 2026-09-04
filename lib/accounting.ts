@@ -8,9 +8,7 @@ export const ACCOUNTING_CATEGORIES = [
   'Utilities',
   'Insurance',
   'Property Taxes',
-  'Mortgage Interest',
-  'Mortgage Principal',
-  'Mortgage Payment (Unsplit)',
+  'Mortgage Payment',
   'Capital Improvements / CapEx',
   'Legal & Professional',
   'Owner Distribution',
@@ -40,5 +38,5 @@ export function categoryKey(category: string) {
 }
 
 export function categoryNeedsReview(category: string) {
-  return ['review', 'mortgage'].includes(categoryKey(category));
+  return categoryKey(category) === 'review';
 }

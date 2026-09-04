@@ -18,7 +18,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [form,setForm]=useState({
     property_id:transaction?.property_id||properties[0]?.id||'', unit_id:transaction?.unit_id||'',
     transaction_date:transaction?.transaction_date||new Date().toISOString().slice(0,10), type:(transaction?.type||'expense') as TxType,
-    category:transaction?.category||'Needs Review', description:transaction?.description||'', payee_source:transaction?.payee_source||'',
+    category:(transaction?.category&&['Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal','Mortgage'].includes(transaction.category)?'Mortgage Payment':transaction?.category)||'Needs Review', description:transaction?.description||'', payee_source:transaction?.payee_source||'',
     amount:transaction?String(Math.abs(Number(transaction.amount||0))):'', needs_review:transaction?Boolean(transaction.needs_review):true,
   });
   const [receipt,setReceipt]=useState<File|null>(null);
@@ -32,13 +32,18 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
   const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
-  const recurringMortgage=Boolean(editing&&transaction?.source==='recurring'&&transaction?.category==='Mortgage Payment (Unsplit)');
+  const recurringMortgage=Boolean(editing&&transaction?.source==='recurring'&&['Mortgage Payment','Mortgage Payment (Unsplit)'].includes(transaction?.category||''));
+  const isMortgage=['Mortgage Payment','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(form.category);
+  const [mortgageSplit,setMortgageSplit]=useState({principal:String(Number((transaction as any)?.mortgage_principal_amount||0)||''),interest:String(Number((transaction as any)?.mortgage_interest_amount||0)||''),escrow:String(Number((transaction as any)?.mortgage_escrow_amount||0)||'')});
+  const mortgageAllocated=['principal','interest','escrow'].reduce((sum,key)=>sum+Math.max(0,Number((mortgageSplit as any)[key]||0)),0);
+  const mortgageAmount=Math.abs(Number(form.amount||0));
+  const mortgageSplitComplete=isMortgage&&mortgageAllocated>0&&Math.abs(mortgageAllocated-mortgageAmount)<0.01;
   const [recurringEnabled,setRecurringEnabled]=useState(()=>selectedProperty?(selectedProperty as any).mortgage_recurring_enabled!==false:true);
 
   useEffect(()=>{if(selectedProperty)setRecurringEnabled((selectedProperty as any).mortgage_recurring_enabled!==false)},[selectedProperty?.id]);
 
-  const reviewReason=form.category==='Mortgage Payment (Unsplit)'
-    ? 'Principal, interest and escrow have not been split. The payment itself can still be confirmed and marked reviewed.'
+  const reviewReason=isMortgage&&!mortgageSplitComplete
+    ? 'The mortgage payment is confirmed, but its principal, interest and escrow breakdown is incomplete. Complete the split below or mark it reviewed if you intentionally want to leave it unsplit.'
     : form.category==='Needs Review'
       ? 'Choose the correct accounting category before year-end reporting, or mark reviewed if this classification is intentional.'
       : 'This transaction was flagged for an owner accounting check. Review the category and supporting details, then mark it reviewed.';
@@ -65,7 +70,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
       let receiptPath=transaction?.receipt_path||null;
       if(receipt){const safe=receipt.name.replace(/[^a-zA-Z0-9._-]/g,'-');receiptPath=`${userId}/${crypto.randomUUID()}-${safe}`;const upload=await supabase.storage.from('transaction-receipts').upload(receiptPath,receipt,{upsert:false});if(upload.error)throw upload.error;}
       const entered=Math.abs(Number(form.amount||0));
-      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-entered:entered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:form.needs_review,receipt_path:receiptPath};
+      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:isMortgage?'Mortgage Payment':form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-entered:entered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:isMortgage&&mortgageSplitComplete?false:form.needs_review,receipt_path:receiptPath,mortgage_principal_amount:isMortgage?(Number(mortgageSplit.principal||0)||null):null,mortgage_interest_amount:isMortgage?(Number(mortgageSplit.interest||0)||null):null,mortgage_escrow_amount:isMortgage?(Number(mortgageSplit.escrow||0)||null):null};
       let transactionId=transaction?.id||'';
       if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
       else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
@@ -87,11 +92,20 @@ export default function AddTransactionModal({ userId, properties, units, transac
       <form onSubmit={submit} className="quick-add-form">
         <div className="quick-add-two"><label>Amount<input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label><label>Property<select required value={form.property_id} onChange={e=>{setForm({...form,property_id:e.target.value,unit_id:''});setLinkedDocumentIds([])}}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label></div>
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
-        <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>setForm({...form,category:e.target.value,needs_review:categoryNeedsReview(e.target.value)})}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>{const category=e.target.value;setForm({...form,category,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         <div className="quick-add-two"><label><span className="quick-add-label-title">Type</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select></label></div>
+        {isMortgage&&<div className="mortgage-split-box">
+          <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>Allocate this payment between principal, interest and escrow.</small></div><span className={mortgageSplitComplete?'complete':''}>{mortgageAllocated.toLocaleString(undefined,{style:'currency',currency:'USD'})} / {mortgageAmount.toLocaleString(undefined,{style:'currency',currency:'USD'})}</span></div>
+          <div className="mortgage-split-fields">
+            <label>Principal<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.principal} onChange={e=>setMortgageSplit({...mortgageSplit,principal:e.target.value})}/></label>
+            <label>Interest<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.interest} onChange={e=>setMortgageSplit({...mortgageSplit,interest:e.target.value})}/></label>
+            <label>Escrow<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.escrow} onChange={e=>setMortgageSplit({...mortgageSplit,escrow:e.target.value})}/></label>
+          </div>
+          <small className={mortgageSplitComplete?'mortgage-split-ok':'mortgage-split-note'}>{mortgageSplitComplete?'Fully allocated. This payment can leave the review queue.':mortgageAllocated>mortgageAmount?'Allocated amount is higher than the payment.':'Any unallocated amount can remain in Needs Review until you have the statement.'}</small>
+        </div>}
         {recurringMortgage&&<div style={{padding:'14px 15px',borderRadius:16,background:'var(--surface-subtle, rgba(127,127,127,.08))',display:'grid',gap:8}}>
           <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}>
-            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · 1st of each month{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · $${Number((selectedProperty as any).monthly_mortgage_payment).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:''}</small></div>
+            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · day {Number((selectedProperty as any)?.mortgage_due_day||1)}{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · $${Number((selectedProperty as any).monthly_mortgage_payment).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:''}</small></div>
             <button type="button" onClick={toggleRecurringMortgage} style={{border:0,borderRadius:999,padding:'7px 11px',background:'var(--surface-strong, rgba(127,127,127,.14))',color:'var(--text-primary)',fontWeight:650,cursor:'pointer'}}>{recurringEnabled?'Pause':'Resume'}</button>
           </div>
           <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>

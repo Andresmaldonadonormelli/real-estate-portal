@@ -59,9 +59,17 @@ export default function Dashboard() {
       const payment=Number(property.monthly_mortgage_payment||0); if(payment<=0) continue;
       const mortgageStart=(property as Property & {mortgage_start_date?:string|null}).mortgage_start_date;
       if(property.mortgage_recurring_enabled===false) continue;
-      if(mortgageStart && first < mortgageStart) continue;
-      const exists=txRows.some(tx=>tx.property_id===property.id&&['Mortgage','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(tx.category)&&tx.transaction_date.startsWith(month)&&['posted','declined'].includes(tx.status||'posted'));
-      if(!exists) inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:first,type:'expense',category:'Mortgage Payment (Unsplit)',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),needs_review:true,import_key:`recurring-mortgage:${property.id}:${month}`});
+      const dueDay=Math.min(28,Math.max(1,Number((property as any).mortgage_due_day||1))); const mortgageDate=`${month}-${String(dueDay).padStart(2,'0')}`;
+      if(mortgageStart && mortgageDate < mortgageStart) continue;
+      const exists=txRows.some(tx=>tx.property_id===property.id&&['Mortgage','Mortgage Payment','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(tx.category)&&tx.transaction_date.startsWith(month)&&['posted','declined'].includes(tx.status||'posted'));
+      if(!exists){
+        const principal=Math.max(0,Number((property as any).mortgage_principal_amount||0));
+        const interest=Math.max(0,Number((property as any).mortgage_interest_amount||0));
+        const escrow=Math.max(0,Number((property as any).mortgage_escrow_amount||0));
+        const allocated=principal+interest+escrow;
+        const splitComplete=allocated>0&&Math.abs(allocated-payment)<0.01;
+        inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:mortgageDate,type:'expense',category:'Mortgage Payment',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),needs_review:!splitComplete,mortgage_principal_amount:principal||null,mortgage_interest_amount:interest||null,mortgage_escrow_amount:escrow||null,import_key:`recurring-mortgage:${property.id}:${month}`});
+      }
     }
     if(!inserts.length) return;
     try {
