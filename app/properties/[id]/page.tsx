@@ -83,7 +83,7 @@ export default function PropertyWorkspacePage(){
     <header className="property-workspace-header">
       <div className="property-title-block">
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
-        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><div className="property-header-actions"><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link><button type="button" className="property-edit-inline" onClick={()=>setEditingProperty(true)}><PencilLine size={13}/> Edit property</button></div></div>
+        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><div className="property-header-actions"><button type="button" className="property-edit-inline" onClick={()=>setEditingProperty(true)}><PencilLine size={14}/> Edit property</button><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link></div></div>
       </div>
     </header>
 
@@ -103,14 +103,14 @@ function Overview({property,units,transactions,documents,occupied,expectedRent,m
     <div className="property-metric-strip overview-metric-strip">
       <Kpi label="Expected monthly rent" value={formatKpiCurrency(expectedRent)} sub="Occupied units"/>
       <Kpi label="YTD cash flow" value={formatKpiCurrency(metrics.cashFlow)} sub="After recorded expenses" tone={metrics.cashFlow>=0?'positive':'negative'}/>
-      <Kpi label="Mortgage balance" value={formatKpiCurrency(Number(property.mortgage_balance||0))} sub={property.monthly_mortgage_payment?`${formatCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
+      <Kpi label="Mortgage balance" value={(property as any).mortgage_enabled===false?'—':formatKpiCurrency(Number(property.mortgage_balance||0))} sub={(property as any).mortgage_enabled===false?'No mortgage':property.monthly_mortgage_payment?`${formatKpiCurrency(Number(property.monthly_mortgage_payment))}/mo`:'No monthly payment'}/>
       <Kpi label="Operating expense ratio" value={metrics.income>0?`${(metrics.operatingExpenses/metrics.income*100).toFixed(1)}%`:'—'} tone={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'negative':metrics.operatingExpenses/metrics.income>=0.55?'warning':'positive'):undefined} status={metrics.income>0?(metrics.operatingExpenses/metrics.income>=0.70?'High':metrics.operatingExpenses/metrics.income>=0.55?'Elevated':'Healthy'):undefined}/>
 
     </div>
     <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
     <div className="property-two-col">
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Rent roll</h2></div><button className="property-text-action" onClick={()=>{ const b=document.querySelector<HTMLButtonElement>('.property-subnav button:nth-child(4)'); b?.click(); }}>View units <ChevronRight size={15}/></button></div>
-        <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div><strong>{u.unit_number||'Unit'}</strong><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right"><strong>{formatCurrency(Number(u.current_rent||0))}</strong><span className={`status-pill ${u.occupied?'occupied':'vacant'}`}>{u.occupied?'Occupied':'Vacant'}</span></div></div>):<Empty text="No units yet."/>}</div>
+        <div className="property-list">{units.length?units.map(u=><div className="property-list-row" key={u.id}><div><strong>{u.unit_number||'Unit'}</strong><span>{u.tenant_name||'No tenant'} · {u.bedroom_count||0} bd / {u.bathroom_count||0} ba</span></div><div className="property-row-right"><strong>{formatKpiCurrency(Number(u.current_rent||0))}</strong><span className={`status-pill ${u.occupied?'occupied':'vacant'}`}>{u.occupied?'Occupied':'Vacant'}</span></div></div>):<Empty text="No units yet."/>}</div>
       </section>
       <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div>
         <div className="property-list">{transactions.slice(0,5).map(t=><TransactionRow key={t.id} tx={t}/>) }{!transactions.length&&<Empty text="No transactions yet."/>}</div>
@@ -126,8 +126,8 @@ function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(pat
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [editingProperty,setEditingProperty]=useState(false);
-  const [form,setForm]=useState({payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false});
-  useEffect(()=>setForm({payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false}),[property.id,p.monthly_mortgage_payment,p.mortgage_balance,p.mortgage_principal_amount,p.mortgage_interest_amount,p.mortgage_escrow_amount,p.mortgage_recurring_enabled]);
+  const [form,setForm]=useState({hasMortgage:p.mortgage_enabled!==false,payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false});
+  useEffect(()=>setForm({hasMortgage:p.mortgage_enabled!==false,payment:String(Number(p.monthly_mortgage_payment||0)||''),balance:String(Number(p.mortgage_balance||0)||''),dueDay:String(Number(p.mortgage_due_day||1)),principal:String(Number(p.mortgage_principal_amount||0)||''),interest:String(Number(p.mortgage_interest_amount||0)||''),escrow:String(Number(p.mortgage_escrow_amount||0)||''),recurring:p.mortgage_recurring_enabled!==false}),[property.id,p.mortgage_enabled,p.monthly_mortgage_payment,p.mortgage_balance,p.mortgage_principal_amount,p.mortgage_interest_amount,p.mortgage_escrow_amount,p.mortgage_recurring_enabled]);
   const payment=Math.max(0,Number(form.payment||0));
   const allocated=['principal','interest','escrow'].reduce((n,k)=>n+Math.max(0,Number((form as any)[k]||0)),0);
   const splitDifference=Math.abs(payment-allocated);
@@ -139,24 +139,27 @@ function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(pat
     // When the entered split is within two cents, use the split total as the exact
     // recurring payment so future mortgage transactions balance perfectly.
     const normalizedPayment=splitWithinRounding?Number(allocated.toFixed(2)):Number(payment.toFixed(2));
-    const patch={monthly_mortgage_payment:normalizedPayment||0,mortgage_balance:Number(form.balance||0)||0,mortgage_due_day:Math.min(28,Math.max(1,Number(form.dueDay||1))),mortgage_recurring_enabled:form.recurring,mortgage_principal_amount:Number(form.principal||0)||null,mortgage_interest_amount:Number(form.interest||0)||null,mortgage_escrow_amount:Number(form.escrow||0)||null};
+    const patch=form.hasMortgage?{mortgage_enabled:true,monthly_mortgage_payment:normalizedPayment||0,mortgage_balance:Number(form.balance||0)||0,mortgage_due_day:Math.min(28,Math.max(1,Number(form.dueDay||1))),mortgage_recurring_enabled:form.recurring,mortgage_principal_amount:Number(form.principal||0)||null,mortgage_interest_amount:Number(form.interest||0)||null,mortgage_escrow_amount:Number(form.escrow||0)||null}:{mortgage_enabled:false,monthly_mortgage_payment:0,mortgage_balance:0,mortgage_recurring_enabled:false,mortgage_principal_amount:null,mortgage_interest_amount:null,mortgage_escrow_amount:null};
     const r=await supabase.from('properties').update(patch).eq('id',property.id);
     setSaving(false);
     if(r.error){setError(r.error.message);return;}
-    if(splitWithinRounding&&normalizedPayment!==payment)setForm(prev=>({...prev,payment:normalizedPayment.toFixed(2)}));
+    if(form.hasMortgage&&splitWithinRounding&&normalizedPayment!==payment)setForm(prev=>({...prev,payment:normalizedPayment.toFixed(2)}));
     onUpdated(patch);setEditing(false);
   }
   return <section className={`card property-panel mortgage-overview-panel ${editing?'editing':'compact'}`}>
     <div className="property-panel-head"><div><div className="eyebrow">MORTGAGE</div><h2>Mortgage</h2></div>{editing&&<button type="button" className="property-secondary-action" onClick={()=>setEditing(false)}>Cancel</button>}</div>
     {!editing?<div className="mortgage-compact-status">
-      <div className="mortgage-compact-copy"><strong>{payment?`${formatCurrency(payment)}/mo`:'Mortgage not set'}</strong><span>{form.recurring?`Due day ${form.dueDay}`:'Recurring paused'}</span><span className={complete?'mortgage-status-ok':'mortgage-status-attention'}>{complete?'Split configured':'Split needs attention'}</span></div>
-      <button type="button" className="property-secondary-action mortgage-compact-manage" onClick={()=>setEditing(true)}>Manage</button>
+      <div className="mortgage-compact-copy"><strong>{!form.hasMortgage?'No mortgage':payment?`${formatKpiCurrency(payment)}/mo`:'Mortgage not set'}</strong>{form.hasMortgage&&<><span>{form.recurring?`Due day ${form.dueDay}`:'Recurring paused'}</span><span className={complete?'mortgage-status-ok':'mortgage-status-attention'}>{complete?'Split configured':'Split needs attention'}</span></>}</div>
+      <button type="button" className="property-secondary-action mortgage-compact-manage" onClick={()=>setEditing(true)}>{form.hasMortgage?'Manage':'Add mortgage'}</button>
     </div>:
     <div className="mortgage-manage-form">
+      <label className="mortgage-presence-toggle"><input type="checkbox" checked={form.hasMortgage} onChange={e=>setForm({...form,hasMortgage:e.target.checked})}/><span><strong>This property has a mortgage</strong><small>Turn this off for a cash-owned or paid-off property. You can add a mortgage later.</small></span></label>
+      {form.hasMortgage&&<>
       <div className="mortgage-manage-grid three"><label>Monthly payment<input type="number" min="0" step="0.01" value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}/></label><label>Current mortgage balance<input type="number" min="0" step="0.01" value={form.balance} onChange={e=>setForm({...form,balance:e.target.value})}/></label><label>Due day<input type="number" min="1" max="28" step="1" value={form.dueDay} onChange={e=>setForm({...form,dueDay:e.target.value})}/></label></div>
       <div className="mortgage-split-title"><div><strong>Default payment split</strong><small>New recurring mortgage transactions inherit this breakdown.</small></div><span className={complete?'complete':''}>{formatCurrency(allocated)} / {formatCurrency(payment)}</span></div>
       <div className="mortgage-manage-grid three"><label>Principal<input type="number" min="0" step="0.01" value={form.principal} onChange={e=>setForm({...form,principal:e.target.value})}/></label><label>Interest<input type="number" min="0" step="0.01" value={form.interest} onChange={e=>setForm({...form,interest:e.target.value})}/></label><label>Escrow<input type="number" min="0" step="0.01" value={form.escrow} onChange={e=>setForm({...form,escrow:e.target.value})}/></label></div>
       <label className="mortgage-recurring-toggle"><input type="checkbox" checked={form.recurring} onChange={e=>setForm({...form,recurring:e.target.checked})}/><span><strong>Recurring monthly payment</strong><small>Create the mortgage transaction automatically each month.</small></span></label>
+      </>}
       {error&&<div className="quick-add-error">{error}</div>}<div className="mortgage-manage-actions"><button type="button" className="quick-add-submit" disabled={saving} onClick={save}>{saving?'Saving…':'Save mortgage'}</button></div>
     </div>}
   </section>;
@@ -337,7 +340,7 @@ function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string
         <div className="compact-unit-detail unit-detail-expanded">
           <div className="unit-identity-block"><span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span><h3>{unit.unit_number||'Unit'}</h3><p>{unit.tenant_name||'No tenant assigned'}</p>{lease&&<div className={`lease-status-line ${lease.tone}`}><CalendarDays size={15}/><span>{lease.label}</span></div>}</div>
           <div className="compact-unit-stats unit-stats-five">
-            <div><span>Rent</span><strong>{formatCurrency(Number(unit.current_rent||0))}/mo</strong></div>
+            <div><span>Rent</span><strong>{formatKpiCurrency(Number(unit.current_rent||0))}/mo</strong></div>
             <div><span>Lease period</span><strong>{unit.lease_start_date&&unit.lease_end_date?`${shortDate(unit.lease_start_date)} – ${shortDate(unit.lease_end_date)}`:unit.occupied?'Not set':'—'}</strong></div>
             <div><span>Lease status</span><strong>{lease?.short||'—'}</strong></div>
             <div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>

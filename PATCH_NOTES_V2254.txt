@@ -1,0 +1,10 @@
+V2.2.54 — mortgage state + small UI polish
+
+- Unit rent display uses whole dollars (no cents).
+- Property header actions are Edit property, then View ledger, with matched typography/baseline.
+- Adds an explicit mortgage_enabled state. No-mortgage properties show “No mortgage”, suppress split warnings, and can add a mortgage later from Manage/Add mortgage.
+- Mortgage KPI shows — / No mortgage when mortgage is disabled.
+- Fixes mobile mortgage editor Cancel so it stays compact instead of full width.
+- Ledger Needs review control order is label, amber count badge, then switch.
+
+DATABASE: Run supabase/V2254_MORTGAGE_STATE.sql once before/with this patch.

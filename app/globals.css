@@ -4995,3 +4995,25 @@ button.ledger-month-head:focus:not(:focus-visible){
   .workspace-form-grid.two,.workspace-form-grid.three{grid-template-columns:1fr}
   .workspace-modal-footer{bottom:-22px;margin:6px -20px -22px;padding:14px 20px calc(18px + env(safe-area-inset-bottom));}
 }
+
+/* v2.2.54: mortgage state + header action + review control polish */
+.property-header-actions .property-edit-inline,
+.property-header-actions .property-ledger-action{
+  display:inline-flex!important;align-items:center!important;gap:6px!important;
+  margin:0!important;padding:0!important;border:0!important;background:transparent!important;
+  color:var(--text-secondary)!important;font-size:13px!important;line-height:20px!important;font-weight:600!important;
+  text-decoration:none!important;
+}
+.property-header-actions .property-edit-inline:hover,
+.property-header-actions .property-ledger-action:hover{color:var(--text-primary)!important}
+.mortgage-presence-toggle{display:flex;align-items:flex-start;gap:11px;padding:14px 0 16px;border-bottom:1px solid var(--border-subtle,var(--border-color));color:var(--text-primary)!important}
+.mortgage-presence-toggle input{width:19px;height:19px;margin-top:2px;flex:0 0 auto}
+.mortgage-presence-toggle span{display:grid;gap:3px}.mortgage-presence-toggle strong{font-size:14px}.mortgage-presence-toggle small{font-size:12px;font-weight:400;color:var(--text-secondary)}
+.ledger-review-toggle{gap:9px!important}
+.ledger-review-toggle .ledger-review-label{order:1}.ledger-review-toggle em{order:2}.ledger-review-toggle input{order:3}.ledger-review-toggle .ledger-review-switch{order:4}
+.ledger-review-toggle em{background:color-mix(in srgb,var(--category-review) 12%,transparent)!important;color:var(--category-review)!important;border:1px solid color-mix(in srgb,var(--category-review) 35%,transparent)!important}
+@media(max-width:760px){
+  .mortgage-overview-panel.editing .property-panel-head{align-items:flex-start!important}
+  .mortgage-overview-panel.editing .property-panel-head .property-secondary-action{width:auto!important;flex:0 0 auto!important;align-self:flex-start!important;height:38px!important;padding:0 14px!important}
+  .property-header-actions{align-items:center!important}
+}
