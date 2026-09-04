@@ -110,7 +110,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
         </div>}
-        {(form.needs_review||transaction?.needs_review)&&<div style={{padding:'14px 15px',borderRadius:16,background:'rgba(196,127,0,.09)',display:'grid',gap:8}}>
+        {editing&&(form.needs_review||transaction?.needs_review)&&<div style={{padding:'14px 15px',borderRadius:16,background:'rgba(196,127,0,.09)',display:'grid',gap:8}}>
           <div><strong style={{display:'block',fontSize:14}}>Why this needs review</strong><small style={{display:'block',marginTop:5,color:'var(--text-secondary)',lineHeight:1.45}}>{reviewReason}</small></div>
           {form.needs_review&&<button type="button" onClick={()=>setForm({...form,needs_review:false})} style={{justifySelf:'start',border:0,borderRadius:999,padding:'8px 12px',background:'var(--text-primary)',color:'var(--bg-primary)',fontWeight:700,cursor:'pointer'}}>Mark reviewed</button>}
           {!form.needs_review&&<small style={{color:'var(--text-secondary)'}}>Marked reviewed. Save changes to keep it cleared.</small>}

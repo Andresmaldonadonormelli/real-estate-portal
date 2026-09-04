@@ -4526,3 +4526,131 @@ button.ledger-month-head:focus:not(:focus-visible){
 .mortgage-recurring-toggle span small{margin-top:3px;color:var(--text-secondary)}
 .mortgage-manage-actions{display:flex;justify-content:flex-end}
 @media(max-width:760px){.mortgage-overview-summary{grid-template-columns:1fr}.mortgage-overview-summary>div{padding:14px 0;border-left:0;border-top:1px solid var(--border-subtle)}.mortgage-overview-summary>div:first-child{border-top:0;padding-top:0}.mortgage-manage-grid,.mortgage-manage-grid.three,.mortgage-split-fields{grid-template-columns:1fr}.mortgage-split-title,.mortgage-split-head{align-items:flex-start;flex-direction:column;gap:6px}}
+
+/* v2.2.48 — mortgage, transaction footer, utilities + action-item polish */
+
+/* Mortgage editing should read as an actual form, even on very quiet surfaces. */
+.mortgage-manage-form{
+  background:var(--card-bg,var(--bg-secondary))!important;
+  border-top:1px solid var(--border-color)!important;
+  border-radius:0!important;
+  padding:22px 0 0!important;
+  margin-top:2px!important;
+}
+.mortgage-manage-grid input,
+.mortgage-split-fields input{
+  border:1px solid var(--border-color)!important;
+  background:var(--bg-primary)!important;
+  box-shadow:0 0 0 1px transparent!important;
+}
+.mortgage-manage-grid input:focus,
+.mortgage-split-fields input:focus{
+  outline:none!important;
+  border-color:var(--text-secondary)!important;
+  box-shadow:0 0 0 1px var(--text-secondary)!important;
+}
+.mortgage-split-title{
+  border-top:1px solid var(--border-color)!important;
+  padding-top:18px!important;
+  margin-top:2px!important;
+}
+.mortgage-recurring-toggle{
+  border-top:1px solid var(--border-color)!important;
+  padding-top:18px!important;
+  margin-top:2px!important;
+}
+.mortgage-manage-actions{
+  border-top:1px solid var(--border-color)!important;
+  padding-top:18px!important;
+  margin-top:2px!important;
+}
+.property-panel-head .property-secondary-action{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:40px!important;
+  padding:9px 15px!important;
+  border:1px solid var(--border-color)!important;
+  border-radius:13px!important;
+  background:var(--card-bg,var(--bg-secondary))!important;
+  color:var(--text-primary)!important;
+  font-weight:650!important;
+  text-decoration:none!important;
+  box-shadow:none!important;
+}
+.property-panel-head .property-secondary-action:hover{
+  background:var(--surface-hover)!important;
+  border-color:var(--border-color)!important;
+  box-shadow:none!important;
+}
+
+/* Transaction actions sit on an opaque shelf, never over scrolling content. */
+.quick-add-footer{
+  position:sticky!important;
+  bottom:0!important;
+  z-index:20!important;
+  background:var(--card-bg,var(--bg-secondary))!important;
+  margin-top:14px!important;
+  padding:14px 0 max(14px,env(safe-area-inset-bottom))!important;
+  box-shadow:0 -14px 22px var(--card-bg,var(--bg-secondary))!important;
+}
+[data-theme="light"] .quick-add-footer{background:#fff!important;box-shadow:0 -14px 22px #fff!important;}
+[data-theme="dark"] .quick-add-footer{background:var(--card-bg,var(--bg-secondary))!important;}
+@media(max-width:767px){
+  .quick-add-form{padding-bottom:0!important;}
+  .quick-add-footer{
+    bottom:0!important;
+    margin-top:16px!important;
+    padding:14px 0 max(18px,env(safe-area-inset-bottom))!important;
+  }
+}
+
+/* Utility cards keep one stable desktop width and the icon belongs to the title row. */
+.utility-grid{
+  grid-template-columns:repeat(auto-fill,minmax(300px,340px))!important;
+  justify-content:start!important;
+  align-items:stretch!important;
+}
+.utility-directory-card{
+  width:100%!important;
+  max-width:340px!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto!important;
+  align-items:start!important;
+  column-gap:12px!important;
+  row-gap:10px!important;
+}
+.utility-card-icon{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:34px!important;
+  height:34px!important;
+  border-radius:10px!important;
+  align-self:start!important;
+}
+.utility-card-copy{
+  grid-column:1!important;
+  grid-row:1 / span 2!important;
+  padding-left:48px!important;
+  min-width:0!important;
+}
+.utility-card-chevron{
+  grid-column:2!important;
+  grid-row:1 / span 2!important;
+  align-self:center!important;
+}
+@media(max-width:760px){
+  .utility-grid{grid-template-columns:1fr!important;}
+  .utility-directory-card{max-width:none!important;}
+}
+
+/* Action Items uses surface separation only, no card outlines. */
+.actions-page-item,
+.actions-page-item:hover,
+.actions-page-item:focus,
+.actions-page-item:active{
+  border:0!important;
+  box-shadow:none!important;
+}
+.actions-page-item{background:var(--card-bg,var(--bg-secondary))!important;}
+.actions-page-item:hover{background:var(--surface-hover)!important;}

@@ -1,0 +1,8 @@
+v2.2.48 UI polish
+- Mortgage Manage form restores visible field outlines and section dividers.
+- Mortgage Manage uses the same outlined secondary button treatment as Edit units.
+- Transaction footer is an opaque sticky action shelf so content cannot show behind CTAs.
+- Add Transaction no longer shows the review explanation/action before a transaction exists.
+- Utility cards use stable desktop widths and align icons with utility names.
+- Action Items cards use surface separation without outlines.
+No SQL changes.
