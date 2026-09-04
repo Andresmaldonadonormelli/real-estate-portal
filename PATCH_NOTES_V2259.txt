@@ -1,0 +1,6 @@
+RE Portal v2.2.59 — Improve scenario progress bar fix
+
+- Fixes the Build a better scenario summary bar moving backwards.
+- The fill now grows as projected cash flow improves.
+- The scale is based on the maximum improvement available from the four scenario levers, so the bar remains meaningful instead of simply jumping to 100%.
+- No database or Supabase changes.

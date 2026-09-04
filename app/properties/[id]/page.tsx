@@ -335,6 +335,19 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const suggestedGain=occupiedUnits.length*suggestedRent + expectedRent*Math.max(0,currentMgmt-suggestedMgmt)/100 + maintenanceMonthly*suggestedMaintenance/100 + otherOperatingMonthly*suggestedOther/100;
   const suggestedProjected=currentMonthly+suggestedGain;
 
+  // Scenario bar visualizes progress from the current run rate toward the
+  // best-case scenario available from the four controls. It must grow as
+  // cash flow improves, rather than shrinking as the projected value rises.
+  const maxScenarioGain=
+    occupiedUnits.length*250 +
+    expectedRent*Math.max(0,currentMgmt)/100 +
+    maintenanceMonthly*.50 +
+    otherOperatingMonthly*.30;
+  const scenarioProgress=maxScenarioGain>0
+    ? Math.max(0,Math.min(1,(projected-currentMonthly)/maxScenarioGain))
+    : 0;
+  const projectionFillPct=16 + scenarioProgress*84;
+
   const opportunities=[
     maintenanceMonthly>0?{key:'maintenance',title:'Reduce recurring maintenance',detail:`${formatKpiCurrency(maintenanceYtd)} recorded YTD`,potential:maintenanceMonthly*.20,status:'Available now',icon:<Wrench size={18}/>,tone:'maintenance'}:null,
     currentMgmt>0&&expectedRent>0?{key:'management',title:'Review management cost',detail:`Current rate ${currentMgmt.toFixed(currentMgmt%1?1:0)}% of collected rent`,potential:expectedRent*.01,status:'Investigate',icon:<ClipboardCheck size={18}/>,tone:'management'}:null,
@@ -360,7 +373,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         <ImproveLever label="Maintenance" displayValue={maintenanceReduction?`−${maintenanceReduction}%`:'Current run rate'} meta={maintenanceMonthly?`${formatKpiCurrency(maintenanceMonthly)}/mo YTD average`:'No maintenance recorded YTD'} min={0} max={50} step={5} rangeValue={maintenanceReduction} onChange={setMaintenanceReduction} status="Available now" disabled={!maintenanceMonthly}/>
         <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
       </div>
-      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${Math.max(4,Math.min(100,projected>0?currentMonthly/projected*100:4))}%`}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
+      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${projectionFillPct}%`}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
       <div className="improve-impact-strip">
         <div><span>Cash flow</span><strong>{formatKpiCurrency(currentMonthly)} <small>→</small> {formatKpiCurrency(projected)}/mo</strong></div>
         <div><span>NOI</span><strong>{formatKpiCurrency(metrics.noi/monthsElapsed)} <small>→</small> {formatKpiCurrency(projectedMonthlyNoi)}/mo</strong></div>
