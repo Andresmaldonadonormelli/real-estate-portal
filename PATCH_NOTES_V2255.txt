@@ -1,0 +1,12 @@
+RE Portal v2.2.55 — Units directory redesign
+
+- Shows all units at once; removes Unit #1 / Unit #2 tab switching.
+- Each unit has its own Edit unit action.
+- Replaces small lease KPI boxes with a readable lease summary row.
+- Lease dates display as full readable dates with a clear remaining/expiry state.
+- Normal healthy lease status stays neutral; warning/danger color is reserved for expiring/expired leases.
+- Lease document state is visually distinct: uploaded leases show an explicit Uploaded badge and View lease action; missing leases show Upload lease.
+- Rent / layout / size remain compact facts.
+- Mobile reflows cleanly without hiding a unit.
+
+No SQL changes.

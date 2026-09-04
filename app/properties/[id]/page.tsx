@@ -326,31 +326,56 @@ function ImproveLever({label,displayValue,meta,min,max,step,rangeValue,onChange,
 function ImprovePathStep({number,title,impact,note}:{number:string;title:string;impact:number;note:string}){return <div className="improve-path-step"><span className="improve-step-number">{number}</span><div><strong>{title}</strong><p>{note}</p></div><b>+{formatKpiCurrency(impact)}<small>/mo</small></b></div>}
 
 function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string;onUnitsUpdated:(units:Unit[])=>void}){
-  const [selected,setSelected]=useState(units[0]?.id||'');
-  const [editing,setEditing]=useState(false);
-  useEffect(()=>{ if(!units.some(u=>u.id===selected)) setSelected(units[0]?.id||''); },[units,selected]);
-  const unit=(units.find(u=>u.id===selected)||units[0]) as any;
-  const lease=unit?leaseStatus(unit.lease_start_date,unit.lease_end_date,unit.occupied):null;
-  const handleSaved=(patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unit.id?({...u,...patch} as Unit):u)); setEditing(false); };
+  const [editingUnitId,setEditingUnitId]=useState<string|null>(null);
+  const editingUnit=(units.find(u=>u.id===editingUnitId)||null) as any;
+  const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
   return <>
-    <section className="card property-panel property-tab-panel compact-units-panel">
-      <div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div><button type="button" className="property-secondary-action" onClick={()=>setEditing(true)}>Edit unit</button></div>
-      {!unit?<Empty text="No units yet."/>:<>
-        <div className="property-unit-tabs">{units.map(u=><button type="button" key={u.id} className={u.id===unit.id?'active':''} onClick={()=>setSelected(u.id)}>{u.unit_number||'Unit'}</button>)}</div>
-        <div className="compact-unit-detail unit-detail-expanded">
-          <div className="unit-identity-block"><span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span><h3>{unit.unit_number||'Unit'}</h3><p>{unit.tenant_name||'No tenant assigned'}</p>{lease&&<div className={`lease-status-line ${lease.tone}`}><CalendarDays size={15}/><span>{lease.label}</span></div>}</div>
-          <div className="compact-unit-stats unit-stats-five">
-            <div><span>Rent</span><strong>{formatKpiCurrency(Number(unit.current_rent||0))}/mo</strong></div>
-            <div><span>Lease period</span><strong>{unit.lease_start_date&&unit.lease_end_date?`${shortDate(unit.lease_start_date)} – ${shortDate(unit.lease_end_date)}`:unit.occupied?'Not set':'—'}</strong></div>
-            <div><span>Lease status</span><strong>{lease?.short||'—'}</strong></div>
-            <div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>
-            <div><span>Size</span><strong>{unit.sqft||0} sqft</strong></div>
-          </div>
-        </div>
-        <div className="unit-lease-row"><div><FileText size={18}/><span><strong>Lease document</strong><small>{unit.lease_document_path?'Lease uploaded':'No lease uploaded'}</small></span></div>{unit.lease_document_path?<LeaseViewButton path={unit.lease_document_path}/>:<button type="button" className="property-text-action" onClick={()=>setEditing(true)}>Upload lease <ChevronRight size={15}/></button>}</div>
-      </>}
+    <section className="card property-panel property-tab-panel units-directory-panel">
+      <div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div></div>
+      {!units.length?<Empty text="No units yet."/>:<div className="units-directory-list">
+        {units.map((rawUnit,index)=>{
+          const unit=rawUnit as any;
+          const lease=leaseStatus(unit.lease_start_date,unit.lease_end_date,unit.occupied);
+          const hasLease=Boolean(unit.lease_document_path);
+          const hasLeaseDates=Boolean(unit.lease_start_date&&unit.lease_end_date);
+          return <article className="unit-directory-item" key={unit.id}>
+            <div className="unit-directory-head">
+              <div className="unit-directory-identity">
+                <span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span>
+                <h3>{unit.unit_number||`Unit ${index+1}`}</h3>
+                <p>{unit.tenant_name||'No tenant assigned'}</p>
+              </div>
+              <button type="button" className="property-secondary-action unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit unit</button>
+            </div>
+
+            <div className="unit-core-facts">
+              <div><span>Rent</span><strong>{formatKpiCurrency(Number(unit.current_rent||0))}/mo</strong></div>
+              <div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>
+              <div><span>Size</span><strong>{Number(unit.sqft||0).toLocaleString()} sqft</strong></div>
+            </div>
+
+            <div className={`unit-lease-summary ${lease.tone}`}>
+              <div className="unit-lease-summary-icon"><CalendarDays size={18}/></div>
+              <div className="unit-lease-summary-copy">
+                <span>Lease</span>
+                <strong>{hasLeaseDates?`${longDate(unit.lease_start_date)} → ${longDate(unit.lease_end_date)}`:unit.occupied?'Lease dates not set':'No active lease'}</strong>
+                <small>{lease.label}</small>
+              </div>
+              {unit.occupied&&lease.short&&lease.short!=='Not set'&&lease.short!=='Vacant'?<span className={`lease-state-badge ${lease.tone}`}>{lease.short}</span>:null}
+            </div>
+
+            <div className={`unit-document-state ${hasLease?'uploaded':'missing'}`}>
+              <div className="unit-document-state-main">
+                <div className="unit-document-icon"><FileText size={18}/></div>
+                <div><span>Lease document</span><strong>{hasLease?'Lease uploaded':'No lease uploaded'}</strong><small>{hasLease?'Signed lease is attached to this unit.':'Add the signed lease so it stays with this tenant record.'}</small></div>
+              </div>
+              <div className="unit-document-actions">{hasLease?<><span className="document-uploaded-badge">✓ Uploaded</span><LeaseViewButton path={unit.lease_document_path}/></>:<button type="button" className="property-secondary-action" onClick={()=>setEditingUnitId(unit.id)}>Upload lease</button>}</div>
+            </div>
+          </article>;
+        })}
+      </div>}
     </section>
-    {editing&&unit&&<UnitEditModal unit={unit} propertyId={propertyId} onClose={()=>setEditing(false)} onSaved={handleSaved}/>} 
+    {editingUnit&&<UnitEditModal unit={editingUnit} propertyId={propertyId} onClose={()=>setEditingUnitId(null)} onSaved={(patch)=>handleSaved(editingUnit.id,patch)}/>}
   </>;
 }
 
@@ -373,6 +398,7 @@ function LeaseViewButton({path}:{path:string}){const [opening,setOpening]=useSta
 
 function leaseStatus(start?:string|null,end?:string|null,occupied?:boolean){if(!occupied)return{label:'Vacant',short:'Vacant',tone:'neutral'};if(!end)return{label:'Lease dates not set',short:'Not set',tone:'neutral'};const today=new Date();today.setHours(0,0,0,0);const endDate=new Date(`${end.slice(0,10)}T12:00:00`);const days=Math.ceil((endDate.getTime()-today.getTime())/86400000);if(days<0)return{label:`Lease expired ${Math.abs(days)} days ago`,short:'Expired',tone:'danger'};if(days===0)return{label:'Lease ends today',short:'Ends today',tone:'warning'};if(days<=60)return{label:`Lease ends in ${days} days`,short:`${days} days left`,tone:'warning'};return{label:`${days} days remaining on lease`,short:`${days} days left`,tone:'good'};}
 function shortDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
+function longDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
 function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
 
