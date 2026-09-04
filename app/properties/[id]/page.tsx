@@ -195,6 +195,15 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const maintenanceGain=maintenanceMonthly*maintenanceReduction/100;
   const otherGain=otherOperatingMonthly*otherReduction/100;
   const projected=currentMonthly+rentGain+managementGain+maintenanceGain+otherGain;
+  const currentMonthlyIncome=metrics.income/monthsElapsed;
+  const currentMonthlyOperatingExpenses=metrics.operatingExpenses/monthsElapsed;
+  const projectedMonthlyIncome=currentMonthlyIncome+rentGain;
+  const projectedMonthlyOperatingExpenses=Math.max(0,currentMonthlyOperatingExpenses-managementGain-maintenanceGain-otherGain);
+  const projectedMonthlyNoi=projectedMonthlyIncome-projectedMonthlyOperatingExpenses;
+  const projectedExpenseRatio=projectedMonthlyIncome>0?projectedMonthlyOperatingExpenses/projectedMonthlyIncome:0;
+  const currentExpenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
+  const monthlyDebtService=Math.max(0,Number(property.monthly_mortgage_payment||0));
+  const projectedDscr=monthlyDebtService>0?projectedMonthlyNoi/monthlyDebtService:null;
 
   const suggestedRent=occupiedUnits.length?50:0;
   const suggestedMgmt=currentMgmt>6?Math.max(0,currentMgmt-1):currentMgmt;
@@ -216,12 +225,12 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
       <div className="improve-hero-metrics">
         <div><span>Current monthly cash flow</span><strong className={currentMonthly>=0?'amount-positive':'amount-negative'}>{formatKpiCurrency(currentMonthly)}</strong><small>YTD monthly average</small></div>
         <div><span>Scenario cash flow</span><strong className={projected>=currentMonthly?'amount-positive':'amount-negative'}>{formatKpiCurrency(projected)}</strong><small>Based on your changes</small></div>
-        <div><span>Improvement</span><strong className={projected-currentMonthly>=0?'amount-positive':'amount-negative'}>{projected-currentMonthly>=0?'+':''}{formatKpiCurrency(projected-currentMonthly)}</strong><small>per month</small></div>
+        <div><span>Operating expense ratio</span><strong className={projectedExpenseRatio<=currentExpenseRatio?'amount-positive':''}>{projectedMonthlyIncome>0?`${(projectedExpenseRatio*100).toFixed(1)}%`:'—'}</strong><small>{metrics.income>0?`${(currentExpenseRatio*100).toFixed(1)}% current`:'No income recorded'}</small></div>
       </div>
     </section>
 
     <section className="improve-planner">
-      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div><div className="improve-live-result"><span>Projected cash flow</span><strong>{formatKpiCurrency(projected)}<small>/mo</small></strong></div></div>
+      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div></div>
       <div className="improve-levers">
         <ImproveLever label="Rent at next renewal" displayValue={rentIncrease?`+${formatKpiCurrency(rentIncrease)} / unit`:'No change'} meta={occupiedUnits.length?`${occupiedUnits.length} occupied ${occupiedUnits.length===1?'unit':'units'} · locked until renewal`:'No occupied units'} min={0} max={250} step={25} rangeValue={rentIncrease} onChange={setRentIncrease} status="At renewal"/>
         <ImproveLever label="Management fee" displayValue={`${managementTarget.toFixed(managementTarget%1?1:0)}%`} meta={currentMgmt?`Current ${currentMgmt.toFixed(currentMgmt%1?1:0)}% · scenario savings ${formatKpiCurrency(managementGain)}/mo`:'No management fee recorded'} min={0} max={Math.max(12,currentMgmt)} step={0.5} rangeValue={managementTarget} onChange={setManagementTarget} status="Investigate" disabled={!currentMgmt}/>
@@ -229,7 +238,12 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
       </div>
       <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${Math.max(4,Math.min(100,projected>0?currentMonthly/projected*100:4))}%`}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
-      <div className={`improve-gap-message ${projected>currentMonthly?'reached':''}`}>{projected>currentMonthly?<><TrendingUp size={17}/><span>Your scenario improves cash flow by <strong>{formatKpiCurrency(projected-currentMonthly)}/mo</strong>.</span></>:<><Gauge size={17}/><span>Adjust a lever above to model a stronger monthly cash flow.</span></>}</div>
+      <div className="improve-impact-strip">
+        <div><span>Cash flow</span><strong>{formatKpiCurrency(currentMonthly)} <small>→</small> {formatKpiCurrency(projected)}/mo</strong></div>
+        <div><span>NOI</span><strong>{formatKpiCurrency(metrics.noi/monthsElapsed)} <small>→</small> {formatKpiCurrency(projectedMonthlyNoi)}/mo</strong></div>
+        <div><span>OpEx ratio</span><strong>{metrics.income>0?`${(currentExpenseRatio*100).toFixed(1)}%`:'—'} <small>→</small> {projectedMonthlyIncome>0?`${(projectedExpenseRatio*100).toFixed(1)}%`:'—'}</strong></div>
+        <div><span>DSCR</span><strong>{projectedDscr===null?'—':`${projectedDscr.toFixed(2)}×`}</strong><small>{projectedDscr===null?'No debt service recorded':'Scenario coverage'}</small></div>
+      </div>
     </section>
 
     <section className="improve-opportunities-section">

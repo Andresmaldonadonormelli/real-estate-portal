@@ -1,0 +1,6 @@
+V2.2.43 — Scenario intelligence cleanup
+- Removes repeated Projected cash flow from the What If header.
+- Replaces repeated Improvement hero metric with Operating expense ratio.
+- Replaces repeated improvement sentence with a compact impact strip: Cash flow, NOI, OpEx ratio, DSCR.
+- DSCR only calculates when a monthly mortgage/debt-service payment is recorded; otherwise shows No debt service recorded.
+- No SQL changes.

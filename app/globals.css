@@ -4412,3 +4412,14 @@ button.ledger-month-head:focus:not(:focus-visible){
   border:1px solid rgba(255,255,255,.08)!important;
   box-shadow:0 2px 8px rgba(0,0,0,.5)!important;
 }
+
+/* v2.2.43 Improve scenario impact strip */
+.improve-impact-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:18px;padding-top:20px;border-top:1px solid var(--border-subtle)}
+.improve-impact-strip>div{min-width:0;padding:0 20px;border-left:1px solid var(--border-subtle)}
+.improve-impact-strip>div:first-child{padding-left:0;border-left:0}
+.improve-impact-strip>div:last-child{padding-right:0}
+.improve-impact-strip span{display:block;color:var(--text-secondary);font-size:12px;font-weight:600;margin-bottom:6px}
+.improve-impact-strip strong{display:block;color:var(--text-primary);font-size:18px;line-height:1.25;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.improve-impact-strip strong small{display:inline;color:var(--text-secondary);font-size:13px;font-weight:600;margin:0 3px}
+.improve-impact-strip>div>small{display:block;color:var(--text-secondary);font-size:11px;margin-top:5px}
+@media(max-width:760px){.improve-impact-strip{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:18px}.improve-impact-strip>div{padding:0 12px}.improve-impact-strip>div:nth-child(odd){padding-left:0;border-left:0}.improve-impact-strip strong{font-size:16px;white-space:normal}}
