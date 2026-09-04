@@ -1,0 +1,5 @@
+v2.2.40a build fix
+
+- Fixes TypeScript CSSProperties error on Improve range inputs.
+- Applies the custom range CSS variable style object directly instead of assigning it to background.
+- No SQL changes.
