@@ -67,7 +67,7 @@ export default function Dashboard() {
         const interest=Math.max(0,Number((property as any).mortgage_interest_amount||0));
         const escrow=Math.max(0,Number((property as any).mortgage_escrow_amount||0));
         const allocated=principal+interest+escrow;
-        const splitComplete=allocated>0&&Math.abs(allocated-payment)<0.01;
+        const splitComplete=allocated>0&&Math.abs(allocated-payment)<=0.020001;
         inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:mortgageDate,type:'expense',category:'Mortgage Payment',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),needs_review:!splitComplete,mortgage_principal_amount:principal||null,mortgage_interest_amount:interest||null,mortgage_escrow_amount:escrow||null,import_key:`recurring-mortgage:${property.id}:${month}`});
       }
     }

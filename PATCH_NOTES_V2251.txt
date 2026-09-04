@@ -1,0 +1,10 @@
+v2.2.51 — compact mortgage workflow
+
+- Shrinks the Overview mortgage card into a compact status row instead of duplicating the mortgage-balance KPI.
+- Shows monthly payment, due day, split status, and a small Manage action.
+- New recurring mortgage transactions continue to inherit the property's default Principal / Interest / Escrow split.
+- Existing recurring mortgage transactions with no saved split automatically prefill from the property mortgage setup when opened.
+- Adds “Use mortgage default” inside mortgage transactions for a one-click reset to the property split.
+- Treats allocations within ±2 cents as complete and normalizes the saved transaction amount to the exact allocated total.
+- A complete split saves with Needs Review cleared.
+- No SQL changes.

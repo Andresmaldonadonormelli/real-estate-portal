@@ -37,10 +37,33 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [mortgageSplit,setMortgageSplit]=useState({principal:String(Number((transaction as any)?.mortgage_principal_amount||0)||''),interest:String(Number((transaction as any)?.mortgage_interest_amount||0)||''),escrow:String(Number((transaction as any)?.mortgage_escrow_amount||0)||'')});
   const mortgageAllocated=['principal','interest','escrow'].reduce((sum,key)=>sum+Math.max(0,Number((mortgageSplit as any)[key]||0)),0);
   const mortgageAmount=Math.abs(Number(form.amount||0));
-  const mortgageSplitComplete=isMortgage&&mortgageAllocated>0&&Math.abs(mortgageAllocated-mortgageAmount)<0.01;
+  const mortgageSplitDifference=Math.abs(mortgageAllocated-mortgageAmount);
+  const mortgageSplitComplete=isMortgage&&mortgageAllocated>0&&mortgageSplitDifference<=0.020001;
   const [recurringEnabled,setRecurringEnabled]=useState(()=>selectedProperty?(selectedProperty as any).mortgage_recurring_enabled!==false:true);
+  const propertyDefaultSplit=useMemo(()=>({
+    principal:Math.max(0,Number((selectedProperty as any)?.mortgage_principal_amount||0)),
+    interest:Math.max(0,Number((selectedProperty as any)?.mortgage_interest_amount||0)),
+    escrow:Math.max(0,Number((selectedProperty as any)?.mortgage_escrow_amount||0)),
+  }),[selectedProperty]);
+  const propertyDefaultAllocated=propertyDefaultSplit.principal+propertyDefaultSplit.interest+propertyDefaultSplit.escrow;
+  const propertyDefaultAvailable=propertyDefaultAllocated>0;
+  function applyMortgageDefault(){
+    if(!propertyDefaultAvailable)return;
+    setMortgageSplit({principal:String(propertyDefaultSplit.principal||''),interest:String(propertyDefaultSplit.interest||''),escrow:String(propertyDefaultSplit.escrow||'')});
+    const exact=Number(propertyDefaultAllocated.toFixed(2));
+    if(exact>0)setForm(prev=>({...prev,amount:exact.toFixed(2),needs_review:false}));
+  }
 
   useEffect(()=>{if(selectedProperty)setRecurringEnabled((selectedProperty as any).mortgage_recurring_enabled!==false)},[selectedProperty?.id]);
+  useEffect(()=>{
+    if(!isMortgage||!propertyDefaultAvailable)return;
+    const txHasSplit=Number((transaction as any)?.mortgage_principal_amount||0)+Number((transaction as any)?.mortgage_interest_amount||0)+Number((transaction as any)?.mortgage_escrow_amount||0)>0;
+    if(editing&&recurringMortgage&&!txHasSplit){
+      setMortgageSplit({principal:String(propertyDefaultSplit.principal||''),interest:String(propertyDefaultSplit.interest||''),escrow:String(propertyDefaultSplit.escrow||'')});
+      const exact=Number(propertyDefaultAllocated.toFixed(2));
+      if(exact>0)setForm(prev=>({...prev,amount:exact.toFixed(2),needs_review:false}));
+    }
+  },[editing,recurringMortgage,isMortgage,propertyDefaultAvailable,propertyDefaultAllocated,propertyDefaultSplit.principal,propertyDefaultSplit.interest,propertyDefaultSplit.escrow,transaction]);
 
   const reviewReason=isMortgage&&!mortgageSplitComplete
     ? 'The mortgage payment is confirmed, but its principal, interest and escrow breakdown is incomplete. Complete the split below or mark it reviewed if you intentionally want to leave it unsplit.'
@@ -70,7 +93,8 @@ export default function AddTransactionModal({ userId, properties, units, transac
       let receiptPath=transaction?.receipt_path||null;
       if(receipt){const safe=receipt.name.replace(/[^a-zA-Z0-9._-]/g,'-');receiptPath=`${userId}/${crypto.randomUUID()}-${safe}`;const upload=await supabase.storage.from('transaction-receipts').upload(receiptPath,receipt,{upsert:false});if(upload.error)throw upload.error;}
       const entered=Math.abs(Number(form.amount||0));
-      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:isMortgage?'Mortgage Payment':form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-entered:entered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:isMortgage&&mortgageSplitComplete?false:form.needs_review,receipt_path:receiptPath,mortgage_principal_amount:isMortgage?(Number(mortgageSplit.principal||0)||null):null,mortgage_interest_amount:isMortgage?(Number(mortgageSplit.interest||0)||null):null,mortgage_escrow_amount:isMortgage?(Number(mortgageSplit.escrow||0)||null):null};
+      const normalizedEntered=isMortgage&&mortgageSplitComplete?Number(mortgageAllocated.toFixed(2)):entered;
+      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:isMortgage?'Mortgage Payment':form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-normalizedEntered:normalizedEntered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:isMortgage&&mortgageSplitComplete?false:form.needs_review,receipt_path:receiptPath,mortgage_principal_amount:isMortgage?(Number(mortgageSplit.principal||0)||null):null,mortgage_interest_amount:isMortgage?(Number(mortgageSplit.interest||0)||null):null,mortgage_escrow_amount:isMortgage?(Number(mortgageSplit.escrow||0)||null):null};
       let transactionId=transaction?.id||'';
       if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
       else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
@@ -95,13 +119,13 @@ export default function AddTransactionModal({ userId, properties, units, transac
         <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>{const category=e.target.value;setForm({...form,category,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         <div className="quick-add-two"><label><span className="quick-add-label-title">Type</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select></label></div>
         {isMortgage&&<div className="mortgage-split-box">
-          <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>Allocate this payment between principal, interest and escrow.</small></div><span className={mortgageSplitComplete?'complete':''}>{mortgageAllocated.toLocaleString(undefined,{style:'currency',currency:'USD'})} / {mortgageAmount.toLocaleString(undefined,{style:'currency',currency:'USD'})}</span></div>
+          <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{mortgageAllocated.toLocaleString(undefined,{style:'currency',currency:'USD'})} / {mortgageAmount.toLocaleString(undefined,{style:'currency',currency:'USD'})}</span></div></div>
           <div className="mortgage-split-fields">
             <label>Principal<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.principal} onChange={e=>setMortgageSplit({...mortgageSplit,principal:e.target.value})}/></label>
             <label>Interest<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.interest} onChange={e=>setMortgageSplit({...mortgageSplit,interest:e.target.value})}/></label>
             <label>Escrow<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.escrow} onChange={e=>setMortgageSplit({...mortgageSplit,escrow:e.target.value})}/></label>
           </div>
-          <small className={mortgageSplitComplete?'mortgage-split-ok':'mortgage-split-note'}>{mortgageSplitComplete?'Fully allocated. This payment can leave the review queue.':mortgageAllocated>mortgageAmount?'Allocated amount is higher than the payment.':'Any unallocated amount can remain in Needs Review until you have the statement.'}</small>
+          <small className={mortgageSplitComplete?'mortgage-split-ok':'mortgage-split-note'}>{mortgageSplitComplete?'Fully allocated. This payment will be marked reviewed when saved.':mortgageAllocated>mortgageAmount?'Allocated amount is higher than the payment.':'Any unallocated amount can remain in Needs Review until you have the statement.'}</small>
         </div>}
         {recurringMortgage&&<div style={{padding:'14px 15px',borderRadius:16,background:'var(--surface-subtle, rgba(127,127,127,.08))',display:'grid',gap:8}}>
           <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}>

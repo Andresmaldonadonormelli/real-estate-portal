@@ -143,9 +143,12 @@ function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(pat
     if(splitWithinRounding&&normalizedPayment!==payment)setForm(prev=>({...prev,payment:normalizedPayment.toFixed(2)}));
     onUpdated(patch);setEditing(false);
   }
-  return <section className="card property-panel mortgage-overview-panel">
-    <div className="property-panel-head"><div><div className="eyebrow">MORTGAGE</div><h2>Mortgage payment</h2></div><button type="button" className="property-secondary-action" onClick={()=>setEditing(v=>!v)}>{editing?'Cancel':'Manage'}</button></div>
-    {!editing?<div className="mortgage-overview-summary"><div><span>Monthly payment</span><strong>{payment?formatCurrency(payment):'Not set'}</strong></div><div><span>Current balance</span><strong>{Number(form.balance||0)>0?formatKpiCurrency(Number(form.balance)):'Not set'}</strong></div><div><span>Schedule</span><strong>{form.recurring?`Monthly · day ${form.dueDay}`:'Paused'}</strong></div><div><span>Payment split</span><strong>{complete?'Split configured':'Needs setup'}</strong><small>{complete?`${formatCurrency(Number(form.principal||0))} principal · ${formatCurrency(Number(form.interest||0))} interest · ${formatCurrency(Number(form.escrow||0))} escrow`:'Add principal, interest and escrow so recurring payments post already reviewed.'}</small></div></div>:
+  return <section className={`card property-panel mortgage-overview-panel ${editing?'editing':'compact'}`}>
+    <div className="property-panel-head"><div><div className="eyebrow">MORTGAGE</div><h2>Mortgage</h2></div>{editing&&<button type="button" className="property-secondary-action" onClick={()=>setEditing(false)}>Cancel</button>}</div>
+    {!editing?<div className="mortgage-compact-status">
+      <div className="mortgage-compact-copy"><strong>{payment?`${formatCurrency(payment)}/mo`:'Mortgage not set'}</strong><span>{form.recurring?`Due day ${form.dueDay}`:'Recurring paused'}</span><span className={complete?'mortgage-status-ok':'mortgage-status-attention'}>{complete?'Split configured':'Split needs attention'}</span></div>
+      <button type="button" className="property-secondary-action mortgage-compact-manage" onClick={()=>setEditing(true)}>Manage</button>
+    </div>:
     <div className="mortgage-manage-form">
       <div className="mortgage-manage-grid three"><label>Monthly payment<input type="number" min="0" step="0.01" value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}/></label><label>Current mortgage balance<input type="number" min="0" step="0.01" value={form.balance} onChange={e=>setForm({...form,balance:e.target.value})}/></label><label>Due day<input type="number" min="1" max="28" step="1" value={form.dueDay} onChange={e=>setForm({...form,dueDay:e.target.value})}/></label></div>
       <div className="mortgage-split-title"><div><strong>Default payment split</strong><small>New recurring mortgage transactions inherit this breakdown.</small></div><span className={complete?'complete':''}>{formatCurrency(allocated)} / {formatCurrency(payment)}</span></div>
