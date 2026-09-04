@@ -1,0 +1,9 @@
+V2.2.56 — Compact stacked unit tiles
+- Each unit is now its own card/tile.
+- Both units remain visible simultaneously; no tabs.
+- Occupancy sits beside the unit name.
+- Rent, layout and size are compressed into one facts row.
+- Lease dates and remaining days are one compact row with no duplicate copy.
+- Lease document state is a compact final row with View/Upload action.
+- Reduced vertical spacing substantially on desktop and mobile.
+- No database/SQL changes.

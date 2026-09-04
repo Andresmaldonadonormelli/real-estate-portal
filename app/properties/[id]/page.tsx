@@ -330,7 +330,7 @@ function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string
   const editingUnit=(units.find(u=>u.id===editingUnitId)||null) as any;
   const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
   return <>
-    <section className="card property-panel property-tab-panel units-directory-panel">
+    <section className="property-tab-panel units-directory-panel">
       <div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div></div>
       {!units.length?<Empty text="No units yet."/>:<div className="units-directory-list">
         {units.map((rawUnit,index)=>{
@@ -338,11 +338,13 @@ function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string
           const lease=leaseStatus(unit.lease_start_date,unit.lease_end_date,unit.occupied);
           const hasLease=Boolean(unit.lease_document_path);
           const hasLeaseDates=Boolean(unit.lease_start_date&&unit.lease_end_date);
-          return <article className="unit-directory-item" key={unit.id}>
+          return <article className="card unit-directory-item" key={unit.id}>
             <div className="unit-directory-head">
               <div className="unit-directory-identity">
-                <span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span>
-                <h3>{unit.unit_number||`Unit ${index+1}`}</h3>
+                <div className="unit-directory-title-row">
+                  <h3>{unit.unit_number||`Unit ${index+1}`}</h3>
+                  <span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span>
+                </div>
                 <p>{unit.tenant_name||'No tenant assigned'}</p>
               </div>
               <button type="button" className="property-secondary-action unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit unit</button>
@@ -355,21 +357,18 @@ function Units({units,propertyId,onUnitsUpdated}:{units:Unit[];propertyId:string
             </div>
 
             <div className={`unit-lease-summary ${lease.tone}`}>
-              <div className="unit-lease-summary-icon"><CalendarDays size={18}/></div>
-              <div className="unit-lease-summary-copy">
-                <span>Lease</span>
-                <strong>{hasLeaseDates?`${longDate(unit.lease_start_date)} → ${longDate(unit.lease_end_date)}`:unit.occupied?'Lease dates not set':'No active lease'}</strong>
-                <small>{lease.label}</small>
-              </div>
-              {unit.occupied&&lease.short&&lease.short!=='Not set'&&lease.short!=='Vacant'?<span className={`lease-state-badge ${lease.tone}`}>{lease.short}</span>:null}
+              <CalendarDays size={17}/>
+              <span>Lease</span>
+              <strong>{hasLeaseDates?`${longDate(unit.lease_start_date)} → ${longDate(unit.lease_end_date)}`:unit.occupied?'Dates not set':'No active lease'}</strong>
+              {unit.occupied&&lease.short&&lease.short!=='Not set'&&lease.short!=='Vacant'?<small className={`lease-state-badge ${lease.tone}`}>{lease.short}</small>:null}
             </div>
 
             <div className={`unit-document-state ${hasLease?'uploaded':'missing'}`}>
               <div className="unit-document-state-main">
-                <div className="unit-document-icon"><FileText size={18}/></div>
-                <div><span>Lease document</span><strong>{hasLease?'Lease uploaded':'No lease uploaded'}</strong><small>{hasLease?'Signed lease is attached to this unit.':'Add the signed lease so it stays with this tenant record.'}</small></div>
+                <FileText size={17}/>
+                <strong>{hasLease?'✓ Lease uploaded':'No lease uploaded'}</strong>
               </div>
-              <div className="unit-document-actions">{hasLease?<><span className="document-uploaded-badge">✓ Uploaded</span><LeaseViewButton path={unit.lease_document_path}/></>:<button type="button" className="property-secondary-action" onClick={()=>setEditingUnitId(unit.id)}>Upload lease</button>}</div>
+              <div className="unit-document-actions">{hasLease?<LeaseViewButton path={unit.lease_document_path}/>:<button type="button" className="property-secondary-action" onClick={()=>setEditingUnitId(unit.id)}>Upload lease</button>}</div>
             </div>
           </article>;
         })}
