@@ -9,7 +9,7 @@ import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculat
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, BadgeDollarSign, Paperclip, ChevronRight, ChevronDown } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, BadgeDollarSign, Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, Plus, X } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
@@ -22,7 +22,7 @@ type PreviewRow = { row: CsvRow; date:string; propertyId:string; unitId:string|n
 const categories = [...ACCOUNTING_CATEGORIES];
 const emptyTx = { property_id:'', unit_id:'', transaction_date:new Date().toISOString().slice(0,10), type:'expense' as TxType, category:'Needs Review', description:'', payee_source:'', amount:'', notes:'', needs_review:true };
 
-export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
+export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange }:{ selectedPropertyId:string; onSelectedPropertyChange:(value:string)=>void }) {
   const { user } = useAuth();
   const searchParams=useSearchParams();
   const reviewOnly=searchParams.get('review')==='1';
@@ -48,6 +48,9 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
   const [receiptFile, setReceiptFile] = useState<File|null>(null);
   const [attachmentCounts,setAttachmentCounts]=useState<Record<string,number>>({});
   const [toast,setToast]=useState('');
+  const [showSearch,setShowSearch]=useState(false);
+  const [showFilters,setShowFilters]=useState(false);
+  const [showMore,setShowMore]=useState(false);
 
   async function loadData() {
     setLoading(true); setError('');
@@ -84,6 +87,7 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
 
   const total=useMemo(()=>calculateMonthlyTotals(filtered),[filtered]);
   const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)).length,[transactions,selectedPropertyId]);
+  const activeFilterCount=[filters.type,filters.category,filters.min,filters.max].filter(Boolean).length;
   const groups=useMemo(()=>Object.entries(groupTransactionsByMonth(filtered)).sort(([a],[b])=>b.localeCompare(a)).map(([key,txs])=>({key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),transactions:[...txs].sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))})),[filtered]);
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';
   const unitName=(id?:string|null)=>units.find(u=>u.id===id)?.unit_number||'';
@@ -138,20 +142,33 @@ export default function LedgerTab({ selectedPropertyId }:{ selectedPropertyId:st
     setImporting(false);
   }
 
-  return <div>
-    <div className="ledger-actions"><button onClick={openImport} disabled={!properties.length} style={secondaryButton}>Import CSV</button><button onClick={openAdd} disabled={!properties.length} style={primaryButton}>+ Add transaction</button></div>
+  return <div className="ledger-v230-tab">
+    <div className="ledger-v230-primary-row">
+      <label className="ledger-v230-property-picker"><span>Property</span><select value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label>
+      <button className="ledger-v230-add" onClick={openAdd} disabled={!properties.length}><Plus size={18}/><span>Add transaction</span></button>
+    </div>
     {error&&<div style={errorBox}>{error}</div>}
     {notice&&<div style={noticeBox}>{notice}</div>}
     {!properties.length&&!loading&&<div className="card" style={{padding:18,marginBottom:18}}>Add a property before entering transactions.</div>}
 
-    <div className="ledger-view-actions"><div className="ledger-view-mode-group"><button onClick={()=>setViewMode('table')} className={viewMode==='table'?'ledger-control active':'ledger-control'}>Table</button><button onClick={()=>setViewMode('months')} className={viewMode==='months'?'ledger-control active':'ledger-control'}>Months</button><button onClick={exportCsv} className="ledger-control">Export</button></div>{reviewCount>0&&<label className="ledger-review-toggle"><span className="ledger-review-label">Needs review</span><em>{reviewCount}</em><input type="checkbox" checked={reviewFilter} onChange={e=>setReviewFilter(e.target.checked)}/><span className="ledger-review-switch" aria-hidden="true"><i/></span></label>}</div>
-
-    <div className="card ledger-filters">
-      <input placeholder="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})} style={inputStyle}/>
-      <select value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})} style={inputStyle}><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select>
-      <select value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})} style={inputStyle}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
-      <input type="number" min="0" placeholder="Min amount" value={filters.min} onChange={e=>setFilters({...filters,min:e.target.value})} style={inputStyle}/><input type="number" min="0" placeholder="Max amount" value={filters.max} onChange={e=>setFilters({...filters,max:e.target.value})} style={inputStyle}/>
+    <div className="ledger-v230-toolbar">
+      <div className="ledger-v230-view-switch"><button onClick={()=>setViewMode('table')} className={viewMode==='table'?'active':''}>Table</button><button onClick={()=>setViewMode('months')} className={viewMode==='months'?'active':''}>Months</button></div>
+      <div className="ledger-v230-tools">
+        <button className={showSearch||filters.search?'active':''} onClick={()=>setShowSearch(v=>!v)} aria-expanded={showSearch} aria-label="Search transactions"><Search size={17}/><span>Search</span></button>
+        <button className={showFilters||activeFilterCount?'active':''} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>
+        {reviewCount>0&&<label className="ledger-v230-review"><span>Needs review</span><em>{reviewCount}</em><input type="checkbox" checked={reviewFilter} onChange={e=>setReviewFilter(e.target.checked)}/><i aria-hidden="true"><b/></i></label>}
+        <div className="ledger-v230-more-wrap"><button className={showMore?'active':''} onClick={()=>setShowMore(v=>!v)} aria-label="More ledger actions" aria-expanded={showMore}><MoreHorizontal size={18}/><span>More</span></button>{showMore&&<div className="ledger-v230-more-menu"><button onClick={()=>{setShowMore(false);openImport();}}><Upload size={16}/>Import CSV</button><button onClick={()=>{setShowMore(false);exportCsv();}}><Download size={16}/>Export CSV</button></div>}</div>
+      </div>
     </div>
+    {showSearch&&<div className="ledger-v230-search"><Search size={18}/><input autoFocus placeholder="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})}/>{filters.search&&<button onClick={()=>setFilters({...filters,search:''})} aria-label="Clear search"><X size={16}/></button>}</div>}
+    {showFilters&&<div className="ledger-v230-filter-panel"><div className="ledger-v230-filter-head"><strong>Filters</strong><button onClick={()=>setShowFilters(false)} aria-label="Close filters"><X size={18}/></button></div>
+      <select aria-label="Transaction type" value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})}><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select>
+      <select aria-label="Transaction category" value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
+      <input aria-label="Minimum amount" type="number" min="0" placeholder="Min amount" value={filters.min} onChange={e=>setFilters({...filters,min:e.target.value})}/>
+      <input aria-label="Maximum amount" type="number" min="0" placeholder="Max amount" value={filters.max} onChange={e=>setFilters({...filters,max:e.target.value})}/>
+      {activeFilterCount>0&&<button className="ledger-v230-clear" onClick={()=>setFilters({...filters,type:'',category:'',min:'',max:''})}>Clear filters</button>}
+    </div>}
+    {activeFilterCount>0&&<div className="ledger-v230-filter-chips">{filters.type&&<button onClick={()=>setFilters({...filters,type:''})}>Type: {filters.type}<X size={13}/></button>}{filters.category&&<button onClick={()=>setFilters({...filters,category:''})}>{filters.category}<X size={13}/></button>}{filters.min&&<button onClick={()=>setFilters({...filters,min:''})}>Min ${filters.min}<X size={13}/></button>}{filters.max&&<button onClick={()=>setFilters({...filters,max:''})}>Max ${filters.max}<X size={13}/></button>}</div>}
 
     <div className="card ledger-summary"><Metric label="Income" value={formatCurrency(total.income)} color="var(--positive)"/><Metric label="Expenses" value={formatCurrency(total.expense)} color="var(--negative)"/><Metric label="Net" value={formatCurrency(total.net)} color={total.net>=0?'var(--positive)':'var(--negative)'}/></div>
 

@@ -1,0 +1,27 @@
+REAL ESTATE PORTAL v2.3
+Daily Portfolio Pulse
+
+WHAT CHANGED
+- Rebuilt the Dashboard around an animated daily Rent earned this month value.
+- Kept lease accrual, collected rent and projected cash flow clearly separated.
+- Replaced the sparse monthly chart with daily cumulative posted cash flow.
+- Added 1M, 3M, YTD and 1Y periods plus a distinct dotted current-month projection.
+- Moved Add transaction into the Dashboard and Ledger headers.
+- Removed the floating Add transaction button.
+- Made Action Center compact and placed it beside the chart on desktop.
+- Moved Recent Activity above Properties on mobile.
+- Collapsed Ledger Search and advanced filters.
+- Moved Import CSV and Export CSV into the More menu.
+- Added a labeled Needs Review control on mobile and desktop.
+- Added a semantic design-token foundation for colors, typography, spacing, radii and motion.
+- Centralized positive, negative and warning colors for light and dark mode.
+- Included the unreleased v2.2.61 Improve progress fix and Units typography cleanup.
+
+SUPABASE
+Run V230_DASHBOARD_VISITS.sql once before or after deployment.
+The Dashboard still works without it, but cross-device Since your last visit requires it.
+
+DEPLOY
+1. Run V230_DASHBOARD_VISITS.sql in Supabase SQL Editor.
+2. Upload this ZIP's contents to the GitHub repository root.
+3. Let Vercel deploy automatically.

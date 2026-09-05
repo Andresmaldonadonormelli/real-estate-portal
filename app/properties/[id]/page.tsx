@@ -343,8 +343,9 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
     expectedRent*Math.max(0,currentMgmt)/100 +
     maintenanceMonthly*.50 +
     otherOperatingMonthly*.30;
+  const scenarioGain=Math.max(0,projected-currentMonthly);
   const scenarioProgress=maxScenarioGain>0
-    ? Math.max(0,Math.min(1,(projected-currentMonthly)/maxScenarioGain))
+    ? Math.max(0,Math.min(1,scenarioGain/maxScenarioGain))
     : 0;
   const projectionFillPct=16 + scenarioProgress*84;
 
@@ -373,7 +374,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         <ImproveLever label="Maintenance" displayValue={maintenanceReduction?`−${maintenanceReduction}%`:'Current run rate'} meta={maintenanceMonthly?`${formatKpiCurrency(maintenanceMonthly)}/mo YTD average`:'No maintenance recorded YTD'} min={0} max={50} step={5} rangeValue={maintenanceReduction} onChange={setMaintenanceReduction} status="Available now" disabled={!maintenanceMonthly}/>
         <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
       </div>
-      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${projectionFillPct}%`}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
+      <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${projectionFillPct}%`,insetInlineStart:0,insetInlineEnd:'auto'}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
       <div className="improve-impact-strip">
         <div><span>Cash flow</span><strong>{formatKpiCurrency(currentMonthly)} <small>→</small> {formatKpiCurrency(projected)}/mo</strong></div>
         <div><span>NOI</span><strong>{formatKpiCurrency(metrics.noi/monthsElapsed)} <small>→</small> {formatKpiCurrency(projectedMonthlyNoi)}/mo</strong></div>
@@ -419,7 +420,7 @@ function Units({units,propertyId,onUnitsUpdated,onLeaseSynced}:{units:Unit[];pro
   const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
   return <>
     <section className="property-tab-panel units-directory-panel">
-      <div className="property-panel-head"><div><div className="eyebrow">UNITS</div><h2>Units & tenants</h2></div></div>
+      <div className="property-panel-head"><div><h2>Units & tenants</h2></div></div>
       {!units.length?<Empty text="No units yet."/>:<div className="units-directory-list">
         {units.map((rawUnit,index)=>{
           const unit=rawUnit as any;
@@ -439,9 +440,9 @@ function Units({units,propertyId,onUnitsUpdated,onLeaseSynced}:{units:Unit[];pro
             </div>
 
             <div className="unit-core-facts">
-              <div><span>Rent</span><strong>{formatKpiCurrency(Number(unit.current_rent||0))}/mo</strong></div>
-              <div><span>Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>
-              <div><span>Size</span><strong>{Number(unit.sqft||0).toLocaleString()} sqft</strong></div>
+              <div><span className="unit-fact-label">Rent</span><strong>{formatKpiCurrency(Number(unit.current_rent||0))}/mo</strong></div>
+              <div><span className="unit-fact-label">Layout</span><strong>{unit.bedroom_count||0} bd · {unit.bathroom_count||0} ba</strong></div>
+              <div><span className="unit-fact-label">Size</span><strong>{Number(unit.sqft||0).toLocaleString()} sqft</strong></div>
             </div>
 
             <div className={`unit-lease-summary ${lease.tone}`}>
@@ -454,7 +455,7 @@ function Units({units,propertyId,onUnitsUpdated,onLeaseSynced}:{units:Unit[];pro
             <div className={`unit-document-state ${hasLease?'uploaded':'missing'}`}>
               <div className="unit-document-state-main">
                 <FileText size={17}/>
-                <strong>{hasLease?'✓ Lease uploaded':'No lease uploaded'}</strong>
+                <strong>{hasLease?'Lease uploaded':'No lease uploaded'}</strong>
               </div>
               <div className="unit-document-actions">{hasLease?<LeaseViewButton path={unit.lease_document_path}/>:<button type="button" className="property-secondary-action" onClick={()=>setEditingUnitId(unit.id)}>Upload lease</button>}</div>
             </div>

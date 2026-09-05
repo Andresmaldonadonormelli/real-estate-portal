@@ -15,6 +15,7 @@ export interface Property {
   mortgage_start_date?: string | null;
   mortgage_recurring_enabled?: boolean;
   archived_at?: string | null;
+  created_at?: string;
 }
 
 export interface Unit {
@@ -30,6 +31,7 @@ export interface Unit {
   occupied: boolean;
   recurring_rent_enabled?: boolean;
   archived_at?: string | null;
+  created_at?: string;
 }
 
 export interface Transaction {
@@ -49,6 +51,7 @@ export interface Transaction {
   status?: 'pending' | 'posted' | 'declined';
   confirmed_at?: string | null;
   archived_at?: string | null;
+  created_at?: string;
 }
 
 export interface PropertyDocument {

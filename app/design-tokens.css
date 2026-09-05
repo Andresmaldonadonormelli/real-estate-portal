@@ -1,61 +1,111 @@
 /*
   RE PORTAL DESIGN TOKENS
   ------------------------------------------------------------
-  This is the file to edit by hand in GitHub when you want to
-  tweak colors or typography.
-
-  Components should use these variables, not hard-coded hex values.
+  Change recurring visual decisions here. Components should consume
+  semantic variables instead of hard-coded color values.
 */
 
 :root {
-  /* TYPE SCALE */
-  --type-display-size: 40px;
-  --type-display-line: 1.05;
-  --type-display-weight: 680;
+  /* Typography: seven roles only */
+  --font-family-primary: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --type-display-size: 56px;
+  --type-display-line: 1.07;
+  --type-page-title-size: 36px;
+  --type-page-title-line: 1.2;
+  --type-section-title-size: 24px;
+  --type-section-title-line: 1.25;
+  --type-card-title-size: 18px;
+  --type-card-title-line: 1.35;
+  --type-body-size: 16px;
+  --type-body-line: 1.5;
+  --type-small-size: 14px;
+  --type-small-line: 1.45;
+  --type-label-size: 12px;
+  --type-label-line: 1.35;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
 
-  --type-heading-lg-size: 28px;
-  --type-heading-lg-line: 1.12;
-  --type-heading-lg-weight: 680;
-
-  --type-heading-md-size: 20px;
-  --type-heading-md-line: 1.2;
-  --type-heading-md-weight: 670;
-
-  --type-body-lg-size: 16px;
-  --type-body-lg-line: 1.45;
-  --type-body-lg-weight: 500;
-
-  --type-body-size: 14px;
-  --type-body-line: 1.45;
-  --type-body-weight: 500;
-
-  --type-caption-size: 12px;
-  --type-caption-line: 1.4;
-  --type-caption-weight: 500;
-
+  /* Compatibility aliases for legacy screens while they migrate. */
+  --type-heading-lg-size: var(--type-page-title-size);
+  --type-heading-lg-line: var(--type-page-title-line);
+  --type-heading-lg-weight: var(--weight-bold);
+  --type-heading-md-size: var(--type-section-title-size);
+  --type-heading-md-line: var(--type-section-title-line);
+  --type-heading-md-weight: var(--weight-semibold);
+  --type-body-lg-size: var(--type-body-size);
+  --type-body-lg-line: var(--type-body-line);
+  --type-body-lg-weight: var(--weight-regular);
+  --type-body-weight: var(--weight-regular);
+  --type-caption-size: var(--type-label-size);
+  --type-caption-line: var(--type-label-line);
+  --type-caption-weight: var(--weight-medium);
   --type-kpi-lg-size: 30px;
-  --type-kpi-md-size: 24px;
-  --type-kpi-weight: 680;
+  --type-kpi-md-size: var(--type-section-title-size);
+  --type-kpi-weight: var(--weight-bold);
 
-  /* LIGHT MODE: SURFACES + TEXT */
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Shape, controls and motion */
+  --radius-control: 12px;
+  --radius-card: 20px;
+  --radius-large: 24px;
+  --radius-pill: 999px;
+  --control-height-desktop: 40px;
+  --control-height-mobile: 48px;
+  --icon-small: 16px;
+  --icon-medium: 20px;
+  --motion-fast: 160ms;
+  --motion-standard: 240ms;
+
+  /* Light surfaces and text */
   --theme-page: #f3f4f6;
   --theme-sidebar: #f7f8f9;
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
+  --theme-surface-subtle: #f1f2f3;
   --theme-surface-hover: #eef0f2;
+  --theme-elevated: #ffffff;
   --theme-input: #ffffff;
   --theme-text-primary: #171918;
   --theme-text-secondary: #68706c;
-  --theme-text-muted: #969d99;
+  --theme-text-muted: #929995;
+  --theme-text-inverse: #ffffff;
   --theme-border: rgba(18, 22, 20, 0.10);
+  --theme-border-strong: rgba(18, 22, 20, 0.18);
+  --theme-overlay: rgba(9, 12, 10, 0.48);
+  --theme-shadow-card: 0 10px 30px rgba(20, 28, 23, 0.055);
 
-  /* LIGHT MODE: FINANCIAL DATA */
-  --theme-income: #119d57;
-  --theme-expense: #e5483f;
+  /* Monochrome actions */
+  --theme-action: #171918;
+  --theme-action-text: #ffffff;
+  --theme-action-hover: #303330;
+  --theme-nav-active: #e9ebed;
+  --theme-nav-active-text: #171918;
+  --theme-focus: #0866cc;
+
+  /* Semantic financial states */
+  --theme-income: #10a35a;
+  --theme-income-soft: #eaf8f0;
+  --theme-income-border: #b9e5cb;
+  --theme-expense: #ef4b43;
+  --theme-expense-soft: #fff0ee;
+  --theme-expense-border: #f5c3bf;
+  --theme-warning: #c88700;
+  --theme-warning-soft: #fff7e2;
+  --theme-warning-border: #ead19a;
   --theme-noi: #3f7ee8;
-  --theme-warning: #c98518;
 
-  /* LIGHT MODE: CATEGORIES */
+  /* Accounting categories */
   --theme-maintenance: #e27613;
   --theme-management: #7c5bd6;
   --theme-mortgage: #3f7ee8;
@@ -65,35 +115,41 @@
   --theme-capex: #bd4c9d;
   --theme-legal: #7659c7;
   --theme-review: #b88700;
-
-  /* MONOCHROME UI */
-  --theme-action: #171918;
-  --theme-action-text: #ffffff;
-  --theme-nav-active: #e9ebed;
-  --theme-nav-active-text: #171918;
 }
 
 [data-theme="dark"] {
-  /* DARK MODE: SURFACES + TEXT */
   --theme-page: #080909;
   --theme-sidebar: #0d0f0e;
   --theme-card: #111312;
   --theme-surface: #111312;
-  --theme-surface-hover: #191c1a;
+  --theme-surface-subtle: #191c1a;
+  --theme-surface-hover: #202421;
+  --theme-elevated: #1e211f;
   --theme-input: #0d0f0e;
   --theme-text-primary: #f4f5f3;
   --theme-text-secondary: #aeb5b1;
-  --theme-text-muted: #787f7b;
+  --theme-text-muted: #7f8782;
+  --theme-text-inverse: #101210;
   --theme-border: rgba(255, 255, 255, 0.10);
-
-  /* DARK MODE: FINANCIAL DATA
-     Intentionally richer/brighter than light mode. */
+  --theme-border-strong: rgba(255, 255, 255, 0.18);
+  --theme-overlay: rgba(0, 0, 0, 0.66);
+  --theme-shadow-card: none;
+  --theme-action: #f3f4f2;
+  --theme-action-text: #101210;
+  --theme-action-hover: #dfe3df;
+  --theme-nav-active: rgba(255, 255, 255, 0.09);
+  --theme-nav-active-text: #ffffff;
+  --theme-focus: #6ca9ff;
   --theme-income: #2bd275;
+  --theme-income-soft: rgba(43, 210, 117, 0.13);
+  --theme-income-border: rgba(43, 210, 117, 0.30);
   --theme-expense: #ff6056;
-  --theme-noi: #69a0ff;
+  --theme-expense-soft: rgba(255, 96, 86, 0.13);
+  --theme-expense-border: rgba(255, 96, 86, 0.30);
   --theme-warning: #f2a73a;
-
-  /* DARK MODE: CATEGORIES */
+  --theme-warning-soft: rgba(242, 167, 58, 0.13);
+  --theme-warning-border: rgba(242, 167, 58, 0.30);
+  --theme-noi: #69a0ff;
   --theme-maintenance: #ff9638;
   --theme-management: #9c79ff;
   --theme-mortgage: #69a0ff;
@@ -103,10 +159,12 @@
   --theme-capex: #ed74c8;
   --theme-legal: #a382ff;
   --theme-review: #f4c84a;
+}
 
-  /* MONOCHROME UI */
-  --theme-action: #f3f4f2;
-  --theme-action-text: #101210;
-  --theme-nav-active: rgba(255,255,255,.09);
-  --theme-nav-active-text: #ffffff;
+@media (max-width: 767px) {
+  :root {
+    --type-display-size: 44px;
+    --type-page-title-size: 32px;
+    --type-section-title-size: 22px;
+  }
 }

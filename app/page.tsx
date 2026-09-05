@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageSkeleton from '@/components/common/PageSkeleton';
@@ -15,6 +15,9 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 
+type CashPeriod='1M'|'3M'|'YTD'|'1Y';
+type CashPoint={key:string;label:string;fullLabel:string;value:number;periodNet:number;income:number;expense:number};
+
 export default function Dashboard() {
   const router = useRouter();
   const { user } = useAuth();
@@ -22,7 +25,7 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashMode, setCashMode] = useState<'monthly'|'cumulative'>('monthly');
+  const [cashPeriod, setCashPeriod] = useState<CashPeriod>('1M');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(true);
@@ -35,6 +38,8 @@ export default function Dashboard() {
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [toast,setToast]=useState('');
+  const [sinceLastVisit,setSinceLastVisit]=useState('Your portfolio is ready');
+  const visitRecorded=useRef(false);
 
   const refreshTransactions = useCallback(async () => {
     try {
@@ -44,6 +49,25 @@ export default function Dashboard() {
       // Background refresh failure should never hide the dashboard.
     }
   }, []);
+
+  const recordDashboardVisit = useCallback(async (txRows:Transaction[]) => {
+    const now=new Date().toISOString();
+    const storageKey=`re-portal:last-dashboard-visit:${user.id}`;
+    let previous='';
+    try{previous=window.localStorage.getItem(storageKey)||'';}catch{}
+    try{
+      const visit=await supabase.from('dashboard_visits').select('last_seen_at').eq('user_id',user.id).maybeSingle();
+      if(!visit.error&&visit.data?.last_seen_at) previous=visit.data.last_seen_at;
+    }catch{}
+    if(previous){
+      const updateCount=txRows.filter(tx=>tx.created_at&&tx.created_at>previous).length;
+      setSinceLastVisit(updateCount?`${updateCount} new ledger ${updateCount===1?'update':'updates'} since your last visit`:'No new ledger activity since your last visit');
+    }else{
+      setSinceLastVisit('Your first portfolio pulse is ready');
+    }
+    try{window.localStorage.setItem(storageKey,now);}catch{}
+    try{await supabase.from('dashboard_visits').upsert({user_id:user.id,last_seen_at:now,updated_at:now},{onConflict:'user_id'});}catch{}
+  },[user.id]);
 
   const ensureRecurring = useCallback(async (props: Property[], unitRows: Unit[], txRows: Transaction[]) => {
     const now=new Date(); const month=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; const first=`${month}-01`;
@@ -94,6 +118,7 @@ export default function Dashboard() {
 
       // Show the useful dashboard as soon as the core data arrives.
       setProperties(props); setUnits(unitRows); setTransactions(txRows); setDocuments((d.data||[]) as PropertyDocument[]); setLoading(false);
+      if(!visitRecorded.current){visitRecorded.current=true;void recordDashboardVisit(txRows);}
 
       // Images and recurring bookkeeping happen after render and never block it.
       void (async()=>{
@@ -108,7 +133,7 @@ export default function Dashboard() {
       setError(e instanceof Error ? e.message : 'Could not load the dashboard.');
       setLoading(false);
     }
-  },[ensureRecurring]);
+  },[ensureRecurring,recordDashboardVisit]);
 
   useEffect(()=>{load();},[load]);
 
@@ -176,41 +201,58 @@ export default function Dashboard() {
     return items.sort((a,b)=>(a.days??999)-(b.days??999));
   },[documents,pendingRents,properties,monthLabel,testActionsActive,transactions]);
 
-  const cashFlow=useMemo(()=>{
-    const now=new Date(); const rows:{key:string;label:string;fullLabel:string;value:number;monthlyNet:number;income:number;expense:number}[]=[];
-    for(let i=11;i>=0;i--){
-      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const monthTx=transactions.filter(t=>(t.status||'posted')==='posted'&&t.transaction_date.startsWith(key)&&(!cashPropertyId||t.property_id===cashPropertyId));
-      const totals=calculateMonthlyTotals(monthTx);
-      rows.push({key,label:d.toLocaleString('en-US',{month:'short'}),fullLabel:d.toLocaleString('en-US',{month:'long',year:'numeric'}),value:totals.net,monthlyNet:totals.net,income:totals.income,expense:totals.expense});
-    }
-    if(cashMode==='cumulative'){let running=0;return rows.map(r=>({...r,value:(running+=r.monthlyNet)}));}
-    return rows;
-  },[transactions,cashMode,cashPropertyId]);
+  const expectedMonthlyRent=useMemo(()=>units.filter(unit=>unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0),[units]);
+  const confirmedRent=useMemo(()=>postedThisMonth.filter(tx=>tx.type==='income'&&tx.category==='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0),[postedThisMonth]);
+  const now=new Date();
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const rentEarned=expectedMonthlyRent*(now.getDate()/daysInMonth);
+  const dailyRent=expectedMonthlyRent/daysInMonth;
+  const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
+  const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
+  const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
+  const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
-  return <div className="dashboard-page" style={{padding:24,maxWidth:1200,margin:'0 auto'}}>
-    <div className="dashboard-header"><h1 style={{fontSize:28,fontWeight:500}}>Dashboard</h1></div>
+  const cashFlow=useMemo(()=>buildCashFlowSeries(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
+  const cashForecast=cashPeriod==='1M'&&cashFlow.length
+    ? {value:cashFlow[cashFlow.length-1].value+Math.max(0,expectedMonthlyRent-confirmedRent),label:new Date(now.getFullYear(),now.getMonth()+1,0).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+    : null;
+
+  return <div className="dashboard-page pulse-page">
+    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <div className="dashboard-metric-strip" aria-label="Portfolio overview">
-        <DashboardMetric label="Occupancy" value={`${stats.occupiedUnits}/${stats.totalUnits}`} sub={stats.totalUnits?`${Math.round(stats.occupiedUnits/stats.totalUnits*100)}% occupied`:'No units yet'}/>
-        <DashboardMetric label="Income this month" value={formatKpiCurrency(monthlyTotals.income)} sub="Posted income"/>
-        <DashboardMetric label="Expenses this month" value={formatKpiCurrency(monthlyTotals.expense)} sub="Posted expenses" tone="negative"/>
-        <DashboardMetric label="Net cash flow" value={formatKpiCurrency(monthlyTotals.net)} sub="Income − expenses" tone={monthlyTotals.net>=0?'positive':'negative'}/>
-        <DashboardMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)} sub="Portfolio balance"/>
-      </div>
-      {actionItems.length>0&&<section className="action-center card"><div className="section-heading-row"><div><div className="eyebrow">NEEDS YOU</div><h2>Action Center</h2></div><div style={{display:'flex',alignItems:'center',gap:8}}>{testActionsActive&&<span className="test-badge">TEST</span>}{actionItems.length>3&&<span className="muted-small">{actionItems.length} open</span>}</div></div><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">{item.kind==='rent'||item.kind==='review'?'Review':'Open'} <span aria-hidden="true">→</span></span></button>)}</div><div className="action-center-footer"><button className="action-center-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></div></section>}
-      <section className="dashboard-main-grid">
-        <div className="cashflow-card card"><div className="section-heading-row cashflow-head"><div><h2>Cash Flow</h2><p>Trailing 12 months · posted ledger activity</p></div><div className="cashflow-controls"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><div className="segmented"><button className={cashMode==='monthly'?'active':''} onClick={()=>setCashMode('monthly')}>Monthly</button><button className={cashMode==='cumulative'?'active':''} onClick={()=>setCashMode('cumulative')}>Cumulative</button></div></div></div><CashFlowChart rows={cashFlow} mode={cashMode}/></div>
-        <div className="dashboard-properties-panel card"><div className="section-heading-row properties-panel-head"><h2>Properties</h2><Link href="/properties" style={{fontSize:13}}>Manage →</Link></div><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);const pending=pendingRents.filter(t=>t.property_id===property.id);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
+      <section className="pulse-top-grid">
+        <div className="pulse-primary">
+          <div className="pulse-hero">
+            <span className="pulse-kicker">Rent earned this month</span>
+            <CountUpCurrency value={rentEarned}/>
+            <div className="pulse-daily-gain">+{formatCurrency(dailyRent)} today</div>
+            <p className="pulse-earned-note">Lease-based daily accrual. Collected cash is shown separately.</p>
+            <div className="pulse-since-visit"><span aria-hidden="true">●</span>{sinceLastVisit}<b> · {stats.occupiedUnits}/{stats.totalUnits} occupied</b></div>
+          </div>
+          <div className="pulse-supporting-metrics" aria-label="Portfolio overview">
+            <PulseMetric label="Expected rent" value={formatKpiCurrency(expectedMonthlyRent)}/>
+            <PulseMetric label="Collected rent" value={formatKpiCurrency(confirmedRent)} tone="positive"/>
+            <PulseMetric label="Projected month-end" value={formatKpiCurrency(projectedMonthEnd)} tone={projectedMonthEnd>=0?'positive':'negative'}/>
+            <PulseMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)}/>
+          </div>
+          <div className="pulse-chart-head"><div><h2>Cash flow</h2><p>Cumulative posted ledger activity</p></div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
+          <CashFlowChart rows={cashFlow} period={cashPeriod} forecast={cashForecast}/>
+          <div className="pulse-periods" aria-label="Cash flow period">{(['1M','3M','YTD','1Y'] as CashPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
+        </div>
+        <aside className="pulse-action-center card">
+          <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
+          {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
+        </aside>
+      </section>
+      <section className="pulse-lower-grid">
+        <div className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="card recent-activity-card"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></div>
+        <div className="pulse-properties-section"><div className="pulse-section-title"><h2>Properties</h2><Link href="/properties">Manage →</Link></div><div className="dashboard-properties-panel card"><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
           {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
           <div className="property-compact-copy"><strong>{property.address}</strong><span>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</span></div><strong className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</strong>
-        </div>})}</div></div>
+        </div>})}</div></div></div>
       </section>
-      <div className="recent-activity-heading"><h2 style={{fontSize:19,fontWeight:600}}>Recent Activity</h2></div><div className="card recent-activity-card"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div><Link href="/ledger" className="pill-link primary-action recent-ledger-button">Open ledger</Link></div>
     </>}
-    {!loading&&properties.length>0&&<button className="add-transaction-fab" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={19} strokeWidth={2.2}/><span>Add transaction</span></button>}
     {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{await load();setToast(message||'Transaction added')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:21}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:11,fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:13,marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
@@ -219,44 +261,85 @@ export default function Dashboard() {
     </div></div></div>}
   </div>;
 }
-function DashboardMetric({label,value,sub,tone}:{label:string;value:string;sub?:string;tone?:'positive'|'negative'}){return <div className="metric-cell dashboard-metric"><span>{label}</span><strong>{value}</strong><small className={tone?`metric-${tone}`:''}>{sub||' '}</small></div>}
+function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
+function CountUpCurrency({value}:{value:number}){
+  const [display,setDisplay]=useState(0);
+  useEffect(()=>{
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){setDisplay(value);return;}
+    let frame=0;const started=performance.now();const duration=700;
+    const tick=(time:number)=>{const progress=Math.min(1,(time-started)/duration);const eased=1-Math.pow(1-progress,3);setDisplay(value*eased);if(progress<1)frame=requestAnimationFrame(tick);};
+    frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
+  },[value]);
+  return <strong className="pulse-earned-value" aria-label={formatCurrency(value)}>{formatCurrency(display)}</strong>;
+}
 function DashboardCategoryIcon({category}:{category:string}){const props={size:19,strokeWidth:1.8};const key=categoryKey(category);const Icon=key==='rent'?Banknote:key.startsWith('mortgage')?Landmark:key==='maintenance'?Wrench:key==='utilities'?Zap:key==='insurance'?ShieldCheck:key==='management'?ClipboardCheck:key==='leasing'?Receipt:key==='taxes'?Building2:key==='capex'?Hammer:key==='legal'?Scale:key==='distribution'?WalletCards:key==='other-income'?CircleDollarSign:key==='refund'?RotateCcw:key==='review'?ClipboardCheck:FileText;return <span className="ledger-category-icon recent-category-icon" data-category={key} aria-hidden="true"><Icon {...props}/></span>}
 function ActionIcon({kind,title}:{kind:'rent'|'document'|'review';title:string}){const props={size:19,strokeWidth:1.8};const lower=title.toLowerCase();const Icon=kind==='rent'?Banknote:kind==='review'?ClipboardCheck:lower.includes('insurance')?ShieldCheck:lower.includes('lease')?FileText:ClipboardCheck;const actionTone=kind==='rent'?'rent':kind==='review'?'review':lower.includes('insurance')?'insurance':lower.includes('lease')?'lease':'document';return <span className="action-icon" data-action={actionTone} aria-hidden="true"><Icon {...props}/></span>}
 
-function CashFlowChart({rows,mode}:{rows:{key:string;label:string;fullLabel:string;value:number;monthlyNet:number;income:number;expense:number}[];mode:'monthly'|'cumulative'}){
+function CashFlowChart({rows,period,forecast}:{rows:CashPoint[];period:CashPeriod;forecast:{value:number;label:string}|null}){
   const [selectedIndex,setSelectedIndex]=useState<number|null>(null);
-  const w=760,h=230,padX=28,padTop=24,padBottom=30;
-  const vals=rows.map(r=>r.value);
-  const max=Math.max(1,...vals.map(v=>Math.abs(v)));
-  const zero=(h-padBottom+padTop)/2;
-  const x=(i:number)=>padX+i*((w-padX*2)/Math.max(1,rows.length-1));
-  const y=(v:number)=>zero-(v/max)*((h-padBottom-padTop)/2);
+  useEffect(()=>setSelectedIndex(null),[period]);
+  const w=760,h=250,padX=16,padTop=20,padBottom=30;
+  const vals=[0,...rows.map(r=>r.value),...(forecast?[forecast.value]:[])];
+  const minValue=Math.min(...vals),maxValue=Math.max(...vals);
+  const range=Math.max(1,maxValue-minValue);
+  const chartMin=minValue-range*.12,chartMax=maxValue+range*.12;
+  const actualRight=forecast?w-padX-86:w-padX;
+  const x=(i:number)=>padX+i*((actualRight-padX)/Math.max(1,rows.length-1));
+  const y=(v:number)=>padTop+((chartMax-v)/(chartMax-chartMin))*(h-padTop-padBottom);
+  const zero=y(0);
   const points=rows.map((r,i)=>`${x(i)},${y(r.value)}`).join(' ');
   const activeIndex=selectedIndex??Math.max(0,rows.length-1);
   const active=rows[activeIndex];
+  const tone=(rows[rows.length-1]?.value||0)>=0?'positive':'negative';
+  const tickIndexes=new Set([0,.25,.5,.75,1].map(position=>Math.round((rows.length-1)*position)));
 
   function selectFromPointer(e:React.PointerEvent<SVGSVGElement>){
     const rect=e.currentTarget.getBoundingClientRect();
     const px=Math.max(0,Math.min(rect.width,e.clientX-rect.left));
     const normalized=(px/rect.width)*w;
-    const index=Math.max(0,Math.min(rows.length-1,Math.round((normalized-padX)/((w-padX*2)/Math.max(1,rows.length-1)))));
+    const index=Math.max(0,Math.min(rows.length-1,Math.round((normalized-padX)/((actualRight-padX)/Math.max(1,rows.length-1)))));
     setSelectedIndex(index);
   }
 
-  return <div className="cashflow-chart-wrap interactive-cashflow">
-    <div className="cashflow-selected-summary" aria-live="polite">
-      <div><span>{selectedIndex===null?'Latest':active?.fullLabel}</span><strong className={(active?.value||0)<0?'amount-negative':'amount-positive'}>{formatCurrency(active?.value||0)}</strong></div>
-      {selectedIndex!==null&&active&&<div className="cashflow-selected-details"><span>Income <b className="amount-positive">{formatCurrency(active.income)}</b></span><span>Expenses <b className="amount-negative">{formatCurrency(active.expense)}</b></span><span>{mode==='cumulative'?'Month net':'Net'} <b className={active.monthlyNet<0?'amount-negative':'amount-positive'}>{formatCurrency(active.monthlyNet)}</b></span></div>}
+  return <div className="pulse-chart-wrap">
+    <div className="pulse-chart-summary" aria-live="polite">
+      <span>{selectedIndex===null?'Today':active?.fullLabel}</span>
+      <strong className={(active?.value||0)<0?'amount-negative':'amount-positive'}>{formatCurrency(active?.value||0)}</strong>
+      {selectedIndex!==null&&active&&<small>Day activity <b className={active.periodNet<0?'amount-negative':'amount-positive'}>{formatCurrency(active.periodNet)}</b></small>}
     </div>
-    <svg className="cashflow-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Interactive cash flow over the last 12 months" onPointerDown={selectFromPointer} onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)selectFromPointer(e);}} onPointerLeave={()=>setSelectedIndex(null)} onPointerCancel={()=>setSelectedIndex(null)}>
+    <svg className="pulse-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Interactive cumulative cash flow for ${period}`} onPointerDown={selectFromPointer} onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)selectFromPointer(e);}} onPointerLeave={()=>setSelectedIndex(null)} onPointerCancel={()=>setSelectedIndex(null)}>
       <line x1={padX} y1={zero} x2={w-padX} y2={zero} className="chart-zero"/>
-      <polyline points={points} className="chart-line" fill="none"/>
-      {selectedIndex!==null&&active&&<line x1={x(activeIndex)} y1={padTop-4} x2={x(activeIndex)} y2={h-padBottom+2} className="chart-guide"/>}
-      {rows.map((r,i)=><g key={r.key}><circle cx={x(i)} cy={y(r.value)} r={selectedIndex===i?6:3.5} className={`${r.value<0?'chart-point negative':'chart-point'}${selectedIndex===i?' selected':''}`}/><text x={x(i)} y={h-6} textAnchor="middle" className={selectedIndex===i?'chart-label selected':'chart-label'}>{r.label}</text></g>)}
-      <rect x="0" y="0" width={w} height={h-padBottom} fill="transparent" className="chart-hit-area"/>
+      <polyline points={points} className={`pulse-chart-line ${tone}`} fill="none"/>
+      {forecast&&rows.length>0&&<line x1={x(rows.length-1)} y1={y(rows[rows.length-1].value)} x2={w-padX} y2={y(forecast.value)} className={`pulse-chart-forecast ${forecast.value>=rows[rows.length-1].value?'positive':'negative'}`}/>}
+      {selectedIndex!==null&&active&&<><line x1={x(activeIndex)} y1={padTop} x2={x(activeIndex)} y2={h-padBottom} className="pulse-chart-guide"/><circle cx={x(activeIndex)} cy={y(active.value)} r="5" className={`pulse-chart-selected ${active.value>=0?'positive':'negative'}`}/></>}
+      {rows.map((r,i)=>tickIndexes.has(i)?<text key={r.key} x={x(i)} y={h-7} textAnchor={i===0?'start':i===rows.length-1?'end':'middle'} className="pulse-chart-label">{r.label}</text>:null)}
+      {forecast&&<text x={w-padX} y={h-7} textAnchor="end" className="pulse-chart-label forecast">{forecast.label}</text>}
+      <rect x="0" y="0" width={w} height={h-padBottom} fill="transparent"/>
     </svg>
-    <div className="cashflow-interaction-hint">Tap and drag to inspect months</div>
+    <div className="pulse-chart-hint">Tap and drag to inspect</div>
   </div>;
+}
+
+function buildCashFlowSeries(transactions:Transaction[],period:CashPeriod,propertyId:string):CashPoint[]{
+  const today=new Date();today.setHours(0,0,0,0);
+  let start:Date;
+  if(period==='1M') start=new Date(today.getFullYear(),today.getMonth(),1);
+  else if(period==='3M'){start=new Date(today);start.setDate(start.getDate()-89);}
+  else if(period==='YTD') start=new Date(today.getFullYear(),0,1);
+  else {start=new Date(today);start.setFullYear(start.getFullYear()-1);start.setDate(start.getDate()+1);}
+  const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
+  const byDate=new Map<string,Transaction[]>();
+  posted.forEach(tx=>byDate.set(tx.transaction_date,[...(byDate.get(tx.transaction_date)||[]),tx]));
+  const rows:CashPoint[]=[];let running=0;
+  for(const cursor=new Date(start);cursor<=today;cursor.setDate(cursor.getDate()+1)){
+    const key=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
+    const dayRows=byDate.get(key)||[];
+    const income=dayRows.filter(tx=>tx.type==='income').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
+    const expense=dayRows.filter(tx=>tx.type==='expense').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+    const periodNet=income-expense;running+=periodNet;
+    rows.push({key,label:period==='1M'?String(cursor.getDate()):cursor.toLocaleDateString('en-US',{month:'short',day:'numeric'}),fullLabel:cursor.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),value:running,periodNet,income,expense});
+  }
+  return rows;
 }
 
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
