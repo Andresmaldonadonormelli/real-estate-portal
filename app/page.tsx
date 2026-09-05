@@ -14,9 +14,9 @@ import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Buildi
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
+import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
+import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
 
-type CashPeriod='1M'|'3M'|'YTD'|'1Y';
-type CashPoint={key:string;label:string;fullLabel:string;value:number;periodNet:number;income:number;expense:number};
 type DailyInsight={id:string;kicker:string;title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy'};
 
 export default function Dashboard() {
@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashPeriod, setCashPeriod] = useState<CashPeriod>('1M');
+  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('3M');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(true);
@@ -252,10 +252,8 @@ export default function Dashboard() {
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,dismissed_insight_ids:next,dismissed_for_date:todayKey,updated_at:new Date().toISOString()},{onConflict:'user_id'});}catch{}
   }
 
-  const cashFlow=useMemo(()=>buildCashFlowSeries(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
-  const cashForecast=cashPeriod==='1M'&&cashFlow.length
-    ? {value:cashFlow[cashFlow.length-1].value+Math.max(0,expectedMonthlyRent-confirmedRent),label:new Date(now.getFullYear(),now.getMonth()+1,0).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
-    : null;
+  const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
+  const currentCashFlow=cashFlow[cashFlow.length-1];
 
   return <div className="dashboard-page pulse-page">
     <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
@@ -267,18 +265,19 @@ export default function Dashboard() {
             <span className="pulse-kicker">Rent earned this month</span>
             <CountUpCurrency value={rentEarned}/>
             <div className="pulse-daily-gain">+{formatCurrency(dailyRent)} today</div>
-            <p className="pulse-earned-note">Lease-based daily accrual. Collected cash is shown separately.</p>
-            <div className="pulse-since-visit"><span aria-hidden="true">●</span>{sinceLastVisit}<b> · {stats.occupiedUnits}/{stats.totalUnits} occupied</b></div>
+            <p className="pulse-earned-note">{monthLabel} 1–{now.getDate()}</p>
+            <div className="pulse-since-visit"><span aria-hidden="true">●</span>{sinceLastVisit}</div>
           </div>
+          <div className="pulse-chart-head"><div><h2>Cash flow</h2><p>Monthly posted income minus expenses</p></div></div>
+          <div className="pulse-cash-summary"><span>{currentCashFlow?.periodLabel||`${monthLabel} month-to-date`}</span><strong className={(currentCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(currentCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(currentCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(currentCashFlow?.cashExpenses||0)} expenses</b></div></div>
+          <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses"/>
+          <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
           <div className="pulse-supporting-metrics" aria-label="Portfolio overview">
             <PulseMetric label="Expected rent" value={formatKpiCurrency(expectedMonthlyRent)}/>
             <PulseMetric label="Collected rent" value={formatKpiCurrency(confirmedRent)} tone="positive"/>
             <PulseMetric label="Projected month-end" value={formatKpiCurrency(projectedMonthEnd)} tone={projectedMonthEnd>=0?'positive':'negative'}/>
             <PulseMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)}/>
           </div>
-          <div className="pulse-chart-head"><div><h2>Cash flow</h2><p>Cumulative posted ledger activity</p></div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
-          <CashFlowChart rows={cashFlow} period={cashPeriod} forecast={cashForecast}/>
-          <div className="pulse-periods" aria-label="Cash flow period">{(['1M','3M','YTD','1Y'] as CashPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
         </div>
         <aside className="pulse-action-center card">
           <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
@@ -303,8 +302,8 @@ export default function Dashboard() {
     </>}
     {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{await load();setToast(message||'Transaction added')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
-    {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:21}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:11,fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:13,marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
-      {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:13,color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
+    {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
+      {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
       {testPreview&&testReviewUnits.length===0&&<div style={{padding:18,textAlign:'center',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:10}}>Test complete. All occupied units were reviewed.</div>}
     </div></div></div>}
   </div>;
@@ -323,76 +322,9 @@ function CountUpCurrency({value}:{value:number}){
 function DashboardCategoryIcon({category}:{category:string}){const props={size:19,strokeWidth:1.8};const key=categoryKey(category);const Icon=key==='rent'?Banknote:key.startsWith('mortgage')?Landmark:key==='maintenance'?Wrench:key==='utilities'?Zap:key==='insurance'?ShieldCheck:key==='management'?ClipboardCheck:key==='leasing'?Receipt:key==='taxes'?Building2:key==='capex'?Hammer:key==='legal'?Scale:key==='distribution'?WalletCards:key==='other-income'?CircleDollarSign:key==='refund'?RotateCcw:key==='review'?ClipboardCheck:FileText;return <span className="ledger-category-icon recent-category-icon" data-category={key} aria-hidden="true"><Icon {...props}/></span>}
 function ActionIcon({kind,title}:{kind:'rent'|'document'|'review';title:string}){const props={size:19,strokeWidth:1.8};const lower=title.toLowerCase();const Icon=kind==='rent'?Banknote:kind==='review'?ClipboardCheck:lower.includes('insurance')?ShieldCheck:lower.includes('lease')?FileText:ClipboardCheck;const actionTone=kind==='rent'?'rent':kind==='review'?'review':lower.includes('insurance')?'insurance':lower.includes('lease')?'lease':'document';return <span className="action-icon" data-action={actionTone} aria-hidden="true"><Icon {...props}/></span>}
 
-function CashFlowChart({rows,period,forecast}:{rows:CashPoint[];period:CashPeriod;forecast:{value:number;label:string}|null}){
-  const [selectedIndex,setSelectedIndex]=useState<number|null>(null);
-  useEffect(()=>setSelectedIndex(null),[period]);
-  const w=760,h=250,padX=16,padTop=20,padBottom=30;
-  const vals=[0,...rows.map(r=>r.value),...(forecast?[forecast.value]:[])];
-  const minValue=Math.min(...vals),maxValue=Math.max(...vals);
-  const range=Math.max(1,maxValue-minValue);
-  const chartMin=minValue-range*.12,chartMax=maxValue+range*.12;
-  const actualRight=forecast?w-padX-86:w-padX;
-  const x=(i:number)=>padX+i*((actualRight-padX)/Math.max(1,rows.length-1));
-  const y=(v:number)=>padTop+((chartMax-v)/(chartMax-chartMin))*(h-padTop-padBottom);
-  const zero=y(0);
-  const points=rows.map((r,i)=>`${x(i)},${y(r.value)}`).join(' ');
-  const activeIndex=selectedIndex??Math.max(0,rows.length-1);
-  const active=rows[activeIndex];
-  const tone=(rows[rows.length-1]?.value||0)>=0?'positive':'negative';
-  const tickIndexes=new Set([0,.25,.5,.75,1].map(position=>Math.round((rows.length-1)*position)));
-
-  function selectFromPointer(e:React.PointerEvent<SVGSVGElement>){
-    const rect=e.currentTarget.getBoundingClientRect();
-    const px=Math.max(0,Math.min(rect.width,e.clientX-rect.left));
-    const normalized=(px/rect.width)*w;
-    const index=Math.max(0,Math.min(rows.length-1,Math.round((normalized-padX)/((actualRight-padX)/Math.max(1,rows.length-1)))));
-    setSelectedIndex(index);
-  }
-
-  return <div className="pulse-chart-wrap">
-    <div className="pulse-chart-summary" aria-live="polite">
-      <span>{selectedIndex===null?'Today':active?.fullLabel}</span>
-      <strong className={(active?.value||0)<0?'amount-negative':'amount-positive'}>{formatCurrency(active?.value||0)}</strong>
-      {selectedIndex!==null&&active&&<small>Day activity <b className={active.periodNet<0?'amount-negative':'amount-positive'}>{formatCurrency(active.periodNet)}</b></small>}
-    </div>
-    <svg className="pulse-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Interactive cumulative cash flow for ${period}`} onPointerDown={selectFromPointer} onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)selectFromPointer(e);}} onPointerLeave={()=>setSelectedIndex(null)} onPointerCancel={()=>setSelectedIndex(null)}>
-      <line x1={padX} y1={zero} x2={w-padX} y2={zero} className="chart-zero"/>
-      <polyline points={points} className={`pulse-chart-line ${tone}`} fill="none"/>
-      {forecast&&rows.length>0&&<line x1={x(rows.length-1)} y1={y(rows[rows.length-1].value)} x2={w-padX} y2={y(forecast.value)} className={`pulse-chart-forecast ${forecast.value>=rows[rows.length-1].value?'positive':'negative'}`}/>}
-      {selectedIndex!==null&&active&&<><line x1={x(activeIndex)} y1={padTop} x2={x(activeIndex)} y2={h-padBottom} className="pulse-chart-guide"/><circle cx={x(activeIndex)} cy={y(active.value)} r="5" className={`pulse-chart-selected ${active.value>=0?'positive':'negative'}`}/></>}
-      {rows.map((r,i)=>tickIndexes.has(i)?<text key={r.key} x={x(i)} y={h-7} textAnchor={i===0?'start':i===rows.length-1?'end':'middle'} className="pulse-chart-label">{r.label}</text>:null)}
-      {forecast&&<text x={w-padX} y={h-7} textAnchor="end" className="pulse-chart-label forecast">{forecast.label}</text>}
-      <rect x="0" y="0" width={w} height={h-padBottom} fill="transparent"/>
-    </svg>
-    <div className="pulse-chart-hint">Tap and drag to inspect</div>
-  </div>;
-}
-
-function buildCashFlowSeries(transactions:Transaction[],period:CashPeriod,propertyId:string):CashPoint[]{
-  const today=new Date();today.setHours(0,0,0,0);
-  let start:Date;
-  if(period==='1M') start=new Date(today.getFullYear(),today.getMonth(),1);
-  else if(period==='3M'){start=new Date(today);start.setDate(start.getDate()-89);}
-  else if(period==='YTD') start=new Date(today.getFullYear(),0,1);
-  else {start=new Date(today);start.setFullYear(start.getFullYear()-1);start.setDate(start.getDate()+1);}
-  const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
-  const byDate=new Map<string,Transaction[]>();
-  posted.forEach(tx=>byDate.set(tx.transaction_date,[...(byDate.get(tx.transaction_date)||[]),tx]));
-  const rows:CashPoint[]=[];let running=0;
-  for(const cursor=new Date(start);cursor<=today;cursor.setDate(cursor.getDate()+1)){
-    const key=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
-    const dayRows=byDate.get(key)||[];
-    const income=dayRows.filter(tx=>tx.type==='income').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
-    const expense=dayRows.filter(tx=>tx.type==='expense').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-    const periodNet=income-expense;running+=periodNet;
-    rows.push({key,label:period==='1M'?String(cursor.getDate()):cursor.toLocaleDateString('en-US',{month:'short',day:'numeric'}),fullLabel:cursor.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),value:running,periodNet,income,expense});
-  }
-  return rows;
-}
-
 function localDateKey(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
 
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:18};
-const overlay:React.CSSProperties={position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'grid',placeItems:'center',padding:18,zIndex:1000};
+const overlay:React.CSSProperties={position:'fixed',inset:0,background:'var(--theme-overlay)',display:'grid',placeItems:'center',padding:18,zIndex:1000};
