@@ -15,7 +15,7 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
-import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
+import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
 
 type DailyInsight={id:string;kicker:string;title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy'};
 
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('3M');
   const [cashPropertyId, setCashPropertyId] = useState('');
+  const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,7 +40,6 @@ export default function Dashboard() {
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [toast,setToast]=useState('');
-  const [sinceLastVisit,setSinceLastVisit]=useState('Your portfolio is ready');
   const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
   const visitRecorded=useRef(false);
 
@@ -52,25 +52,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  const recordDashboardVisit = useCallback(async (txRows:Transaction[]) => {
+  const recordDashboardVisit = useCallback(async () => {
     const now=new Date().toISOString();
     const todayKey=localDateKey(new Date());
     const storageKey=`re-portal:last-dashboard-visit:${user.id}`;
     const dismissedStorageKey=`re-portal:dismissed-insights:${user.id}:${todayKey}`;
-    let previous='';
     try{setDismissedInsightIds(JSON.parse(window.localStorage.getItem(dismissedStorageKey)||'[]'));}catch{}
-    try{previous=window.localStorage.getItem(storageKey)||'';}catch{}
     try{
       const visit=await supabase.from('dashboard_visits').select('last_seen_at,dismissed_insight_ids,dismissed_for_date').eq('user_id',user.id).maybeSingle();
-      if(!visit.error&&visit.data?.last_seen_at) previous=visit.data.last_seen_at;
       if(!visit.error&&visit.data?.dismissed_for_date===todayKey&&Array.isArray(visit.data.dismissed_insight_ids)) setDismissedInsightIds(visit.data.dismissed_insight_ids as string[]);
     }catch{}
-    if(previous){
-      const updateCount=txRows.filter(tx=>tx.created_at&&tx.created_at>previous).length;
-      setSinceLastVisit(updateCount?`${updateCount} new ledger ${updateCount===1?'update':'updates'} since your last visit`:'No new ledger activity since your last visit');
-    }else{
-      setSinceLastVisit('Your first portfolio pulse is ready');
-    }
     try{window.localStorage.setItem(storageKey,now);}catch{}
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,last_seen_at:now,updated_at:now},{onConflict:'user_id'});}catch{}
   },[user.id]);
@@ -124,7 +115,7 @@ export default function Dashboard() {
 
       // Show the useful dashboard as soon as the core data arrives.
       setProperties(props); setUnits(unitRows); setTransactions(txRows); setDocuments((d.data||[]) as PropertyDocument[]); setLoading(false);
-      if(!visitRecorded.current){visitRecorded.current=true;void recordDashboardVisit(txRows);}
+      if(!visitRecorded.current){visitRecorded.current=true;void recordDashboardVisit();}
 
       // Images and recurring bookkeeping happen after render and never block it.
       void (async()=>{
@@ -254,23 +245,21 @@ export default function Dashboard() {
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
   const currentCashFlow=cashFlow[cashFlow.length-1];
+  const displayedCashFlow=inspectedCashFlow||currentCashFlow;
 
   return <div className="dashboard-page pulse-page">
     <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <section className="pulse-top-grid">
-        <div className="pulse-primary">
+      <section className="pulse-performance-open">
           <div className="pulse-hero">
             <span className="pulse-kicker">Rent earned this month</span>
             <CountUpCurrency value={rentEarned}/>
             <div className="pulse-daily-gain">+{formatCurrency(dailyRent)} today</div>
-            <p className="pulse-earned-note">{monthLabel} 1–{now.getDate()}</p>
-            <div className="pulse-since-visit"><span aria-hidden="true">●</span>{sinceLastVisit}</div>
           </div>
-          <div className="pulse-chart-head"><div><h2>Cash flow</h2><p>Monthly posted income minus expenses</p></div></div>
-          <div className="pulse-cash-summary"><span>{currentCashFlow?.periodLabel||`${monthLabel} month-to-date`}</span><strong className={(currentCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(currentCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(currentCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(currentCashFlow?.cashExpenses||0)} expenses</b></div></div>
-          <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses"/>
+          <div className="pulse-chart-head"><h2>Cash flow</h2></div>
+          <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(displayedCashFlow?.cashExpenses||0)} expenses</b></div></div>
+          <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
           <div className="pulse-supporting-metrics" aria-label="Portfolio overview">
             <PulseMetric label="Expected rent" value={formatKpiCurrency(expectedMonthlyRent)}/>
@@ -278,11 +267,6 @@ export default function Dashboard() {
             <PulseMetric label="Projected month-end" value={formatKpiCurrency(projectedMonthEnd)} tone={projectedMonthEnd>=0?'positive':'negative'}/>
             <PulseMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)}/>
           </div>
-        </div>
-        <aside className="pulse-action-center card">
-          <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
-          {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
-        </aside>
       </section>
       {visibleDailyInsights.length>0&&<section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><div><span>Fresh today</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>Updates refresh each day</p></div>
@@ -292,8 +276,14 @@ export default function Dashboard() {
           <span>{insight.kicker}</span><strong>{insight.title}</strong><p>{insight.detail}</p>
         </article>)}</div>
       </section>}
+      <section className="pulse-action-section">
+        <aside className="pulse-action-center card">
+          <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
+          {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
+        </aside>
+      </section>
       <section className="pulse-lower-grid">
-        <div className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="card recent-activity-card"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></div>
+        <div className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></div>
         <div className="pulse-properties-section"><div className="pulse-section-title"><h2>Properties</h2><Link href="/properties">Manage →</Link></div><div className="dashboard-properties-panel card"><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
           {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
           <div className="property-compact-copy"><strong>{property.address}</strong><span>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</span></div><strong className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</strong>

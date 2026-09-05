@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
-import { buildMonthlyFinancialHistory, type HistoryMode, type HistoryPeriod } from '@/lib/financialHistory';
+import { buildMonthlyFinancialHistory, type HistoryMode, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
 
 type Tab = 'overview' | 'improve' | 'units' | 'documents';
 type Tx = {
@@ -176,10 +176,12 @@ export default function PropertyWorkspacePage(){
 function Overview({property,units,transactions,documents,expectedRent,metrics,onNavigate,onPropertyUpdated}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];expectedRent:number;metrics:ReturnType<typeof calculateMetrics>;onNavigate:(tab:Tab)=>void;onPropertyUpdated:(patch:Record<string,unknown>)=>void}){
   const [period,setPeriod]=useState<HistoryPeriod>('3M');
   const [mode,setMode]=useState<HistoryMode>('cashFlow');
+  const [inspected,setInspected]=useState<MonthlyFinancialPoint|null>(null);
   const history=useMemo(()=>buildMonthlyFinancialHistory(transactions,period,property.id),[transactions,period,property.id]);
   const current=history[history.length-1];
-  const currentValue=mode==='cashFlow'?(current?.cashFlow||0):(current?.noi||0);
-  const currentExpenses=mode==='cashFlow'?(current?.cashExpenses||0):(current?.operatingExpenses||0);
+  const displayed=inspected||current;
+  const currentValue=mode==='cashFlow'?(displayed?.cashFlow||0):(displayed?.noi||0);
+  const currentExpenses=mode==='cashFlow'?(displayed?.cashExpenses||0):(displayed?.operatingExpenses||0);
   const currentMonth=new Date().toISOString().slice(0,7);
   const collectedRent=transactions.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&tx.category==='Rent'&&(tx.status||'posted')==='posted').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
   const expenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
@@ -195,10 +197,10 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
 
   return <div className="property-overview-pulse">
     <div className="property-overview-top">
-      <section className="property-overview-chart-card">
+      <section className="property-overview-chart-open">
         <div className="property-overview-chart-head"><div><span>Performance</span><h2>{mode==='cashFlow'?'Cash flow':'Net operating income'}</h2></div><div className="property-chart-modes" aria-label="Chart metric"><button className={mode==='cashFlow'?'active':''} onClick={()=>setMode('cashFlow')}>Cash flow</button><button className={mode==='noi'?'active':''} onClick={()=>setMode('noi')}>NOI</button></div></div>
-        <div className="property-overview-summary"><span>{current?.periodLabel||'Current month'}</span><PerformanceAnimatedValue value={currentValue} animate/><div><b className="amount-positive">{formatCurrency(current?.income||0)} income</b><b className="amount-negative">−{formatCurrency(currentExpenses)} expenses</b></div></div>
-        <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode==='cashFlow'?'cash flow':'net operating income'} and expenses for ${property.address}`}/>
+        <div className="property-overview-summary"><div className="property-overview-value-row"><PerformanceAnimatedValue value={currentValue} animate={!inspected}/><span>{displayed?.periodLabel||'Current month'}</span></div><div><b className="amount-positive">{formatCurrency(displayed?.income||0)} income</b><b className="amount-negative">−{formatCurrency(currentExpenses)} expenses</b></div></div>
+        <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode==='cashFlow'?'cash flow':'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
         <div className="property-chart-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(value=><button key={value} className={period===value?'active':''} onClick={()=>setPeriod(value)}>{value}</button>)}</div>
       </section>
       <aside className="property-overview-actions">
@@ -221,10 +223,10 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
 
     <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
     <div className="property-overview-lower">
-      <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View ledger <ChevronRight size={15}/></Link></div><div className="origin-breakdown">{breakdown.length?breakdown.map(item=><BreakdownRow key={item.category} item={item} total={breakdownTotal} propertyId={property.id}/>):<Empty text="No operating expenses recorded."/>}</div></section>
-      <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div><div className="property-list">{transactions.slice(0,5).map(tx=><TransactionRow key={tx.id} tx={tx}/>)}{!transactions.length&&<Empty text="No transactions yet."/>}</div></section>
+      <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View ledger <ChevronRight size={15}/></Link></div><div className="origin-breakdown">{breakdown.length?breakdown.map(item=><BreakdownRow key={item.category} item={item} total={breakdownTotal} propertyId={property.id}/>):<Empty text="No operating expenses recorded."/>}</div></section>
+      <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div><div className="property-list">{transactions.slice(0,5).map(tx=><TransactionRow key={tx.id} tx={tx}/>)}{!transactions.length&&<Empty text="No transactions yet."/>}</div></section>
     </div>
-    <section className="card property-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property paperwork</h2></div><button type="button" className="property-text-action" onClick={()=>onNavigate('documents')}>Open documents <ChevronRight size={15}/></button></div><div className="property-doc-summary"><FileText size={22}/><div><strong>{documents.length} {documents.length===1?'document':'documents'}</strong><span>Leases, insurance, registrations, invoices and property records.</span></div></div></section>
+    <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property paperwork</h2></div><button type="button" className="property-text-action" onClick={()=>onNavigate('documents')}>Open documents <ChevronRight size={15}/></button></div><div className="property-doc-summary"><FileText size={22}/><div><strong>{documents.length} {documents.length===1?'document':'documents'}</strong><span>Leases, insurance, registrations, invoices and property records.</span></div></div></section>
   </div>;
 }
 
@@ -563,7 +565,7 @@ function leaseStatus(start?:string|null,end?:string|null,occupied?:boolean){if(!
 function shortDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
 function longDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
-function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="card property-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
+function Documents({documents,propertyId}:{documents:PropertyDocument[];propertyId:string}){ return <section className="property-open-panel property-tab-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property documents</h2></div><Link href={`/ledger?tab=documents&property=${propertyId}`} className="property-secondary-action">Manage documents</Link></div><div className="property-document-list">{documents.length?documents.map(d=><div className="property-document-row" key={d.id}><div className="property-document-icon"><FileText size={18}/></div><div><strong>{d.title||d.file_name}</strong><span>{d.category}{d.expires_at?` · Expires ${formatDate(d.expires_at)}`:''}</span></div></div>):<Empty text="No documents uploaded for this property."/>}</div></section>; }
 
 function Kpi({label,value,sub,tone,change,changeLabel,inverse,status}:{label:string;value:string;sub?:string;tone?:'positive'|'negative'|'warning';change?:number|null;changeLabel?:string;inverse?:boolean;status?:string}){ const good=change!=null?(inverse?change<=0:change>=0):tone==='positive'; return <div className="metric-cell property-metric"><span>{label}</span><strong className={tone?`kpi-${tone}`:''}>{value}</strong>{status?<small className={`kpi-status kpi-status-${tone||'neutral'}`}><b>{status}</b><em>{sub||changeLabel||''}</em></small>:change!=null&&Number.isFinite(change)?<small className={good?'change-good':'change-bad'}>{change>=0?'↑':'↓'} {Math.abs(change).toFixed(1)}% <em>{changeLabel}</em></small>:<small>{sub||changeLabel||' '}</small>}</div>; }
 function BreakdownRow({item,total,propertyId}:{item:ReturnType<typeof buildBreakdown>[number];total:number;propertyId:string}){ const [open,setOpen]=useState(false); const color=categoryVar[item.key]||'var(--category-neutral)'; const pct=total?Math.round(item.amount/total*100):0; return <div className={`origin-breakdown-row expandable ${open?'open':''}`}><button type="button" className="origin-breakdown-toggle" onClick={()=>setOpen(v=>!v)}><div className="origin-breakdown-label"><span className="origin-dot" style={{background:color}}/><strong>{item.category}</strong><span>{formatCurrency(item.amount)}</span><ChevronDown size={15}/></div><div className="origin-breakdown-track"><i style={{width:`${pct}%`,background:color}}/></div><div className="origin-breakdown-percent">{pct}%</div></button>{open&&<div className="origin-breakdown-details">{item.transactions.slice(0,8).map(t=>{const title=t.payee_source||t.description||item.category;const detail=t.payee_source&&t.description&&t.payee_source!==t.description?t.description:t.category;return <Link href={`/ledger?property=${propertyId}`} key={t.id}><span><strong>{title}</strong><small>{formatDate(t.transaction_date)} · {detail}</small></span><b>{formatCurrency(Math.abs(t.amount))}</b></Link>})}{item.transactions.length>8&&<Link className="origin-more-link" href={`/ledger?property=${propertyId}`}>+ {item.transactions.length-8} more transactions</Link>}</div>}</div>; }

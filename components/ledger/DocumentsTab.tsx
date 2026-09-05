@@ -113,23 +113,23 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
     if (row.error) setError(row.error.message); else { setSelectedDoc(null); await loadData(); }
   }
 
-  return <div>
-    <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:12,marginBottom:18}}><button onClick={openUpload} disabled={!properties.length} style={primaryButton}>+ Upload document</button></div>
+  return <div className="documents-open-view">
+    <div className="document-toolbar"><button onClick={openUpload} disabled={!properties.length} style={primaryButton}>+ Upload document</button></div>
     {error && <div style={errorBox}>{error}</div>}
     {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
 
-    <div className="card" style={{padding:14,display:'grid',gridTemplateColumns:'minmax(180px,280px)',gap:10,marginBottom:18}}>
+    <div className="document-filter-row">
       <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={inputStyle}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
     </div>
 
-    {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="card" style={{padding:28,color:'var(--text-secondary)'}}>No documents yet.</div> :
-      <div style={{display:'grid',gap:10}}>{filtered.map(doc => <div key={doc.id} className="card" style={{padding:16,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:14,alignItems:'center'}}>
-        <div style={{minWidth:0}}>
-          <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:4}}>{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>
-          <div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{doc.title}</div>
-          <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:4}}>{doc.document_date || doc.file_name}</div>
+    {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
+      <div className="document-feed">{filtered.map(doc => <div key={doc.id} className="document-feed-row">
+        <div className="document-feed-copy">
+          <div className="document-feed-meta">{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>
+          <strong>{doc.title}</strong>
+          <span>{doc.document_date || doc.file_name}</span>
         </div>
-        <div style={{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>openDocument(doc)} style={secondaryButton}>Open</button><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
+        <div className="document-feed-actions"><button onClick={()=>openDocument(doc)} style={secondaryButton}>Open</button><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
       </div>)}</div>
     }
 

@@ -26,10 +26,10 @@ export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyI
 
   if(loading)return <PageSkeleton variant="ledger"/>;
   if(error)return <div style={{padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8}}>{error}</div>;
-  if(!months.length)return <div className="card" style={{padding:28,color:'var(--text-secondary)'}}>No statement data yet. Statements will populate from your ledger transactions.</div>;
-  return <div className="statement-list">{months.map(m=><div className="card statement-row" key={m.key}>
+  if(!months.length)return <div className="ledger-open-empty">No statement data yet. Statements will populate from your ledger transactions.</div>;
+  return <div className="statement-feed">{months.map(m=><div className="statement-feed-row" key={m.key}>
     <div className="statement-month"><div>{formatMonthYear(m.year,m.month)}</div><span>{m.count} transactions</span></div>
     <div className="statement-metrics"><Metric label="Income" value={formatCurrency(m.income)} tone="positive"/><Metric label="Expenses" value={formatCurrency(m.expense)} tone="negative"/><Metric label="Net" value={formatCurrency(m.net)} tone={m.net>=0?'positive':'negative'} strong /></div>
   </div>)}</div>;
 }
-function Metric({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'positive'|'negative'}){return <div className="statement-metric"><div style={{fontSize:11,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:.4}}>{label}</div><div className={tone==='positive'?'amount-positive':tone==='negative'?'amount-negative':''} style={{fontWeight:strong?700:650,marginTop:3}}>{value}</div></div>}
+function Metric({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'positive'|'negative'}){return <div className={`statement-metric ${strong?'strong':''}`}><span>{label}</span><strong className={tone==='positive'?'amount-positive':tone==='negative'?'amount-negative':''}>{value}</strong></div>}
