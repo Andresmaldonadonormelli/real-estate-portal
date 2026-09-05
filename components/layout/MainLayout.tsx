@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserRound, X } from 'lucide-react';
+import { Settings, UserRound, X } from 'lucide-react';
 import BottomNav from './BottomNav';
 import SideNav from './SideNav';
 import ThemeToggle from './ThemeToggle';
@@ -27,12 +27,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {!isMobile && <SideNav />}
-      <main className="main-content" style={{ background: 'var(--bg-primary)' }}>{children}</main>
+      <main className="main-content">{children}</main>
       {isMobile && <BottomNav onMenuClick={() => setShowNav(true)} />}
       {isMobile && showNav && (
         <div className="mobile-menu-backdrop" onClick={() => setShowNav(false)}>
           <div className="mobile-menu-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Menu">
             <div className="mobile-menu-header"><strong>Menu</strong><button type="button" className="icon-button" onClick={() => setShowNav(false)} aria-label="Close menu"><X size={20} /></button></div>
+            <Link href="/utilities" className="mobile-menu-item"><Settings size={19} strokeWidth={1.8}/><span>Utilities</span></Link>
             <Link href="/account" className="mobile-menu-item"><UserRound size={19} strokeWidth={1.8}/><span>Account</span></Link>
             <ThemeToggle />
           </div>

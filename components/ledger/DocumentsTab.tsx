@@ -124,12 +124,12 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
 
     {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
       <div className="document-feed">{filtered.map(doc => <div key={doc.id} className="document-feed-row">
-        <div className="document-feed-copy">
+        <button type="button" className="document-feed-copy" onClick={()=>openDocument(doc)} aria-label={`Open ${doc.title}`}>
           <div className="document-feed-meta">{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>
           <strong>{doc.title}</strong>
           <span>{doc.document_date || doc.file_name}</span>
-        </div>
-        <div className="document-feed-actions"><button onClick={()=>openDocument(doc)} style={secondaryButton}>Open</button><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
+        </button>
+        <div className="document-feed-actions"><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
       </div>)}</div>
     }
 
@@ -145,7 +145,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
       </div>
       <div className="document-reminder-editor"><Field label="Expiration / renewal date"><input type="date" value={selectedDoc.expires_at||''} onChange={e=>setSelectedDoc({...selectedDoc,expires_at:e.target.value||null})} style={inputStyle}/></Field><Field label="Reminder"><select value={String(selectedDoc.reminder_days||60)} onChange={e=>setSelectedDoc({...selectedDoc,reminder_days:Number(e.target.value)})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field><button type="button" disabled={saving} onClick={()=>saveDocumentTiming(selectedDoc)} style={secondaryButton}>{saving?'Saving…':'Save reminder'}</button></div>
       <button type="button" onClick={()=>openDocument(selectedDoc)} style={secondaryButton}>Open document</button>
-      <div className="danger-zone"><div><div style={{fontWeight:600,fontSize:14}}>Danger zone</div><div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Archive document</button></div>
+      <div className="danger-zone"><div><div style={{fontWeight:'var(--weight-semibold)',fontSize:'var(--type-small-size)'}}>Danger zone</div><div style={{fontSize:'var(--type-label-size)',lineHeight:'var(--type-label-line)',color:'var(--text-secondary)',marginTop:'var(--space-1)'}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Archive document</button></div>
     </div></Modal>}
 
     {showUpload && <Modal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
@@ -160,12 +160,12 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   </div>;
 }
 
-function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:12,fontSize:13}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}
-function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
-function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'grid',placeItems:'center',padding:18,zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h2 style={{fontSize:21}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
-const inputStyle:React.CSSProperties={width:'100%',padding:'10px 11px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16};
+function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:'var(--space-3)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:'var(--space-2)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}>{label}{children}</label>}
+function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'var(--theme-overlay)',display:'grid',placeItems:'center',padding:'var(--space-5)',zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:'var(--space-6)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-5)'}}><h2 style={{fontSize:'var(--type-section-title-size)',lineHeight:'var(--type-section-title-line)'}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
+const inputStyle:React.CSSProperties={width:'100%',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--input-bg)',color:'var(--text-primary)',fontSize:'var(--type-body-size)'};
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
-const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:16,fontSize:13};
+const errorBox:React.CSSProperties={padding:'var(--space-3)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:'var(--radius-control)',marginBottom:'var(--space-4)',fontSize:'var(--type-small-size)'};

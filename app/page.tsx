@@ -251,6 +251,7 @@ export default function Dashboard() {
     <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
+      <div className="pulse-dashboard-grid">
       <section className="pulse-performance-open">
           <div className="pulse-hero">
             <span className="pulse-kicker">Rent earned this month</span>
@@ -268,27 +269,30 @@ export default function Dashboard() {
             <PulseMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)}/>
           </div>
       </section>
-      {visibleDailyInsights.length>0&&<section className="daily-brief" aria-labelledby="daily-brief-title">
+      <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><div><span>Fresh today</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>Updates refresh each day</p></div>
-        <div className="daily-brief-rail">{visibleDailyInsights.map(insight=><article key={insight.id} className="daily-insight" data-tone={insight.tone}>
+        {visibleDailyInsights.length>0?<div className="daily-brief-rail">{visibleDailyInsights.map(insight=><article key={insight.id} className="daily-insight" data-tone={insight.tone}>
           <div className="daily-insight-icon" aria-hidden="true">{insight.kind==='rent'?<Banknote size={19}/>:insight.kind==='expense'?(insight.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div>
           <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(insight.id)} aria-label={`Dismiss ${insight.kicker}`}><X size={16}/></button>
           <span>{insight.kicker}</span><strong>{insight.title}</strong><p>{insight.detail}</p>
-        </article>)}</div>
-      </section>}
+        </article>)}</div>:<div className="daily-brief-clear"><strong>You’re caught up for today</strong><span>Fresh updates will appear tomorrow.</span></div>}
+      </section>
+      <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
+        <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage →</Link></div>
+        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const latest=history[history.length-1];return <button key={property.id} type="button" className={`portfolio-rail-row ${cashPropertyId===property.id?'active':''}`} onClick={()=>setCashPropertyId(current=>current===property.id?'':property.id)} aria-pressed={cashPropertyId===property.id}>
+          {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
+          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</small></span>
+          <MiniSparkline rows={history}/><strong className={(latest?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(latest?.cashFlow||0)}</strong>
+        </button>})}</div>
+      </aside>
+      </div>
       <section className="pulse-action-section">
         <aside className="pulse-action-center card">
           <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
           {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
         </aside>
       </section>
-      <section className="pulse-lower-grid">
-        <div className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></div>
-        <div className="pulse-properties-section"><div className="pulse-section-title"><h2>Properties</h2><Link href="/properties">Manage →</Link></div><div className="dashboard-properties-panel card"><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
-          {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
-          <div className="property-compact-copy"><strong>{property.address}</strong><span>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</span></div><strong className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</strong>
-        </div>})}</div></div></div>
-      </section>
+      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
     </>}
     {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{await load();setToast(message||'Transaction added')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
@@ -299,6 +303,7 @@ export default function Dashboard() {
   </div>;
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
+function MiniSparkline({rows}:{rows:MonthlyFinancialPoint[]}){const values=rows.map(row=>row.cashFlow);const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(1,max-min);const points=values.map((value,index)=>`${index*(64/Math.max(1,values.length-1))},${18-((value-min)/span)*16}`).join(' ');return <svg className="portfolio-sparkline" viewBox="0 0 64 20" aria-hidden="true"><polyline points={points}/></svg>}
 function CountUpCurrency({value}:{value:number}){
   const [display,setDisplay]=useState(0);
   useEffect(()=>{

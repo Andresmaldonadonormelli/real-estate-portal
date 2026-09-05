@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, FileText, Gauge, Home, Settings, WalletCards } from 'lucide-react';
+import { Building2, Gauge, Home, Settings, WalletCards } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
 
@@ -25,13 +25,6 @@ export default function SideNav() {
   })(); return()=>{alive=false}; },[pathname]);
 
   const activePropertyId=useMemo(()=>pathname.match(/^\/properties\/([^/]+)/)?.[1]||'',[pathname]);
-  const items=[
-    {href:'/',label:'Dashboard',icon:Gauge},
-    {href:'/ledger',label:'Ledger & Docs',icon:WalletCards},
-    {href:'/utilities',label:'Utilities',icon:Settings},
-    {href:'/account',label:'Account',icon:Home},
-  ];
-
   return <nav className="side-nav">
     <div className="side-nav-brand" aria-label="RE Portal"><img src="/brand-logo.png" alt="" /></div>
     <div className="side-nav-scroll">
@@ -45,8 +38,7 @@ export default function SideNav() {
         </div>
       </div>
 
-      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')?'active':''}`}><WalletCards size={18}/><span>Ledger & Docs</span></Link>
-      <Link href="/actions" className={`nav-link ${pathname.startsWith('/actions')?'active':''}`}><FileText size={18}/><span>Needs Review</span>{reviewCount>0&&<span className="nav-count nav-count-review">{reviewCount}</span>}</Link>
+      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18}/><span>Ledger & Docs</span>{reviewCount>0&&<span className="nav-count nav-count-review">{reviewCount}</span>}</Link>
       <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Settings size={18}/>Utilities</Link>
       <Link href="/account" className={`nav-link ${pathname.startsWith('/account')?'active':''}`}><Home size={18}/>Account</Link>
     </div>

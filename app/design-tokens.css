@@ -68,14 +68,14 @@
   --motion-standard: 240ms;
 
   /* Light surfaces and text */
-  --theme-page: #f3f4f6;
-  --theme-sidebar: #f7f8f9;
+  --theme-page: #ffffff;
+  --theme-sidebar: #ffffff;
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-subtle: #f1f2f3;
   --theme-surface-hover: #eef0f2;
   --theme-elevated: #ffffff;
-  --theme-input: #ffffff;
+  --theme-input: #f5f6f7;
   --theme-text-primary: #171918;
   --theme-text-secondary: #68706c;
   --theme-text-muted: #929995;
