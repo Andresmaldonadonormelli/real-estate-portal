@@ -240,52 +240,66 @@ function MortgageOverview({property,onUpdated}:{property:Property;onUpdated:(pat
   </section>;
 }
 
-function Performance({transactions,years,propertyId}:{transactions:Tx[];years:number[];propertyId:string}){
+type PerformancePeriod='3M'|'YTD'|'1Y'|'ALL';
+type PerformanceMode='cashFlow'|'incomeExpenses'|'noi';
+
+function Performance({transactions,propertyId}:{transactions:Tx[];years:number[];propertyId:string}){
   const now=new Date();
-  const [period,setPeriod]=useState<string>('ytd');
-  const range=useMemo(()=>getPeriodRange(period,now),[period]);
-  const previousRange=useMemo(()=>getPreviousRange(range),[range.start.getTime(),range.end.getTime()]);
+  const [period,setPeriod]=useState<PerformancePeriod>('YTD');
+  const [mode,setMode]=useState<PerformanceMode>('cashFlow');
+  const [inspected,setInspected]=useState<{label:string;value:number}|null>(null);
+  const range=useMemo(()=>getPerformanceRange(period,transactions,now),[period,transactions]);
+  const previousRange=useMemo(()=>getPreviousEqualRange(range),[range.start.getTime(),range.end.getTime()]);
   const rows=useMemo(()=>transactions.filter(t=>t.status!=='declined'&&inRange(t.transaction_date,range.start,range.end)),[transactions,range.start.getTime(),range.end.getTime()]);
   const priorRows=useMemo(()=>transactions.filter(t=>t.status!=='declined'&&inRange(t.transaction_date,previousRange.start,previousRange.end)),[transactions,previousRange.start.getTime(),previousRange.end.getTime()]);
   const metrics=useMemo(()=>calculateMetrics(rows),[rows]);
   const priorMetrics=useMemo(()=>calculateMetrics(priorRows),[priorRows]);
-  const monthly=useMemo(()=>buildMonthlyRange(rows,range.start,range.end),[rows,range.start.getTime(),range.end.getTime()]);
+  const monthly=useMemo(()=>buildPerformanceMonths(rows,range.start,range.end),[rows,range.start.getTime(),range.end.getTime()]);
   const breakdown=useMemo(()=>buildBreakdown(rows),[rows]);
-  const breakdownTotal=useMemo(()=>breakdown.reduce((sum,item)=>sum+item.amount,0),[breakdown]);
+  const breakdownTotal=breakdown.reduce((sum,item)=>sum+item.amount,0);
   const expenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
-  const priorExpenseRatio=priorMetrics.income>0?priorMetrics.operatingExpenses/priorMetrics.income:0;
-  const maintenance=breakdown.find(x=>x.key==='maintenance');
-  const label=period==='ytd'?'YTD':period==='l12m'?'Last 12M':period;
-  const compareLabel=period==='ytd'?'vs prior YTD':period==='l12m'?'vs previous 12M':`vs ${Number(period)-1}`;
-  const periodOptions=Array.from(new Set([String(now.getFullYear()),...years.map(String)])).sort((a,b)=>Number(b)-Number(a));
-  const watch = metrics.noi<0
-    ? {title:'Negative NOI',body:`Operating expenses exceeded gross income by ${formatCurrency(Math.abs(metrics.noi))} in ${label}.`}
-    : expenseRatio>=0.70
-      ? {title:'Expense ratio watch',body:`Operating expenses are ${(expenseRatio*100).toFixed(1)}% of gross income in ${label}.`}
-      : maintenance && maintenance.share>=0.40
-        ? {title:'Maintenance concentration',body:`Repairs & maintenance account for ${Math.round(maintenance.share*100)}% of operating expenses in ${label}.`}
-        : null;
-  return <div className="property-section-stack performance-origin">
-    <div className="performance-toolbar">
-      <div className="performance-period-switch performance-period-control" aria-label="Performance period"><button className={period==='ytd'?'active':''} onClick={()=>setPeriod('ytd')}>YTD</button><button className={period==='l12m'?'active':''} onClick={()=>setPeriod('l12m')}>Last 12M</button>{periodOptions.map(y=><button key={y} className={period===y?'active':''} onClick={()=>setPeriod(y)}>{y}</button>)}</div>
-    </div>
-    <div className="property-metric-strip performance-metric-strip performance-kpis">
-      <Kpi label="Gross income" value={formatKpiCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)} changeLabel={compareLabel}/>
-      <Kpi label="Operating expenses" value={formatKpiCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse changeLabel={compareLabel}/>
-      <Kpi label="NOI" value={formatKpiCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)} changeLabel={compareLabel}/>
-      <Kpi label="Cash flow after mortgage" value={formatKpiCurrency(metrics.cashFlow)} change={pctChange(metrics.cashFlow,priorMetrics.cashFlow)} changeLabel={compareLabel}/>
-      <Kpi label="Operating expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} sub={undefined} tone={expenseRatio>=0.70?'negative':expenseRatio>=0.55?'warning':'positive'} status={expenseRatio>=0.70?'High':expenseRatio>=0.55?'Elevated':'Healthy'}/>
-    </div>
-    <div className="property-performance-grid performance-panels">
-      <section className="card origin-panel performance-chart-panel"><div className="property-panel-head"><div><div className="eyebrow">PERFORMANCE</div><h2>Income & expenses over time</h2></div><span className="origin-period">{label}</span></div><PerformanceChart rows={monthly}/><div className="chart-legend"><span><i className="legend-income"/>Income</span><span><i className="legend-expense"/>Operating expenses</span><span><i className="legend-noi"/>NOI</span></div></section>
-      <section className="card origin-panel performance-breakdown-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><span className="muted-small">{label}</span></div><div className="origin-breakdown">{breakdown.length?breakdown.map(x=><BreakdownRow key={x.category} item={x} total={breakdownTotal} propertyId={propertyId}/>):<Empty text="No operating expenses recorded."/>}</div><Link href={`/ledger?property=${propertyId}`} className="origin-footer-link">View all transactions <ChevronRight size={15}/></Link></section>
-    </div>
-    {watch&&<section className="performance-watch"><AlertTriangle size={18}/><div><strong>{watch.title}</strong><span>{watch.body}</span></div></section>}
-    <section className="card origin-panel property-insights"><div className="property-panel-head"><div><div className="eyebrow">TRENDS</div><h2>What to watch</h2></div></div><div className="insight-grid">
-      <Insight icon={<Wrench size={18}/>} color="var(--category-maintenance)" title="Repairs & maintenance" body={maintenance?`${formatCurrency(maintenance.amount)} in ${label}, ${Math.round(maintenance.share*100)}% of operating expenses.`:`No repairs or maintenance recorded in ${label}.`}/>
-      <Insight icon={expenseRatio<=priorExpenseRatio?<TrendingDown size={18}/>:<TrendingUp size={18}/>} color={expenseRatio<=priorExpenseRatio?'var(--positive)':'var(--category-review)'} title="Operating expense ratio" body={priorMetrics.income?`${(expenseRatio*100).toFixed(1)}% ${label.toLowerCase()} vs ${(priorExpenseRatio*100).toFixed(1)}% in the comparison period.`:`${(expenseRatio*100).toFixed(1)}% of recorded income is going to operating expenses.`}/>
-      <Insight icon={metrics.cashFlow>=priorMetrics.cashFlow?<TrendingUp size={18}/>:<TrendingDown size={18}/>} color={metrics.cashFlow>=priorMetrics.cashFlow?'var(--positive)':'var(--negative)'} title="Cash flow" body={priorMetrics.income?`${formatCurrency(metrics.cashFlow)} ${label.toLowerCase()} vs ${formatCurrency(priorMetrics.cashFlow)} in the comparison period.`:`${formatCurrency(metrics.cashFlow)} after all recorded cash expenses.`}/>
-    </div></section>
+  const cashDelta=metrics.cashFlow-priorMetrics.cashFlow;
+  const elapsed=Math.max(1,(range.end.getTime()-range.start.getTime())/86400000+1);
+  const yearDays=((now.getFullYear()%4===0&&now.getFullYear()%100!==0)||now.getFullYear()%400===0)?366:365;
+  const projection=period==='YTD'?metrics.cashFlow/elapsed*yearDays:null;
+  const bestMonth=monthly.reduce((best,row)=>!best||row.cashFlow>best.cashFlow?row:best,monthly[0]);
+  const expenseMonth=monthly.reduce((highest,row)=>!highest||row.cashExpenses>highest.cashExpenses?row:highest,monthly[0]);
+  const modeValue=mode==='cashFlow'?metrics.cashFlow:mode==='noi'?metrics.noi:metrics.income;
+  const priorModeValue=mode==='cashFlow'?priorMetrics.cashFlow:mode==='noi'?priorMetrics.noi:priorMetrics.income;
+  const heroDelta=modeValue-priorModeValue;
+  const heroPct=pctChange(modeValue,priorModeValue);
+  const displayValue=inspected?.value??modeValue;
+  const heroLabel=inspected?inspected.label:mode==='cashFlow'?`${period==='ALL'?'All-time':period} cash flow after mortgage`:mode==='noi'?`${period==='ALL'?'All-time':period} NOI`:`${period==='ALL'?'All-time':period} gross income`;
+
+  useEffect(()=>setInspected(null),[period,mode]);
+
+  return <div className="performance-pulse">
+    <section className="performance-pulse-primary">
+      <div className="performance-pulse-head">
+        <div className="performance-pulse-hero"><span>{heroLabel}</span><PerformanceAnimatedValue value={displayValue} animate={!inspected}/>{!inspected&&(priorRows.length?<div className={`performance-pulse-change ${heroDelta>=0?'positive':'negative'}`}>{heroDelta>=0?'↑':'↓'} {formatCurrency(Math.abs(heroDelta))}{heroPct!=null?` (${Math.abs(heroPct).toFixed(1)}%)`:''} <em>vs previous period</em></div>:<div className="performance-pulse-change neutral">No prior-period data yet</div>)}{!inspected&&projection!=null&&mode==='cashFlow'&&<p>On pace for <strong>{formatKpiCurrency(projection)}</strong> this year at the current recorded pace.</p>}</div>
+        <div className="performance-pulse-periods" aria-label="Performance period">{(['3M','YTD','1Y','ALL'] as PerformancePeriod[]).map(value=><button key={value} className={period===value?'active':''} onClick={()=>setPeriod(value)}>{value==='ALL'?'All':value}</button>)}</div>
+      </div>
+      <div className="performance-pulse-modes" aria-label="Chart view"><button className={mode==='cashFlow'?'active':''} onClick={()=>setMode('cashFlow')}>Cash flow</button><button className={mode==='incomeExpenses'?'active':''} onClick={()=>setMode('incomeExpenses')}>Income & expenses</button><button className={mode==='noi'?'active':''} onClick={()=>setMode('noi')}>NOI</button></div>
+      <PerformancePulseChart rows={monthly} mode={mode} onInspect={setInspected}/>
+    </section>
+
+    <section className="performance-pulse-kpis" aria-label="Supporting performance metrics">
+      <PerformanceMetric label="Gross income" value={formatKpiCurrency(metrics.income)} change={pctChange(metrics.income,priorMetrics.income)}/>
+      <PerformanceMetric label="Operating expenses" value={formatKpiCurrency(metrics.operatingExpenses)} change={pctChange(metrics.operatingExpenses,priorMetrics.operatingExpenses)} inverse/>
+      <PerformanceMetric label="NOI" value={formatKpiCurrency(metrics.noi)} change={pctChange(metrics.noi,priorMetrics.noi)}/>
+      <PerformanceMetric label="Expense ratio" value={`${(expenseRatio*100).toFixed(1)}%`} tone={expenseRatio>=.7?'negative':expenseRatio>=.55?'warning':'positive'}/>
+    </section>
+
+    <section className="performance-pulse-highlights">
+      <div><span>Best month</span><strong>{bestMonth?.fullLabel||'No data'}</strong><p>{bestMonth?`${formatCurrency(bestMonth.cashFlow)} cash flow`:'Add transactions to see a trend.'}</p></div>
+      <div><span>Highest expense month</span><strong>{expenseMonth?.fullLabel||'No data'}</strong><p>{expenseMonth?`${formatCurrency(expenseMonth.cashExpenses)} cash expenses`:'No expenses recorded.'}</p></div>
+      <div><span>Period trend</span><strong>{priorRows.length?(cashDelta>=0?'Cash flow improved':'Cash flow declined'):'Building a baseline'}</strong><p>{priorRows.length?`${formatCurrency(Math.abs(cashDelta))} ${cashDelta>=0?'better':'lower'} than the previous period.`:'More history is needed for a real comparison.'}</p></div>
+    </section>
+
+    <section className="performance-pulse-breakdown">
+      <div className="performance-pulse-breakdown-head"><div><span>Breakdown</span><h2>Operating expenses</h2></div><Link href={`/ledger?property=${propertyId}`}>View ledger →</Link></div>
+      <div className="origin-breakdown">{breakdown.length?breakdown.map(item=><BreakdownRow key={item.category} item={item} total={breakdownTotal} propertyId={propertyId}/>):<Empty text="No operating expenses recorded."/>}</div>
+    </section>
   </div>;
 }
 
@@ -546,8 +560,58 @@ function PerformanceChart({rows}:{rows:ReturnType<typeof buildMonthlyRange>}){
   </div>;
 }
 
+function PerformanceAnimatedValue({value,animate}:{value:number;animate:boolean}){
+  const [display,setDisplay]=useState(value);
+  useEffect(()=>{
+    if(!animate||window.matchMedia('(prefers-reduced-motion: reduce)').matches){setDisplay(value);return;}
+    let frame=0;const start=performance.now();const duration=650;
+    const tick=(time:number)=>{const progress=Math.min(1,(time-start)/duration);setDisplay(value*(1-Math.pow(1-progress,3)));if(progress<1)frame=requestAnimationFrame(tick);};
+    frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
+  },[value,animate]);
+  return <strong className={display<0?'negative':''}>{formatCurrency(display)}</strong>;
+}
+
+function PerformanceMetric({label,value,change,inverse,tone}:{label:string;value:string;change?:number|null;inverse?:boolean;tone?:'positive'|'negative'|'warning'}){
+  const good=change!=null?(inverse?change<=0:change>=0):tone==='positive';
+  return <div><span>{label}</span><strong className={tone?`kpi-${tone}`:''}>{value}</strong>{change!=null&&Number.isFinite(change)?<small className={good?'positive':'negative'}>{change>=0?'↑':'↓'} {Math.abs(change).toFixed(1)}% <em>vs prior period</em></small>:<small>Current period</small>}</div>;
+}
+
+function PerformancePulseChart({rows,mode,onInspect}:{rows:ReturnType<typeof buildPerformanceMonths>;mode:PerformanceMode;onInspect:(value:{label:string;value:number}|null)=>void}){
+  const [selected,setSelected]=useState<number|null>(null);
+  useEffect(()=>{setSelected(null);onInspect(null);},[rows,mode,onInspect]);
+  const W=820,H=300,pad={l:16,r:16,t:18,b:36};
+  const innerW=W-pad.l-pad.r,innerH=H-pad.t-pad.b;
+  let running=0;
+  const plotted=rows.map(row=>{running+=row.cashFlow;return {...row,plotValue:mode==='cashFlow'?running:mode==='noi'?row.noi:row.income};});
+  const values=mode==='incomeExpenses'?[0,...rows.flatMap(row=>[row.income,row.operatingExpenses])]:[0,...plotted.map(row=>row.plotValue)];
+  const min=Math.min(...values),max=Math.max(...values),span=Math.max(1,max-min);
+  const chartMin=min-span*.12,chartMax=max+span*.12;
+  const x=(index:number)=>pad.l+index*(innerW/Math.max(1,rows.length-1));
+  const y=(value:number)=>pad.t+((chartMax-value)/(chartMax-chartMin))*innerH;
+  const groupW=innerW/Math.max(1,rows.length),barW=Math.max(7,Math.min(22,groupW*.27));
+  const points=plotted.map((row,index)=>`${x(index)},${y(row.plotValue)}`).join(' ');
+  const tickIndexes=new Set([0,.25,.5,.75,1].map(position=>Math.round((rows.length-1)*position)));
+  function choose(index:number|null){setSelected(index);if(index==null){onInspect(null);return;}const row=plotted[index];onInspect({label:row.fullLabel,value:mode==='cashFlow'?row.plotValue:mode==='noi'?row.noi:row.income});}
+  function selectPointer(e:React.PointerEvent<SVGSVGElement>){if(!rows.length)return;const rect=e.currentTarget.getBoundingClientRect();const pointer=(e.clientX-rect.left)/rect.width*W;choose(Math.max(0,Math.min(rows.length-1,Math.round((pointer-pad.l)/(innerW/Math.max(1,rows.length-1))))));}
+  const active=selected==null?null:plotted[selected];
+  return <div className="performance-pulse-chart-wrap">
+    <div className="performance-pulse-chart-summary">{active?<><span>{active.fullLabel}</span><b>{mode==='incomeExpenses'?`Income ${formatCurrency(active.income)} · Expenses ${formatCurrency(active.operatingExpenses)}`:`${mode==='noi'?'NOI':'Cash flow'} ${formatCurrency(mode==='noi'?active.noi:active.plotValue)}`}</b></>:<><span>{mode==='incomeExpenses'?'Monthly comparison':mode==='noi'?'Monthly net operating income':'Cumulative cash flow'}</span><b>Tap or drag to inspect</b></>}</div>
+    <svg viewBox={`0 0 ${W} ${H}`} className="performance-pulse-chart" role="img" aria-label={`Interactive ${mode} performance chart`} onPointerDown={selectPointer} onPointerMove={e=>{if(e.pointerType==='mouse'||e.buttons===1)selectPointer(e);}} onPointerLeave={()=>choose(null)} onPointerCancel={()=>choose(null)}>
+      <line x1={pad.l} x2={W-pad.r} y1={y(0)} y2={y(0)} className="performance-pulse-zero"/>
+      {mode==='incomeExpenses'?rows.map((row,index)=>{const cx=pad.l+groupW*index+groupW/2;return <g key={row.key}><rect x={cx-barW-2} y={y(row.income)} width={barW} height={Math.max(0,y(0)-y(row.income))} rx="4" className="performance-pulse-income"/><rect x={cx+2} y={y(row.operatingExpenses)} width={barW} height={Math.max(0,y(0)-y(row.operatingExpenses))} rx="4" className="performance-pulse-expense"/></g>}):<><polyline points={points} className={`performance-pulse-line ${(plotted[plotted.length-1]?.plotValue||0)>=0?'positive':'negative'}`} fill="none"/>{plotted.map((row,index)=><circle key={row.key} cx={x(index)} cy={y(row.plotValue)} r={selected===index?5:3} className={`performance-pulse-point ${row.plotValue>=0?'positive':'negative'}`}/>)}</>}
+      {selected!=null&&<line x1={x(selected)} x2={x(selected)} y1={pad.t} y2={H-pad.b} className="performance-pulse-guide"/>}
+      {rows.map((row,index)=>tickIndexes.has(index)?<text key={row.key} x={mode==='incomeExpenses'?pad.l+groupW*index+groupW/2:x(index)} y={H-9} textAnchor={index===0?'start':index===rows.length-1?'end':'middle'}>{row.label}</text>:null)}
+      <rect x="0" y="0" width={W} height={H-pad.b} fill="transparent"/>
+    </svg>
+    {mode==='incomeExpenses'&&<div className="performance-pulse-legend"><span><i className="income"/>Income</span><span><i className="expense"/>Operating expenses</span></div>}
+  </div>;
+}
+
 function calculateMetrics(rows:Tx[]){ let income=0,operatingExpenses=0,cashExpenses=0; for(const t of rows){const amount=Math.abs(Number(t.amount||0)); if(t.type==='income') income+=amount; if(t.type==='expense'){cashExpenses+=amount; const key=categoryKey(t.category||''); if(!OPERATING_EXCLUSIONS.includes(key)) operatingExpenses+=amount;}} const noi=income-operatingExpenses; return {income,operatingExpenses,noi,cashFlow:income-cashExpenses,cashExpenses}; }
 function buildMonthlyRange(rows:Tx[],start:Date,end:Date){const months:{year:number;month:number;label:string}[]=[];let d=new Date(start.getFullYear(),start.getMonth(),1);const last=new Date(end.getFullYear(),end.getMonth(),1);while(d<=last&&months.length<18){months.push({year:d.getFullYear(),month:d.getMonth()+1,label:d.toLocaleString('en-US',{month:'short'})});d=new Date(d.getFullYear(),d.getMonth()+1,1);}return months.map(m=>{const set=rows.filter(t=>Number(t.transaction_date.slice(0,4))===m.year&&Number(t.transaction_date.slice(5,7))===m.month);return {label:m.label,...calculateMetrics(set)}})}
+function buildPerformanceMonths(rows:Tx[],start:Date,end:Date){const months:{year:number;month:number;key:string;label:string;fullLabel:string}[]=[];let d=new Date(start.getFullYear(),start.getMonth(),1);const last=new Date(end.getFullYear(),end.getMonth(),1);while(d<=last&&months.length<60){months.push({year:d.getFullYear(),month:d.getMonth()+1,key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:d.toLocaleString('en-US',{month:'short'}),fullLabel:d.toLocaleString('en-US',{month:'long',year:'numeric'})});d=new Date(d.getFullYear(),d.getMonth()+1,1);}const includeYear=months.length>12;return months.map(month=>{const set=rows.filter(t=>Number(t.transaction_date.slice(0,4))===month.year&&Number(t.transaction_date.slice(5,7))===month.month);return {...month,label:includeYear?`${month.label} '${String(month.year).slice(-2)}`:month.label,...calculateMetrics(set)}})}
+function getPerformanceRange(period:PerformancePeriod,transactions:Tx[],now:Date){const end=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);if(period==='YTD')return{start:new Date(now.getFullYear(),0,1),end};if(period==='3M'){const start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-89);return{start,end};}if(period==='1Y'){const start=new Date(now.getFullYear()-1,now.getMonth(),now.getDate()+1);return{start,end};}const earliest=transactions.map(t=>t.transaction_date).filter(Boolean).sort()[0];return{start:earliest?new Date(`${earliest.slice(0,10)}T00:00:00`):new Date(now.getFullYear(),0,1),end};}
+function getPreviousEqualRange(range:{start:Date;end:Date}){const duration=range.end.getTime()-range.start.getTime()+1;const end=new Date(range.start.getTime()-1);return{start:new Date(end.getTime()-duration+1),end};}
 function buildBreakdown(rows:Tx[]){ const map=new Map<string,{category:string;key:string;amount:number;transactions:Tx[]}>(); for(const t of rows){if(t.type!=='expense')continue; const key=categoryKey(t.category||''); if(OPERATING_EXCLUSIONS.includes(key)||key==='review')continue; const name=t.category||'Other Expense'; const curr=map.get(name)||{category:name,key,amount:0,transactions:[]};curr.amount+=Math.abs(Number(t.amount||0));curr.transactions.push(t);map.set(name,curr);} const arr=[...map.values()].sort((a,b)=>b.amount-a.amount);arr.forEach(x=>x.transactions.sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))); const total=arr.reduce((sum,x)=>sum+x.amount,0); return arr.map(x=>({...x,share:total?x.amount/total:0})); }
 function getPeriodRange(period:string,now:Date){if(period==='ytd')return{start:new Date(now.getFullYear(),0,1),end:new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59)};if(period==='l12m')return{start:new Date(now.getFullYear(),now.getMonth()-11,1),end:new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59)};const y=Number(period);return{start:new Date(y,0,1),end:new Date(y,11,31,23,59,59)}}
 function getPreviousRange(range:{start:Date;end:Date}){const start=new Date(range.start);const end=new Date(range.end);start.setFullYear(start.getFullYear()-1);end.setFullYear(end.getFullYear()-1);return{start,end}}

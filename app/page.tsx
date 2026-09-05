@@ -10,13 +10,14 @@ import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculati
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 
 type CashPeriod='1M'|'3M'|'YTD'|'1Y';
 type CashPoint={key:string;label:string;fullLabel:string;value:number;periodNet:number;income:number;expense:number};
+type DailyInsight={id:string;kicker:string;title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy'};
 
 export default function Dashboard() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [toast,setToast]=useState('');
   const [sinceLastVisit,setSinceLastVisit]=useState('Your portfolio is ready');
+  const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
   const visitRecorded=useRef(false);
 
   const refreshTransactions = useCallback(async () => {
@@ -52,12 +54,16 @@ export default function Dashboard() {
 
   const recordDashboardVisit = useCallback(async (txRows:Transaction[]) => {
     const now=new Date().toISOString();
+    const todayKey=localDateKey(new Date());
     const storageKey=`re-portal:last-dashboard-visit:${user.id}`;
+    const dismissedStorageKey=`re-portal:dismissed-insights:${user.id}:${todayKey}`;
     let previous='';
+    try{setDismissedInsightIds(JSON.parse(window.localStorage.getItem(dismissedStorageKey)||'[]'));}catch{}
     try{previous=window.localStorage.getItem(storageKey)||'';}catch{}
     try{
-      const visit=await supabase.from('dashboard_visits').select('last_seen_at').eq('user_id',user.id).maybeSingle();
+      const visit=await supabase.from('dashboard_visits').select('last_seen_at,dismissed_insight_ids,dismissed_for_date').eq('user_id',user.id).maybeSingle();
       if(!visit.error&&visit.data?.last_seen_at) previous=visit.data.last_seen_at;
+      if(!visit.error&&visit.data?.dismissed_for_date===todayKey&&Array.isArray(visit.data.dismissed_insight_ids)) setDismissedInsightIds(visit.data.dismissed_insight_ids as string[]);
     }catch{}
     if(previous){
       const updateCount=txRows.filter(tx=>tx.created_at&&tx.created_at>previous).length;
@@ -212,6 +218,40 @@ export default function Dashboard() {
   const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
   const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
+  const dailyInsights=useMemo<DailyInsight[]>(()=>{
+    const dateKey=localDateKey(now);
+    const rentPace=expectedMonthlyRent>0?Math.min(100,Math.round((rentEarned/expectedMonthlyRent)*100)):0;
+    const insights:DailyInsight[]=[];
+    if(expectedMonthlyRent>0) insights.push({id:`rent-pace-${dateKey}`,kicker:'Rent pace',title:`${rentPace}% of ${monthLabel} rent earned`,detail:`${formatKpiCurrency(rentEarned)} of ${formatKpiCurrency(expectedMonthlyRent)} scheduled`,tone:'positive',kind:'rent'});
+    const previousMonthExpenses:number[]=[];
+    for(let offset=1;offset<=3;offset++){
+      const monthDate=new Date(now.getFullYear(),now.getMonth()-offset,1);
+      const prefix=`${monthDate.getFullYear()}-${String(monthDate.getMonth()+1).padStart(2,'0')}`;
+      previousMonthExpenses.push(transactions.filter(tx=>tx.transaction_date.startsWith(prefix)&&(tx.status||'posted')==='posted'&&tx.type==='expense').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0));
+    }
+    const comparable=previousMonthExpenses.filter(value=>value>0);
+    if(comparable.length){
+      const average=comparable.reduce((sum,value)=>sum+value,0)/comparable.length;
+      const delta=Math.round(((monthlyTotals.expense-average)/average)*100);
+      const lower=delta<=0;
+      insights.push({id:`expense-trend-${dateKey}`,kicker:'Expense trend',title:`Expenses are ${Math.abs(delta)}% ${lower?'below':'above'} recent average`,detail:`${formatKpiCurrency(monthlyTotals.expense)} posted this month`,tone:lower?'positive':'warning',kind:'expense'});
+    }
+    const vacantUnits=units.filter(unit=>!unit.occupied);
+    const knownVacantRent=vacantUnits.reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+    if(knownVacantRent>0) insights.push({id:`vacancy-${dateKey}`,kicker:'Vacancy exposure',title:`${formatCurrency(knownVacantRent/daysInMonth)} per day at risk`,detail:`${vacantUnits.length} vacant unit${vacantUnits.length===1?'':'s'} with known rent`,tone:'warning',kind:'occupancy'});
+    else insights.push({id:`occupancy-${dateKey}`,kicker:'Occupancy',title:`${stats.occupiedUnits} of ${stats.totalUnits} units occupied`,detail:stats.totalUnits===stats.occupiedUnits?'Your portfolio is fully occupied':`${stats.totalUnits-stats.occupiedUnits} unit${stats.totalUnits-stats.occupiedUnits===1?'':'s'} currently vacant`,tone:stats.totalUnits===stats.occupiedUnits?'positive':'neutral',kind:'occupancy'});
+    return insights.slice(0,3);
+  },[now,expectedMonthlyRent,rentEarned,monthLabel,transactions,monthlyTotals.expense,units,daysInMonth,stats.occupiedUnits,stats.totalUnits]);
+  const visibleDailyInsights=dailyInsights.filter(insight=>!dismissedInsightIds.includes(insight.id));
+
+  async function dismissDailyInsight(id:string){
+    const todayKey=localDateKey(new Date());
+    const next=Array.from(new Set([...dismissedInsightIds,id]));
+    setDismissedInsightIds(next);
+    try{window.localStorage.setItem(`re-portal:dismissed-insights:${user.id}:${todayKey}`,JSON.stringify(next));}catch{}
+    try{await supabase.from('dashboard_visits').upsert({user_id:user.id,dismissed_insight_ids:next,dismissed_for_date:todayKey,updated_at:new Date().toISOString()},{onConflict:'user_id'});}catch{}
+  }
+
   const cashFlow=useMemo(()=>buildCashFlowSeries(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
   const cashForecast=cashPeriod==='1M'&&cashFlow.length
     ? {value:cashFlow[cashFlow.length-1].value+Math.max(0,expectedMonthlyRent-confirmedRent),label:new Date(now.getFullYear(),now.getMonth()+1,0).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
@@ -245,6 +285,14 @@ export default function Dashboard() {
           {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
         </aside>
       </section>
+      {visibleDailyInsights.length>0&&<section className="daily-brief" aria-labelledby="daily-brief-title">
+        <div className="daily-brief-heading"><div><span>Fresh today</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>Updates refresh each day</p></div>
+        <div className="daily-brief-rail">{visibleDailyInsights.map(insight=><article key={insight.id} className="daily-insight" data-tone={insight.tone}>
+          <div className="daily-insight-icon" aria-hidden="true">{insight.kind==='rent'?<Banknote size={19}/>:insight.kind==='expense'?(insight.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div>
+          <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(insight.id)} aria-label={`Dismiss ${insight.kicker}`}><X size={16}/></button>
+          <span>{insight.kicker}</span><strong>{insight.title}</strong><p>{insight.detail}</p>
+        </article>)}</div>
+      </section>}
       <section className="pulse-lower-grid">
         <div className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="card recent-activity-card"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></div>
         <div className="pulse-properties-section"><div className="pulse-section-title"><h2>Properties</h2><Link href="/properties">Manage →</Link></div><div className="dashboard-properties-panel card"><div className="dashboard-properties-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const pt=postedThisMonth.filter(t=>t.property_id===property.id);const totals=calculateMonthlyTotals(pt);return <div key={property.id} className="dashboard-property-compact" role="button" tabIndex={0} onClick={()=>router.push('/properties')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push('/properties');}}}>
@@ -341,6 +389,8 @@ function buildCashFlowSeries(transactions:Transaction[],period:CashPeriod,proper
   }
   return rows;
 }
+
+function localDateKey(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
 
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
