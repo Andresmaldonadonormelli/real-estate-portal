@@ -33,7 +33,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className="mobile-menu-backdrop" onClick={() => setShowNav(false)}>
           <div className="mobile-menu-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Menu">
             <div className="mobile-menu-header"><strong>Menu</strong><button type="button" className="icon-button" onClick={() => setShowNav(false)} aria-label="Close menu"><X size={20} /></button></div>
-            <Link href="/utilities" className="mobile-menu-item"><Settings size={19} strokeWidth={1.8}/><span>Utilities</span></Link>
             <Link href="/account" className="mobile-menu-item"><UserRound size={19} strokeWidth={1.8}/><span>Account</span></Link>
             <ThemeToggle />
           </div>

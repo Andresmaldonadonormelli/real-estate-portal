@@ -362,6 +362,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const [maintenanceReduction,setMaintenanceReduction]=useState(0);
   const [otherReduction,setOtherReduction]=useState(0);
   const [extraPrincipal,setExtraPrincipal]=useState(0);
+  const [holdYears,setHoldYears]=useState<2|3|4|5>(3);
 
   const rentGain=occupiedUnits.length*rentIncrease;
   const managementGain=expectedRent*Math.max(0,currentMgmt-managementTarget)/100;
@@ -377,6 +378,9 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const currentExpenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
   const monthlyDebtService=Math.max(0,Number(property.monthly_mortgage_payment||0));
   const projectedDscr=monthlyDebtService>0?projectedMonthlyNoi/monthlyDebtService:null;
+  const mortgageBalance=Math.max(0,Number(property.mortgage_balance||0));
+  const principalReduction=Math.min(mortgageBalance, extraPrincipal*12*holdYears);
+  const projectedHoldCashFlow=projected*12*holdYears;
 
   const suggestedRent=occupiedUnits.length?50:0;
   const suggestedMgmt=currentMgmt>6?Math.max(0,currentMgmt-1):currentMgmt;
@@ -417,7 +421,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
     </section>
 
     <section className="improve-planner">
-      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div></div>
+      <div className="improve-section-head"><div><span className="improve-eyebrow">WHAT IF</span><h3>Build a better scenario</h3><p>Adjust only the levers you could realistically influence.</p></div><div className="improve-hold-selector" aria-label="Projection hold period">{([2,3,4,5] as const).map(years=><button key={years} type="button" className={holdYears===years?'active':''} onClick={()=>setHoldYears(years)}>{years}Y</button>)}</div></div>
       <div className="improve-levers">
         <ImproveLever label="Rent at next renewal" displayValue={rentIncrease?`+${formatKpiCurrency(rentIncrease)} / unit`:'No change'} meta={occupiedUnits.length?`${occupiedUnits.length} occupied ${occupiedUnits.length===1?'unit':'units'} · locked until renewal`:'No occupied units'} min={0} max={250} step={25} rangeValue={rentIncrease} onChange={setRentIncrease} status="At renewal"/>
         <ImproveLever label="Management fee" displayValue={`${managementTarget.toFixed(managementTarget%1?1:0)}%`} meta={currentMgmt?`Current ${currentMgmt.toFixed(currentMgmt%1?1:0)}% · scenario savings ${formatKpiCurrency(managementGain)}/mo`:'No management fee recorded'} min={0} max={Math.max(12,currentMgmt)} step={0.5} rangeValue={managementTarget} onChange={setManagementTarget} status="Investigate" disabled={!currentMgmt}/>
@@ -432,6 +436,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         <div><span>OpEx ratio</span><strong>{metrics.income>0?`${(currentExpenseRatio*100).toFixed(1)}%`:'—'} <small>→</small> {projectedMonthlyIncome>0?`${(projectedExpenseRatio*100).toFixed(1)}%`:'—'}</strong></div>
         <div><span>DSCR</span><strong>{projectedDscr===null?'—':`${projectedDscr.toFixed(2)}×`}</strong><small>{projectedDscr===null?'No debt service recorded':'Scenario coverage'}</small></div>
       </div>
+      <div className="improve-hold-summary"><span>Projection, {holdYears}-year hold</span><div><strong>{formatKpiCurrency(projectedHoldCashFlow)}</strong><small>estimated cash flow</small></div><div><strong>{formatKpiCurrency(principalReduction)}</strong><small>additional principal reduction</small></div></div>
     </section>
 
     <section className="improve-opportunities-section">

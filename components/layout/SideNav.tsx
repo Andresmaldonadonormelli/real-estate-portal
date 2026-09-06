@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Gauge, Home, Settings, WalletCards } from 'lucide-react';
+import { Building2, Gauge, Menu, Settings, WalletCards } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
 
@@ -38,9 +38,9 @@ export default function SideNav() {
         </div>
       </div>
 
-      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18}/><span>Ledger & Docs</span>{reviewCount>0&&<span className="nav-count nav-count-review">{reviewCount}</span>}</Link>
+      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18}/><span>Ledger</span>{reviewCount>0&&<span className="nav-count nav-count-review">{reviewCount}</span>}</Link>
       <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Settings size={18}/>Utilities</Link>
-      <Link href="/account" className={`nav-link ${pathname.startsWith('/account')?'active':''}`}><Home size={18}/>Account</Link>
+      <Link href="/account" className={`nav-link ${pathname.startsWith('/account')?'active':''}`}><Menu size={18}/>Menu</Link>
     </div>
     <div className="side-nav-footer"><ThemeToggle/></div>
   </nav>;
