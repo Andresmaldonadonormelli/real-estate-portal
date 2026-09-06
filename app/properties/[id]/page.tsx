@@ -361,12 +361,13 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
   const [managementTarget,setManagementTarget]=useState(currentMgmt);
   const [maintenanceReduction,setMaintenanceReduction]=useState(0);
   const [otherReduction,setOtherReduction]=useState(0);
+  const [extraPrincipal,setExtraPrincipal]=useState(0);
 
   const rentGain=occupiedUnits.length*rentIncrease;
   const managementGain=expectedRent*Math.max(0,currentMgmt-managementTarget)/100;
   const maintenanceGain=maintenanceMonthly*maintenanceReduction/100;
   const otherGain=otherOperatingMonthly*otherReduction/100;
-  const projected=currentMonthly+rentGain+managementGain+maintenanceGain+otherGain;
+  const projected=currentMonthly+rentGain+managementGain+maintenanceGain+otherGain-extraPrincipal;
   const currentMonthlyIncome=metrics.income/monthsElapsed;
   const currentMonthlyOperatingExpenses=metrics.operatingExpenses/monthsElapsed;
   const projectedMonthlyIncome=currentMonthlyIncome+rentGain;
@@ -422,6 +423,7 @@ function Improve({property,units,transactions}:{property:Property;units:Unit[];t
         <ImproveLever label="Management fee" displayValue={`${managementTarget.toFixed(managementTarget%1?1:0)}%`} meta={currentMgmt?`Current ${currentMgmt.toFixed(currentMgmt%1?1:0)}% · scenario savings ${formatKpiCurrency(managementGain)}/mo`:'No management fee recorded'} min={0} max={Math.max(12,currentMgmt)} step={0.5} rangeValue={managementTarget} onChange={setManagementTarget} status="Investigate" disabled={!currentMgmt}/>
         <ImproveLever label="Maintenance" displayValue={maintenanceReduction?`−${maintenanceReduction}%`:'Current run rate'} meta={maintenanceMonthly?`${formatKpiCurrency(maintenanceMonthly)}/mo YTD average`:'No maintenance recorded YTD'} min={0} max={50} step={5} rangeValue={maintenanceReduction} onChange={setMaintenanceReduction} status="Available now" disabled={!maintenanceMonthly}/>
         <ImproveLever label="Other operating costs" displayValue={otherReduction?`−${otherReduction}%`:'Current run rate'} meta={otherOperatingMonthly?`${formatKpiCurrency(otherOperatingMonthly)}/mo YTD average`:'No other controllable costs recorded'} min={0} max={30} step={5} rangeValue={otherReduction} onChange={setOtherReduction} status="Investigate" disabled={!otherOperatingMonthly}/>
+        <ImproveLever label="Extra mortgage principal" displayValue={extraPrincipal?`${formatKpiCurrency(extraPrincipal)}/mo`:'No extra payment'} meta={monthlyDebtService?'Reduces cash flow now. Add loan rate and remaining term before modeling an earlier payoff date.':'No mortgage payment recorded'} min={0} max={1000} step={50} rangeValue={extraPrincipal} onChange={setExtraPrincipal} status="Debt strategy" disabled={!monthlyDebtService}/>
       </div>
       <div className="improve-projection-bar"><div><span>Current</span><strong>{formatKpiCurrency(currentMonthly)}</strong></div><i><b style={{width:`${projectionFillPct}%`,insetInlineStart:0,insetInlineEnd:'auto'}}/></i><div><span>Scenario</span><strong>{formatKpiCurrency(projected)}</strong></div></div>
       <div className="improve-impact-strip">

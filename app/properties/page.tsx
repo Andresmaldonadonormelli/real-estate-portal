@@ -209,17 +209,17 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="mobile-page-shell" style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 500 }}>Properties</h1>
+    <div className="mobile-page-shell properties-page">
+      <div className="properties-page-head">
+        <div><h1>Properties</h1><p>Every property, ranked by what needs attention.</p></div>
         <button onClick={startAddProperty} style={primaryButton}>+ Add property</button>
       </div>
 
       {error && <ErrorBox message={error} />}
       {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (
-        <div className="card" style={{ padding: 28 }}>
-          <h2 style={{ fontSize: 20, marginBottom: 8 }}>Add your first property</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 18 }}>Your dashboard and ledger will build from the properties and transactions you enter here.</p>
+        <div className="properties-empty-state">
+          <h2>Add your first property</h2>
+          <p>Your dashboard and ledger will build from the properties and transactions you enter here.</p>
           <button onClick={startAddProperty} style={primaryButton}>Add property</button>
         </div>
       ) : (
@@ -279,16 +279,16 @@ export default function PropertiesPage() {
               <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
               <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
               <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div>
-              <label style={{display:'flex',gap:9,alignItems:'center',fontSize:13}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label>
+              <label style={{display:'flex',gap:'var(--space-2)',alignItems:'center',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label>
               <Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
               <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
+              <div style={{ fontSize: 'var(--type-label-size)', lineHeight:'var(--type-label-line)', color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
             </div>}
             <button className="mobile-sheet-submit" disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
             {editingProperty && <div className="danger-zone">
               <div>
-                <div style={{fontWeight:600,fontSize:14}}>Danger zone</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:3}}>Permanent deletion also removes linked units, ledger transactions, documents and utilities.</div>
+                <div style={{fontWeight:'var(--weight-semibold)',fontSize:'var(--type-small-size)'}}>Danger zone</div>
+                <div style={{fontSize:'var(--type-label-size)',lineHeight:'var(--type-label-line)',color:'var(--text-secondary)',marginTop:'var(--space-1)'}}>Permanent deletion also removes linked units, ledger transactions, documents and utilities.</div>
               </div>
               <button type="button" onClick={() => requestDeleteProperty(editingProperty)} style={dangerButton}>Archive property…</button>
             </div>}
@@ -302,7 +302,7 @@ export default function PropertiesPage() {
           <div style={{display:'grid',gap:14}}>
             <div style={{padding:14,border:'1px solid var(--danger)',borderRadius:12,background:'color-mix(in srgb, var(--danger) 8%, transparent)'}}>
               <div style={{fontWeight:650,color:'var(--danger)',marginBottom:6}}>This cannot be undone.</div>
-              <div style={{fontSize:13,lineHeight:1.5,color:'var(--text-secondary)'}}>Deleting <strong style={{color:'var(--text-primary)'}}>{deleteTarget.address}</strong> also permanently deletes its units, ledger transactions, document records and utility accounts.</div>
+              <div style={{fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)',color:'var(--text-secondary)'}}>Deleting <strong style={{color:'var(--text-primary)'}}>{deleteTarget.address}</strong> also permanently deletes its units, ledger transactions, document records and utility accounts.</div>
             </div>
             <Field label={`Type “${deleteTarget.address}” to confirm`}><input autoFocus value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} style={inputStyle} /></Field>
             <div style={{display:'flex',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
@@ -320,8 +320,8 @@ export default function PropertiesPage() {
             <div style={twoCol}><Field label="Bedrooms"><input type="number" min="0" step="1" value={unitForm.bedroom_count} onChange={e => setUnitForm({ ...unitForm, bedroom_count: e.target.value })} style={inputStyle} /></Field><Field label="Bathrooms"><input type="number" min="0" step="0.5" value={unitForm.bathroom_count} onChange={e => setUnitForm({ ...unitForm, bathroom_count: e.target.value })} style={inputStyle} /></Field></div>
             <div style={twoCol}><Field label="Sqft"><input type="number" min="0" value={unitForm.sqft} onChange={e => setUnitForm({ ...unitForm, sqft: e.target.value })} style={inputStyle} /></Field><Field label="Monthly rent"><input type="number" min="0" step="0.01" value={unitForm.current_rent} onChange={e => setUnitForm({ ...unitForm, current_rent: e.target.value })} style={inputStyle} /></Field></div>
             <Field label="Tenant"><input value={unitForm.tenant_name} onChange={e => setUnitForm({ ...unitForm, tenant_name: e.target.value })} style={inputStyle} /></Field>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 14 }}><input type="checkbox" checked={unitForm.occupied} onChange={e => setUnitForm({ ...unitForm, occupied: e.target.checked })} /> Occupied</label>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 14 }}><input type="checkbox" checked={unitForm.recurring_rent_enabled} onChange={e => setUnitForm({ ...unitForm, recurring_rent_enabled: e.target.checked })} /> Create pending rent each month</label>
+            <label style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}><input type="checkbox" checked={unitForm.occupied} onChange={e => setUnitForm({ ...unitForm, occupied: e.target.checked })} /> Occupied</label>
+            <label style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}><input type="checkbox" checked={unitForm.recurring_rent_enabled} onChange={e => setUnitForm({ ...unitForm, recurring_rent_enabled: e.target.checked })} /> Create pending rent each month</label>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>{editingUnit ? <button type="button" onClick={() => deleteUnit(editingUnit)} style={dangerButton}>Delete unit</button> : <span />}<button disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save unit'}</button></div>
           </form>
         </Modal>
@@ -330,12 +330,12 @@ export default function PropertiesPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) { return <div><div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div><div style={{ fontSize: 18, fontWeight: 600 }}>{value}</div></div>; }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>{label}{children}</label>; }
-function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 18, padding: 12, border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 8, fontSize: 13 }}>{message}</div>; }
+function Metric({ label, value }: { label: string; value: string }) { return <div><div style={{ fontSize: 'var(--type-label-size)', lineHeight:'var(--type-label-line)', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>{label}</div><div style={{ fontSize: 'var(--type-card-title-size)', lineHeight:'var(--type-card-title-line)', fontWeight: 'var(--weight-semibold)' }}>{value}</div></div>; }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'grid', gap: 'var(--space-2)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{label}{children}</label>; }
+function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 'var(--space-5)', padding: 'var(--space-3)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 'var(--radius-control)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{message}</div>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
-  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 21 }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
+  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 'var(--type-section-title-size)', lineHeight:'var(--type-section-title-line)' }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
 }
 
 function getPropertyHealth({occupied,total,cashFlow,expenseRatio,hasFinancialActivity}:{occupied:number;total:number;cashFlow:number;expenseRatio:number|null;hasFinancialActivity:boolean}){
@@ -365,7 +365,7 @@ function getPropertyHealth({occupied,total,cashFlow,expenseRatio,hasFinancialAct
   return {tone:'green',fill,label:'Performing well',detail:`${pct}% operating expense ratio`};
 }
 
-const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
+const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };
 const primaryButton: React.CSSProperties = { padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontWeight: 600, cursor: 'pointer' };
 const secondaryButton: React.CSSProperties = { padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
 const dangerButton: React.CSSProperties = { ...secondaryButton, color: 'var(--danger)' };

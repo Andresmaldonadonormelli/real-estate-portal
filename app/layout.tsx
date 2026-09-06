@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import MainLayout from '@/components/layout/MainLayout';
 import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
+import './product-system.css';
 
 export const metadata: Metadata = {
   title: 'RE Portal',

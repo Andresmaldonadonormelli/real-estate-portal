@@ -98,13 +98,13 @@ export default function ActionsPage() {
 
   return <div className="actions-page">
     <div className="actions-page-header">
-      <Link href="/" style={{ fontSize: 13 }}>← Dashboard</Link>
+      <Link href="/" className="actions-back-link">← Dashboard</Link>
       <h1>Action Items</h1>
       <p>Everything that needs your attention across your properties.</p>
     </div>
     {error && <div style={{ color: 'var(--danger)', marginBottom: 16 }}>{error}</div>}
     {loading ? <PageSkeleton variant="ledger" /> : items.length === 0 ?
-      <div className="card" style={{ padding: 28 }}><strong>You're caught up.</strong><div className="muted-small" style={{ marginTop: 5 }}>Nothing needs your attention right now.</div></div> :
+      <div className="actions-empty-state"><strong>You're caught up.</strong><span>Nothing needs your attention right now.</span></div> :
       <>
         {needsYou.length > 0 && <ActionGroup label="NEEDS YOU" items={needsYou} />}
         {upcoming.length > 0 && <ActionGroup label="UPCOMING" items={upcoming} />}
