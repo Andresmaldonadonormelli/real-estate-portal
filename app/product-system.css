@@ -63,8 +63,8 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .pulse-supporting-metrics{margin-top:var(--space-6)}
 .portfolio-rail{grid-area:rail;position:sticky;top:var(--space-6);align-self:start;margin:0;padding:0;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card);overflow:hidden}
 .portfolio-rail-head{padding:var(--space-5)}.portfolio-rail-head h2{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}.portfolio-rail-head a{font-size:var(--type-small-size);line-height:var(--type-small-line)}
-.portfolio-rail-list{padding:0 var(--space-3)}
-.portfolio-rail-row{grid-template-columns:minmax(0,1fr) 64px auto;padding:var(--space-4) var(--space-2);border-bottom:0!important;border-radius:0!important;background:transparent!important}
+.portfolio-rail-list{padding:0}
+.portfolio-rail-row{grid-template-columns:minmax(0,1fr) 64px auto;padding:var(--space-4) var(--space-5);border-bottom:0!important;border-radius:0!important;background:transparent!important}
 .portfolio-rail-row:hover,.portfolio-rail-row:focus-visible{border-radius:0!important;background:var(--surface-hover)!important}
 .portfolio-rail-row .portfolio-sparkline{grid-column:auto;margin-left:0}
 .portfolio-rail-row>strong{grid-column:auto;grid-row:auto;text-align:right}
@@ -79,6 +79,7 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .pulse-action-section{display:block;width:100%;margin-top:var(--space-8);padding-inline:0!important}.pulse-action-section .pulse-action-center,.pulse-action-section .pulse-section-head,.pulse-action-section .action-list{margin-inline:0!important;padding-inline:0!important;border:0;border-radius:0;background:transparent}
 .pulse-activity-section{margin-top:var(--space-10)}
 .pulse-activity-section{width:100%}.recent-activity-row{padding-top:var(--space-5)!important;padding-bottom:var(--space-5)!important}
+.recent-activity-row:hover{background:var(--surface-hover)!important}
 .financial-history-main-line.is-negative{stroke:var(--negative)}
 .financial-history-expense-line{stroke:var(--text-primary)}.financial-history-active-point.is-negative{fill:var(--negative)}.financial-history-active-point.is-positive{fill:var(--positive)}.financial-history-selection-label{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-medium)}
 @keyframes daily-insight-next{from{opacity:0;transform:translateX(var(--space-5))}to{opacity:1;transform:translateX(0)}}@keyframes daily-insight-previous{from{opacity:0;transform:translateX(calc(var(--space-5) * -1))}to{opacity:1;transform:translateX(0)}}
