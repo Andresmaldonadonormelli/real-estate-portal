@@ -33,7 +33,7 @@ export default function FinancialHistoryChart({rows,mode='cashFlow',label,onInsp
   function finish(){setSelected(null);onInspect?.(null)}
 
   return <div className="financial-history-chart-wrap">
-    <svg className="financial-history-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);inspect(event);}} onPointerMove={event=>{if(event.pointerType==='mouse'||event.currentTarget.hasPointerCapture(event.pointerId))inspect(event);}} onPointerUp={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);finish();}} onPointerLeave={event=>{if(event.pointerType==='mouse')finish();}} onPointerCancel={finish}>
+    <svg className="financial-history-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);inspect(event);}} onPointerMove={event=>{if(event.pointerType==='mouse'||event.currentTarget.hasPointerCapture(event.pointerId))inspect(event);}} onPointerUp={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);finish();}} onPointerLeave={event=>{if(event.pointerType==='mouse')finish();}} onPointerCancel={finish}>
       <line x1={pad.left} x2={width-pad.right} y1={y(0)} y2={y(0)} className="financial-history-zero"/>
       <polyline points={expensePoints} className="financial-history-expense-line" fill="none"/>
       <polyline points={mainPoints} className={`financial-history-main-line ${mainNegative?'is-negative':'is-positive'}`} fill="none"/>
