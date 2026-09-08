@@ -10,7 +10,7 @@ import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculati
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
   const [briefUpdatedAt,setBriefUpdatedAt]=useState<Date|null>(null);
   const [briefIndex,setBriefIndex]=useState(0);
+  const [rentExpanded,setRentExpanded]=useState(false);
   const visitRecorded=useRef(false);
 
   const refreshTransactions = useCallback(async () => {
@@ -208,6 +209,7 @@ export default function Dashboard() {
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const rentEarned=expectedMonthlyRent*(now.getDate()/daysInMonth);
   const dailyRent=expectedMonthlyRent/daysInMonth;
+  const propertyRentEarned=properties.map(property=>{const expected=units.filter(unit=>unit.property_id===property.id&&unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);return {property,earned:expected*(now.getDate()/daysInMonth)}}).filter(item=>item.earned>0);
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
   const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
@@ -244,8 +246,8 @@ export default function Dashboard() {
           <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><strong className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)}</strong><b>Income</b></span><span><strong>{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong><b>Expenses</b></span></div></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
-          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
-          <div className="pulse-rent-secondary"><span>Rent earned this month</span><div><b className="amount-positive">+{formatCurrency(dailyRent)} today</b><strong>{formatCurrency(rentEarned)}</strong></div></div>
+          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><div className="pulse-property-select"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><ChevronDown size={17} aria-hidden="true"/></div></div>
+          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-breakdown">{propertyRentEarned.map(({property,earned})=><Link href={`/properties/${property.id}`} key={property.id}><span>{property.address}</span><strong>{formatCurrency(earned)}</strong></Link>)}</div>}</div>
         </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
@@ -256,11 +258,11 @@ export default function Dashboard() {
       </section>
       <section className="pulse-action-section">
         <div className="pulse-action-center">
-          <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
+          <div className="pulse-section-head"><div><span>Needs you</span><div className="pulse-action-title"><h2>Action Center</h2>{actionItems.length>0&&<em>{actionItems.length}</em>}</div></div></div>
           {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all</button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
         </div>
       </section>
-      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
+      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
       </main>
       <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
         <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage</Link></div>
