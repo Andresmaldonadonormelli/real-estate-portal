@@ -242,10 +242,10 @@ export default function Dashboard() {
       <main className="pulse-dashboard-main">
         <section className="pulse-performance-open">
           <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
-          <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(displayedCashFlow?.cashExpenses||0)} expenses</b></div></div>
+          <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><b>Income</b><strong className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)}</strong></span><span><b>Expenses</b><strong>{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong></span></div></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
-          <div className="pulse-rent-secondary"><span>Rent earned this month</span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></div>
+          <div className="pulse-rent-secondary"><span>Rent earned this month</span><div><b className="amount-positive">+{formatCurrency(dailyRent)} today</b><strong>{formatCurrency(rentEarned)}</strong></div></div>
         </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
