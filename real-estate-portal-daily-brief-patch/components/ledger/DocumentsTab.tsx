@@ -1,0 +1,171 @@
+'use client';
+
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/auth/AuthContext';
+import PageSkeleton from '@/components/common/PageSkeleton';
+import type { Property, PropertyDocument, Unit } from '@/lib/types';
+
+const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
+
+export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
+  const { user } = useAuth();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [documents, setDocuments] = useState<PropertyDocument[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [showUpload, setShowUpload] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [form, setForm] = useState({ property_id:'', unit_id:'', category:'Lease', title:'', document_date:'', expires_at:'', reminder_days:'60', notes:'' });
+  const [selectedDoc, setSelectedDoc] = useState<PropertyDocument | null>(null);
+
+  async function loadData() {
+    setLoading(true); setError('');
+    const [p,u,d] = await Promise.all([
+      supabase.from('properties').select('*').is('archived_at',null).order('address'),
+      supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
+      supabase.from('documents').select('*').is('archived_at',null).order('created_at',{ascending:false}),
+    ]);
+    const err = p.error || u.error || d.error;
+    if (err) setError(err.message);
+    else {
+      setProperties((p.data || []) as Property[]);
+      setUnits((u.data || []) as Unit[]);
+      setDocuments((d.data || []) as PropertyDocument[]);
+      if (!form.property_id && p.data?.[0]?.id) setForm(f => ({...f, property_id:p.data![0].id}));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadData(); }, []);
+
+  const filtered = useMemo(() => documents.filter(d => {
+    if (selectedPropertyId && d.property_id !== selectedPropertyId) return false;
+    if (categoryFilter && d.category !== categoryFilter) return false;
+    return true;
+  }), [documents, selectedPropertyId, categoryFilter]);
+
+  const propertyName = (id:string) => properties.find(p => p.id === id)?.address || 'Unknown property';
+  const unitName = (id?:string|null) => units.find(u => u.id === id)?.unit_number || '';
+
+  function openUpload() {
+    setFile(null);
+    setForm({property_id:selectedPropertyId || properties[0]?.id || '', unit_id:'', category:'Lease', title:'', document_date:'', expires_at:'', reminder_days:'60', notes:''});
+    setShowUpload(true);
+  }
+
+  async function uploadDocument(e:FormEvent) {
+    e.preventDefault();
+    if (!file) { setError('Choose a file to upload.'); return; }
+    setSaving(true); setError('');
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');
+    const path = `${user.id}/${form.property_id}/${Date.now()}-${safeName}`;
+    const upload = await supabase.storage.from('property-documents').upload(path, file, { upsert:false, contentType:file.type || undefined });
+    if (upload.error) { setError(upload.error.message); setSaving(false); return; }
+
+    const row = {
+      user_id: user.id,
+      property_id: form.property_id,
+      unit_id: form.unit_id || null,
+      category: form.category,
+      title: form.title.trim() || file.name,
+      file_name: file.name,
+      storage_path: path,
+      mime_type: file.type || null,
+      file_size: file.size,
+      document_date: form.document_date || null,
+      expires_at: form.expires_at || null,
+      reminder_days: Number(form.reminder_days || 60),
+      notes: form.notes.trim() || null,
+    };
+    const insert = await supabase.from('documents').insert(row);
+    if (insert.error) {
+      await supabase.storage.from('property-documents').remove([path]);
+      setError(insert.error.message);
+    } else {
+      setShowUpload(false);
+      await loadData();
+    }
+    setSaving(false);
+  }
+
+  async function openDocument(doc:PropertyDocument) {
+    const { data, error:e } = await supabase.storage.from('property-documents').createSignedUrl(doc.storage_path, 60);
+    if (e || !data?.signedUrl) { setError(e?.message || 'Could not open document.'); return; }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  async function saveDocumentTiming(doc:PropertyDocument) {
+    setSaving(true); setError('');
+    const r=await supabase.from('documents').update({expires_at:doc.expires_at||null,reminder_days:Number(doc.reminder_days||60)}).eq('id',doc.id);
+    if(r.error)setError(r.error.message); else await loadData();
+    setSaving(false);
+  }
+
+  async function deleteDocument(doc:PropertyDocument) {
+    if (!confirm(`Delete “${doc.title}”?`)) return;
+    setError('');
+    const row = await supabase.from('documents').update({archived_at:new Date().toISOString()}).eq('id', doc.id);
+    if (row.error) setError(row.error.message); else { setSelectedDoc(null); await loadData(); }
+  }
+
+  return <div className="documents-open-view">
+    <div className="document-toolbar"><button onClick={openUpload} disabled={!properties.length} style={primaryButton}>+ Upload document</button></div>
+    {error && <div style={errorBox}>{error}</div>}
+    {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
+
+    <div className="document-filter-row">
+      <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={inputStyle}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
+    </div>
+
+    {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
+      <div className="document-feed">{filtered.map(doc => <div key={doc.id} className="document-feed-row">
+        <button type="button" className="document-feed-copy" onClick={()=>openDocument(doc)} aria-label={`Open ${doc.title}`}>
+          <div className="document-feed-meta">{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>
+          <strong>{doc.title}</strong>
+          <span>{doc.document_date || doc.file_name}</span>
+        </button>
+        <div className="document-feed-actions"><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
+      </div>)}</div>
+    }
+
+    {selectedDoc && <Modal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
+      <div className="document-details-grid">
+        <DetailRow label="Title" value={selectedDoc.title}/>
+        <DetailRow label="Category" value={selectedDoc.category}/>
+        <DetailRow label="Property" value={propertyName(selectedDoc.property_id)}/>
+        {unitName(selectedDoc.unit_id)&&<DetailRow label="Unit" value={unitName(selectedDoc.unit_id)}/>} 
+        <DetailRow label="File" value={selectedDoc.file_name}/>
+        {selectedDoc.document_date&&<DetailRow label="Document date" value={selectedDoc.document_date}/>} {selectedDoc.expires_at&&<DetailRow label="Expires / renews" value={selectedDoc.expires_at}/>} 
+        {selectedDoc.notes&&<DetailRow label="Notes" value={selectedDoc.notes}/>} 
+      </div>
+      <div className="document-reminder-editor"><Field label="Expiration / renewal date"><input type="date" value={selectedDoc.expires_at||''} onChange={e=>setSelectedDoc({...selectedDoc,expires_at:e.target.value||null})} style={inputStyle}/></Field><Field label="Reminder"><select value={String(selectedDoc.reminder_days||60)} onChange={e=>setSelectedDoc({...selectedDoc,reminder_days:Number(e.target.value)})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field><button type="button" disabled={saving} onClick={()=>saveDocumentTiming(selectedDoc)} style={secondaryButton}>{saving?'Saving…':'Save reminder'}</button></div>
+      <button type="button" onClick={()=>openDocument(selectedDoc)} style={secondaryButton}>Open document</button>
+      <div className="danger-zone"><div><div style={{fontWeight:'var(--weight-semibold)',fontSize:'var(--type-small-size)'}}>Danger zone</div><div style={{fontSize:'var(--type-label-size)',lineHeight:'var(--type-label-line)',color:'var(--text-secondary)',marginTop:'var(--space-1)'}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Archive document</button></div>
+    </div></Modal>}
+
+    {showUpload && <Modal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
+      <Field label="Property"><select required value={form.property_id} onChange={e=>setForm({...form,property_id:e.target.value,unit_id:''})} style={inputStyle}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></Field>
+      <Field label="Unit (optional)"><select value={form.unit_id} onChange={e=>setForm({...form,unit_id:e.target.value})} style={inputStyle}><option value="">Whole property</option>{units.filter(u=>u.property_id===form.property_id).map(u=><option key={u.id} value={u.id}>{u.unit_number}</option>)}</select></Field>
+      <div style={twoCol}><Field label="Category"><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inputStyle}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field><Field label="Document date"><input type="date" value={form.document_date} onChange={e=>setForm({...form,document_date:e.target.value})} style={inputStyle}/></Field></div><div style={twoCol}><Field label="Expiration / renewal date (optional)"><input type="date" value={form.expires_at} onChange={e=>setForm({...form,expires_at:e.target.value})} style={inputStyle}/></Field><Field label="Remind me"><select value={form.reminder_days} onChange={e=>setForm({...form,reminder_days:e.target.value})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field></div>
+      <Field label="Title"><input placeholder="e.g. 2026 Lease - Unit 1" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inputStyle}/></Field>
+      <Field label="File"><input required type="file" onChange={e=>setFile(e.target.files?.[0] || null)} style={inputStyle}/></Field>
+      <Field label="Notes"><textarea rows={3} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} style={inputStyle}/></Field>
+      <button disabled={saving} style={primaryButton}>{saving?'Uploading…':'Upload document'}</button>
+    </form></Modal>}
+  </div>;
+}
+
+function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:'var(--space-3)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:'var(--space-2)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}>{label}{children}</label>}
+function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'var(--theme-overlay)',display:'grid',placeItems:'center',padding:'var(--space-5)',zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:'var(--space-6)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-5)'}}><h2 style={{fontSize:'var(--type-section-title-size)',lineHeight:'var(--type-section-title-line)'}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
+const inputStyle:React.CSSProperties={width:'100%',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--input-bg)',color:'var(--text-primary)',fontSize:'var(--type-body-size)'};
+const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
+const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
+const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
+const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
+const errorBox:React.CSSProperties={padding:'var(--space-3)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:'var(--radius-control)',marginBottom:'var(--space-4)',fontSize:'var(--type-small-size)'};

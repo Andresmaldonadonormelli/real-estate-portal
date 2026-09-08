@@ -1,0 +1,12 @@
+'use client';
+import { useEffect,useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import PageSkeleton from '@/components/common/PageSkeleton';
+
+type Archived={id:string;kind:string;title:string;detail:string;table:string;archived_at:string};
+export default function ArchivePage(){const [items,setItems]=useState<Archived[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');
+async function load(){setLoading(true);setError('');const specs=[['properties','Property','address'],['units','Unit','unit_number'],['utility_accounts','Utility','provider'],['documents','Document','title'],['transactions','Transaction','description']] as const;const results=await Promise.all(specs.map(async([table,kind,title])=>{const r=await supabase.from(table).select('*').not('archived_at','is',null).order('archived_at',{ascending:false});if(r.error)throw r.error;return (r.data||[]).map((x:any)=>({id:x.id,kind,title:x[title]||kind,detail:x.archived_at?new Date(x.archived_at).toLocaleString():'',table,archived_at:x.archived_at}))}));setItems(results.flat().sort((a,b)=>String(b.archived_at).localeCompare(String(a.archived_at))));setLoading(false)}
+useEffect(()=>{load().catch(e=>{setError(e.message||'Could not load archive');setLoading(false)})},[]);
+async function restore(item:Archived){const r=await supabase.from(item.table).update({archived_at:null}).eq('id',item.id);if(r.error)setError(r.error.message);else await load()}
+return <div style={{padding:24,maxWidth:1000,margin:'0 auto'}}><div style={{marginBottom:24}}><Link href="/account" style={{fontSize:13}}>← Account</Link><h1 style={{fontSize:28,fontWeight:500,marginTop:12}}>Archive</h1><p style={{fontSize:14,color:'var(--text-secondary)',marginTop:5}}>Items are kept here instead of being permanently deleted. Restore anything you need.</p></div>{error&&<div style={{padding:12,border:'1px solid var(--danger)',color:'var(--danger)',borderRadius:10,marginBottom:16}}>{error}</div>}{loading?<PageSkeleton variant="ledger"/>:items.length===0?<div className="card" style={{padding:28,color:'var(--text-secondary)'}}>Archive is empty.</div>:<div className="card archive-list">{items.map(item=><div className="archive-row" key={`${item.table}-${item.id}`}><div><div className="eyebrow">{item.kind}</div><strong>{item.title}</strong><div className="muted-small">Archived {item.detail}</div></div><button className="secondary-pill" onClick={()=>restore(item)}>Restore</button></div>)}</div>}</div>}
