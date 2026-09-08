@@ -62,9 +62,9 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .pulse-periods.is-negative button.active::after{background:var(--negative)}.pulse-periods.is-positive button.active::after{background:var(--positive)}
 .pulse-supporting-metrics{margin-top:var(--space-6)}
 .portfolio-rail{grid-area:rail;position:sticky;top:var(--space-6);align-self:start;margin:0;padding:0;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card);overflow:hidden}
-.portfolio-rail-head{padding:var(--space-5)}
+.portfolio-rail-head{padding:var(--space-5)}.portfolio-rail-head h2{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}.portfolio-rail-head a{font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .portfolio-rail-list{padding:0 var(--space-3)}
-.portfolio-rail-row{grid-template-columns:minmax(0,1fr) 64px auto;padding:var(--space-4) var(--space-2);border-radius:0!important;background:transparent!important}
+.portfolio-rail-row{grid-template-columns:minmax(0,1fr) 64px auto;padding:var(--space-4) var(--space-2);border-bottom:0!important;border-radius:0!important;background:transparent!important}
 .portfolio-rail-row:hover,.portfolio-rail-row:focus-visible{border-radius:0!important;background:var(--surface-hover)!important}
 .portfolio-rail-row .portfolio-sparkline{grid-column:auto;margin-left:0}
 .portfolio-rail-row>strong{grid-column:auto;grid-row:auto;text-align:right}
