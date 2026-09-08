@@ -73,6 +73,16 @@ export interface PropertyDocument {
   archived_at?: string | null;
 }
 
+export interface DashboardVisit {
+  user_id: string;
+  previous_visit_at?: string | null;
+  current_visit_started_at?: string | null;
+  last_seen_at: string;
+  brief_items?: unknown[];
+  brief_opened_ids?: string[];
+  brief_resolved_ids?: string[];
+}
+
 export interface UtilityAccount {
   id: string;
   user_id?: string | null;

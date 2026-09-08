@@ -17,7 +17,7 @@ import { categoryKey } from '@/lib/accounting';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
 
-type DailyInsight={id:string;kicker:string;title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy'};
+type DailyInsight={id:string;kicker:'Changed'|'Watch'|'Progress';title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy';href:string;opened?:boolean;resolved?:boolean};
 
 export default function Dashboard() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('3M');
+  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('1Y');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [toast,setToast]=useState('');
   const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
+  const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
+  const [briefUpdatedAt,setBriefUpdatedAt]=useState<Date|null>(null);
   const visitRecorded=useRef(false);
 
   const refreshTransactions = useCallback(async () => {
@@ -52,18 +54,17 @@ export default function Dashboard() {
     }
   }, []);
 
-  const recordDashboardVisit = useCallback(async () => {
-    const now=new Date().toISOString();
-    const todayKey=localDateKey(new Date());
-    const storageKey=`re-portal:last-dashboard-visit:${user.id}`;
-    const dismissedStorageKey=`re-portal:dismissed-insights:${user.id}:${todayKey}`;
-    try{setDismissedInsightIds(JSON.parse(window.localStorage.getItem(dismissedStorageKey)||'[]'));}catch{}
-    try{
-      const visit=await supabase.from('dashboard_visits').select('last_seen_at,dismissed_insight_ids,dismissed_for_date').eq('user_id',user.id).maybeSingle();
-      if(!visit.error&&visit.data?.dismissed_for_date===todayKey&&Array.isArray(visit.data.dismissed_insight_ids)) setDismissedInsightIds(visit.data.dismissed_insight_ids as string[]);
-    }catch{}
-    try{window.localStorage.setItem(storageKey,now);}catch{}
-    try{await supabase.from('dashboard_visits').upsert({user_id:user.id,last_seen_at:now,updated_at:now},{onConflict:'user_id'});}catch{}
+  const initializeDashboardVisit = useCallback(async (props:Property[],unitRows:Unit[],txRows:Transaction[],docRows:PropertyDocument[]) => {
+    const now=new Date(); const nowIso=now.toISOString();
+    const sessionKey=`re-portal:dashboard-session:${user.id}`; const activityKey=`re-portal:dashboard-activity:${user.id}`; const snapshotKey=`re-portal:dashboard-brief:${user.id}`;
+    const priorActivity=Number(window.localStorage.getItem(activityKey)||0); const newSession=!window.sessionStorage.getItem(sessionKey); const newVisit=newSession||!priorActivity||(now.getTime()-priorActivity)>=30*60*1000;
+    window.sessionStorage.setItem(sessionKey,'1'); window.localStorage.setItem(activityKey,String(now.getTime()));
+    if(!newVisit){try{const saved=JSON.parse(window.sessionStorage.getItem(snapshotKey)||'null');if(saved?.items){setBriefItems(saved.items);setBriefUpdatedAt(new Date(saved.updatedAt));return;}}catch{}}
+    let previousVisit:string|null=null; let events:any[]=[];
+    try{const visit=await supabase.from('dashboard_visits').select('last_seen_at,current_visit_started_at').eq('user_id',user.id).maybeSingle();previousVisit=(visit.data as any)?.current_visit_started_at||(visit.data as any)?.last_seen_at||null;if(previousVisit){const eventResult=await supabase.from('app_events').select('*').gt('occurred_at',previousVisit).order('occurred_at',{ascending:false});if(!eventResult.error)events=eventResult.data||[];}}catch{}
+    const items=buildDailyBrief(props,unitRows,txRows,docRows,events,previousVisit,now); const snapshot={items,updatedAt:nowIso};
+    window.sessionStorage.setItem(snapshotKey,JSON.stringify(snapshot)); setBriefItems(items); setBriefUpdatedAt(now);
+    try{await supabase.from('dashboard_visits').upsert({user_id:user.id,previous_visit_at:previousVisit,current_visit_started_at:nowIso,last_seen_at:nowIso,brief_items:items,brief_opened_ids:[],brief_resolved_ids:[],updated_at:nowIso},{onConflict:'user_id'});}catch{}
   },[user.id]);
 
   const ensureRecurring = useCallback(async (props: Property[], unitRows: Unit[], txRows: Transaction[]) => {
@@ -114,8 +115,9 @@ export default function Dashboard() {
       const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; const txRows=(t.data||[]) as Transaction[];
 
       // Show the useful dashboard as soon as the core data arrives.
-      setProperties(props); setUnits(unitRows); setTransactions(txRows); setDocuments((d.data||[]) as PropertyDocument[]); setLoading(false);
-      if(!visitRecorded.current){visitRecorded.current=true;void recordDashboardVisit();}
+      const docRows=(d.data||[]) as PropertyDocument[];
+      setProperties(props); setUnits(unitRows); setTransactions(txRows); setDocuments(docRows); setLoading(false);
+      if(!visitRecorded.current){visitRecorded.current=true;void initializeDashboardVisit(props,unitRows,txRows,docRows);}
 
       // Images and recurring bookkeeping happen after render and never block it.
       void (async()=>{
@@ -130,7 +132,7 @@ export default function Dashboard() {
       setError(e instanceof Error ? e.message : 'Could not load the dashboard.');
       setLoading(false);
     }
-  },[ensureRecurring,recordDashboardVisit]);
+  },[ensureRecurring,initializeDashboardVisit]);
 
   useEffect(()=>{load();},[load]);
 
@@ -209,31 +211,7 @@ export default function Dashboard() {
   const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
   const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
-  const dailyInsights=useMemo<DailyInsight[]>(()=>{
-    const dateKey=localDateKey(now);
-    const rentPace=expectedMonthlyRent>0?Math.min(100,Math.round((rentEarned/expectedMonthlyRent)*100)):0;
-    const insights:DailyInsight[]=[];
-    if(expectedMonthlyRent>0) insights.push({id:`rent-pace-${dateKey}`,kicker:'Rent pace',title:`${rentPace}% of ${monthLabel} rent earned`,detail:`${formatKpiCurrency(rentEarned)} of ${formatKpiCurrency(expectedMonthlyRent)} scheduled`,tone:'positive',kind:'rent'});
-    const previousMonthExpenses:number[]=[];
-    for(let offset=1;offset<=3;offset++){
-      const monthDate=new Date(now.getFullYear(),now.getMonth()-offset,1);
-      const prefix=`${monthDate.getFullYear()}-${String(monthDate.getMonth()+1).padStart(2,'0')}`;
-      previousMonthExpenses.push(transactions.filter(tx=>tx.transaction_date.startsWith(prefix)&&(tx.status||'posted')==='posted'&&tx.type==='expense').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0));
-    }
-    const comparable=previousMonthExpenses.filter(value=>value>0);
-    if(comparable.length){
-      const average=comparable.reduce((sum,value)=>sum+value,0)/comparable.length;
-      const delta=Math.round(((monthlyTotals.expense-average)/average)*100);
-      const lower=delta<=0;
-      insights.push({id:`expense-trend-${dateKey}`,kicker:'Expense trend',title:`Expenses are ${Math.abs(delta)}% ${lower?'below':'above'} recent average`,detail:`${formatKpiCurrency(monthlyTotals.expense)} posted this month`,tone:lower?'positive':'warning',kind:'expense'});
-    }
-    const vacantUnits=units.filter(unit=>!unit.occupied);
-    const knownVacantRent=vacantUnits.reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
-    if(knownVacantRent>0) insights.push({id:`vacancy-${dateKey}`,kicker:'Vacancy exposure',title:`${formatCurrency(knownVacantRent/daysInMonth)} per day at risk`,detail:`${vacantUnits.length} vacant unit${vacantUnits.length===1?'':'s'} with known rent`,tone:'warning',kind:'occupancy'});
-    else insights.push({id:`occupancy-${dateKey}`,kicker:'Occupancy',title:`${stats.occupiedUnits} of ${stats.totalUnits} units occupied`,detail:stats.totalUnits===stats.occupiedUnits?'Your portfolio is fully occupied':`${stats.totalUnits-stats.occupiedUnits} unit${stats.totalUnits-stats.occupiedUnits===1?'':'s'} currently vacant`,tone:stats.totalUnits===stats.occupiedUnits?'positive':'neutral',kind:'occupancy'});
-    return insights.slice(0,3);
-  },[now,expectedMonthlyRent,rentEarned,monthLabel,transactions,monthlyTotals.expense,units,daysInMonth,stats.occupiedUnits,stats.totalUnits]);
-  const visibleDailyInsights=dailyInsights.filter(insight=>!dismissedInsightIds.includes(insight.id));
+  const visibleDailyInsights=briefItems;
 
   async function dismissDailyInsight(id:string){
     const todayKey=localDateKey(new Date());
@@ -241,6 +219,10 @@ export default function Dashboard() {
     setDismissedInsightIds(next);
     try{window.localStorage.setItem(`re-portal:dismissed-insights:${user.id}:${todayKey}`,JSON.stringify(next));}catch{}
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,dismissed_insight_ids:next,dismissed_for_date:todayKey,updated_at:new Date().toISOString()},{onConflict:'user_id'});}catch{}
+  }
+  async function openDailyInsight(id:string){
+    setBriefItems(items=>items.map(item=>item.id===id?{...item,opened:true}:item));
+    try{const visit=await supabase.from('dashboard_visits').select('brief_opened_ids').eq('user_id',user.id).maybeSingle();const ids=Array.from(new Set([...(Array.isArray((visit.data as any)?.brief_opened_ids)?(visit.data as any).brief_opened_ids:[]),id]));await supabase.from('dashboard_visits').update({brief_opened_ids:ids,updated_at:new Date().toISOString()}).eq('user_id',user.id);}catch{}
   }
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
@@ -253,38 +235,26 @@ export default function Dashboard() {
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="pulse-dashboard-grid">
       <section className="pulse-performance-open">
-          <div className="pulse-hero">
-            <span className="pulse-kicker">Rent earned this month</span>
-            <CountUpCurrency value={rentEarned}/>
-            <div className="pulse-daily-gain">+{formatCurrency(dailyRent)} today</div>
-          </div>
-          <div className="pulse-chart-head"><h2>Cash flow</h2></div>
+          <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(displayedCashFlow?.cashExpenses||0)} expenses</b></div></div>
+          <div className="pulse-rent-secondary"><span>Rent earned this month</span><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
-          <div className="pulse-supporting-metrics" aria-label="Portfolio overview">
-            <PulseMetric label="Expected rent" value={formatKpiCurrency(expectedMonthlyRent)}/>
-            <PulseMetric label="Collected rent" value={formatKpiCurrency(confirmedRent)} tone="positive"/>
-            <PulseMetric label="Projected month-end" value={formatKpiCurrency(projectedMonthEnd)} tone={projectedMonthEnd>=0?'positive':'negative'}/>
-            <PulseMetric label="Mortgage balance" value={formatKpiCurrency(stats.totalMortgageBalance)}/>
-          </div>
       </section>
       <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
         <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage →</Link></div>
-        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const latest=history[history.length-1];return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
-          {imageUrls[property.id]?<img src={imageUrls[property.id]} alt="" className="property-compact-thumb"/>:<div className="property-compact-thumb property-compact-fallback">⌂</div>}
-          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{pu.filter(u=>u.occupied).length}/{pu.length} occupied</small></span>
-          <MiniSparkline rows={history}/><strong className={(latest?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(latest?.cashFlow||0)}</strong>
+        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const periodCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':periodCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
+          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
+          <MiniSparkline rows={history}/><strong className={periodCashFlow>=0?'amount-positive':'amount-negative'}>{formatCurrency(periodCashFlow)}</strong>
         </Link>})}</div>
       </aside>
       </div>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
-        <div className="daily-brief-heading"><div><span>Fresh today</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>Updates refresh each day</p></div>
-        {visibleDailyInsights.length>0?<div className="daily-brief-rail">{visibleDailyInsights.map(insight=><article key={insight.id} className="daily-insight" data-tone={insight.tone}>
+        <div className="daily-brief-heading"><div><span>Fresh this visit</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
+        {visibleDailyInsights.length>0?<div className="daily-brief-rail">{visibleDailyInsights.map(insight=><Link href={insight.href} onClick={()=>void openDailyInsight(insight.id)} key={insight.id} className="daily-insight" data-tone={insight.tone}>
           <div className="daily-insight-icon" aria-hidden="true">{insight.kind==='rent'?<Banknote size={19}/>:insight.kind==='expense'?(insight.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div>
-          <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(insight.id)} aria-label={`Dismiss ${insight.kicker}`}><X size={16}/></button>
           <span>{insight.kicker}</span><strong>{insight.title}</strong><p>{insight.detail}</p>
-        </article>)}</div>:<div className="daily-brief-clear"><strong>Your portfolio is up to date</strong><span>New rent, transaction, occupancy, document, or payment changes will appear here.</span></div>}
+        </Link>)}</div>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
       </section>
       <section className="pulse-action-section">
         <div className="pulse-action-center">
@@ -318,6 +288,21 @@ function DashboardCategoryIcon({category}:{category:string}){const props={size:1
 function ActionIcon({kind,title}:{kind:'rent'|'document'|'review';title:string}){const props={size:19,strokeWidth:1.8};const lower=title.toLowerCase();const Icon=kind==='rent'?Banknote:kind==='review'?ClipboardCheck:lower.includes('insurance')?ShieldCheck:lower.includes('lease')?FileText:ClipboardCheck;const actionTone=kind==='rent'?'rent':kind==='review'?'review':lower.includes('insurance')?'insurance':lower.includes('lease')?'lease':'document';return <span className="action-icon" data-action={actionTone} aria-hidden="true"><Icon {...props}/></span>}
 
 function localDateKey(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+
+function buildDailyBrief(properties:Property[],units:Unit[],transactions:Transaction[],documents:PropertyDocument[],events:any[],previousVisit:string|null,now:Date):DailyInsight[]{
+  const since=previousVisit?new Date(previousVisit).getTime():0; const month=now.toISOString().slice(0,7); const items:DailyInsight[]=[]; const recentEvents=events.filter(event=>new Date(event.occurred_at).getTime()>since);
+  const changedTx=transactions.filter(tx=>new Date(tx.confirmed_at||tx.created_at||0).getTime()>since&&(tx.status||'posted')!=='pending'); const rentEvent=recentEvents.find(event=>event.event_type==='rent_confirmed'||event.event_type==='rent_declined');
+  if(rentEvent){const property=properties.find(p=>p.id===rentEvent.property_id);items.push({id:`changed-${rentEvent.id}`,kicker:'Changed',title:rentEvent.event_type==='rent_confirmed'?'Rent was confirmed':'Rent confirmation was declined',detail:property?.address||'Portfolio rent',tone:'positive',kind:'rent',href:rentEvent.property_id?`/ledger?property=${rentEvent.property_id}`:'/ledger'});}
+  else if(changedTx.length){items.push({id:`changed-transactions-${since}`,kicker:'Changed',title:`${changedTx.length} transaction${changedTx.length===1?' was':'s were'} added or updated`,detail:'Since your previous visit',tone:'neutral',kind:'expense',href:'/ledger'});}
+  else {const changedDocs=documents.filter(doc=>new Date(doc.created_at||0).getTime()>since);if(changedDocs.length)items.push({id:`changed-docs-${since}`,kicker:'Changed',title:`${changedDocs.length} document${changedDocs.length===1?' was':'s were'} added`,detail:'Since your previous visit',tone:'neutral',kind:'occupancy',href:'/ledger?tab=documents'});}
+  const vacant=units.filter(unit=>!unit.occupied).map(unit=>{const property=properties.find(p=>p.id===unit.property_id);const start=(unit as any).vacancy_started_at||(unit as any).lease_end_date||property?.purchase_date||unit.created_at;return{unit,property,days:start?Math.max(0,Math.floor((now.getTime()-new Date(`${String(start).slice(0,10)}T12:00:00`).getTime())/86400000)):0};}).filter(item=>item.days>=14).sort((a,b)=>b.days-a.days)[0];
+  if(vacant){items.push({id:`watch-vacancy-${vacant.unit.id}`,kicker:'Watch',title:`${vacant.property?.address||vacant.unit.unit_number} has been vacant for at least ${vacant.days} days`,detail:'Based on the best available vacancy date',tone:'warning',kind:'occupancy',href:`/properties/${vacant.unit.property_id}`});}
+  else {const negative=properties.map(property=>({property,cash:buildMonthlyFinancialHistory(transactions,'1Y',property.id).reduce((sum,row)=>sum+row.cashFlow,0)})).sort((a,b)=>a.cash-b.cash)[0];if(negative&&negative.cash<0)items.push({id:`watch-cash-${negative.property.id}`,kicker:'Watch',title:`${negative.property.address} has negative trailing cash flow`,detail:`${formatCurrency(negative.cash)} over the last year`,tone:'warning',kind:'expense',href:`/properties/${negative.property.id}`});}
+  const expected=units.filter(unit=>unit.occupied&&unit.recurring_rent_enabled!==false&&Number(unit.current_rent||0)>0);const confirmed=new Set(transactions.filter(tx=>tx.transaction_date.startsWith(month)&&tx.category==='Rent'&&tx.status==='posted').map(tx=>tx.unit_id).filter(Boolean));
+  if(expected.length)items.push({id:`progress-rent-${month}`,kicker:'Progress',title:`${confirmed.size} of ${expected.length} ${now.toLocaleString('en-US',{month:'long'})} rents are confirmed`,detail:confirmed.size===expected.length?'All occupied-unit rents are confirmed':'Based only on confirmed posted rent',tone:confirmed.size===expected.length?'positive':'neutral',kind:'rent',href:'/ledger'});
+  else items.push({id:`progress-current-${month}`,kicker:'Progress',title:'Your portfolio records are current',detail:'No occupied-unit rent confirmations are expected',tone:'positive',kind:'occupancy',href:'/properties'});
+  return items.slice(0,3);
+}
 
 const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
 const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
