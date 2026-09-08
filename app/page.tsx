@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('1Y');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
+  const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
   const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -238,35 +239,37 @@ export default function Dashboard() {
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="pulse-dashboard-grid">
-      <section className="pulse-performance-open">
+      <main className="pulse-dashboard-main">
+        <section className="pulse-performance-open">
           <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(displayedCashFlow?.cashExpenses||0)} expenses</b></div></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
           <div className="pulse-rent-secondary"><span>Rent earned this month</span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></div>
-      </section>
-      <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
-        <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage →</Link></div>
-        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const periodCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':periodCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
-          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
-          <MiniSparkline rows={history}/><strong className={periodCashFlow>=0?'amount-positive':'amount-negative'}>{formatCurrency(periodCashFlow)}</strong>
-        </Link>})}</div>
-      </aside>
-      </div>
+        </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
-        {activeBrief?<><article className="daily-insight" data-tone={activeBrief.tone}>
+        {activeBrief?<><article key={activeBrief.id} className="daily-insight" data-tone={activeBrief.tone} data-direction={briefDirection}>
           <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(activeBrief.id)} aria-label={`Dismiss ${activeBrief.kicker}`}><X size={18}/></button>
           <Link href={activeBrief.href} onClick={()=>void openDailyInsight(activeBrief.id)} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
-        </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
+        </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
       </section>
       <section className="pulse-action-section">
         <div className="pulse-action-center">
           <div className="pulse-section-head"><div><span>Needs you</span><h2>Action Center</h2></div>{actionItems.length>0&&<em>{actionItems.length}</em>}</div>
-          {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><span className="action-cta">→</span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all <span aria-hidden="true">→</span></button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
+          {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all</button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
         </div>
       </section>
-      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger →</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
+      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><DashboardCategoryIcon category={tx.category}/><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
+      </main>
+      <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
+        <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage</Link></div>
+        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const propertyCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':propertyCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
+          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
+          <MiniSparkline rows={history} negative={propertyCashFlow<0}/><strong className={propertyCashFlow>=0?'amount-positive':'amount-negative'}>{formatCurrency(propertyCashFlow)}</strong>
+        </Link>})}</div>
+      </aside>
+      </div>
     </>}
     {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{await load();setToast(message||'Transaction added')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
@@ -277,7 +280,7 @@ export default function Dashboard() {
   </div>;
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
-function MiniSparkline({rows}:{rows:MonthlyFinancialPoint[]}){const values=rows.map(row=>row.cashFlow);const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(1,max-min);const points=values.map((value,index)=>`${index*(64/Math.max(1,values.length-1))},${18-((value-min)/span)*16}`).join(' ');return <svg className="portfolio-sparkline" viewBox="0 0 64 20" aria-hidden="true"><polyline points={points}/></svg>}
+function MiniSparkline({rows,negative=false}:{rows:MonthlyFinancialPoint[];negative?:boolean}){const values=rows.map(row=>row.cashFlow);const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(1,max-min);const points=values.map((value,index)=>`${index*(64/Math.max(1,values.length-1))},${18-((value-min)/span)*16}`).join(' ');return <svg className={`portfolio-sparkline ${negative?'is-negative':'is-positive'}`} viewBox="0 0 64 20" aria-hidden="true"><polyline points={points}/></svg>}
 function CountUpCurrency({value}:{value:number}){
   const [display,setDisplay]=useState(0);
   useEffect(()=>{
