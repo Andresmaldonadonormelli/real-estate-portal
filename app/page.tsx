@@ -10,7 +10,7 @@ import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculati
 import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
   const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
   const [briefUpdatedAt,setBriefUpdatedAt]=useState<Date|null>(null);
+  const [briefIndex,setBriefIndex]=useState(0);
   const visitRecorded=useRef(false);
 
   const refreshTransactions = useCallback(async () => {
@@ -212,11 +213,14 @@ export default function Dashboard() {
   const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
   const visibleDailyInsights=briefItems;
+  const activeBrief=visibleDailyInsights.length?visibleDailyInsights[Math.min(briefIndex,visibleDailyInsights.length-1)]:null;
 
   async function dismissDailyInsight(id:string){
     const todayKey=localDateKey(new Date());
     const next=Array.from(new Set([...dismissedInsightIds,id]));
     setDismissedInsightIds(next);
+    setBriefItems(items=>items.filter(item=>item.id!==id));
+    setBriefIndex(index=>Math.max(0,Math.min(index,visibleDailyInsights.length-2)));
     try{window.localStorage.setItem(`re-portal:dismissed-insights:${user.id}:${todayKey}`,JSON.stringify(next));}catch{}
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,dismissed_insight_ids:next,dismissed_for_date:todayKey,updated_at:new Date().toISOString()},{onConflict:'user_id'});}catch{}
   }
@@ -226,8 +230,8 @@ export default function Dashboard() {
   }
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
-  const currentCashFlow=cashFlow[cashFlow.length-1];
-  const displayedCashFlow=inspectedCashFlow||currentCashFlow;
+  const periodCashFlow=useMemo(()=>cashFlow.reduce((total,row)=>({cashFlow:total.cashFlow+row.cashFlow,income:total.income+row.income,cashExpenses:total.cashExpenses+row.cashExpenses}),{cashFlow:0,income:0,cashExpenses:0}),[cashFlow]);
+  const displayedCashFlow=inspectedCashFlow||periodCashFlow;
 
   return <div className="dashboard-page pulse-page">
     <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
@@ -237,9 +241,9 @@ export default function Dashboard() {
       <section className="pulse-performance-open">
           <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div><b className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)} income</b><b className="amount-negative">−{formatCurrency(displayedCashFlow?.cashExpenses||0)} expenses</b></div></div>
-          <div className="pulse-rent-secondary"><span>Rent earned this month</span><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className="pulse-periods" aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></div>
+          <div className="pulse-rent-secondary"><span>Rent earned this month</span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></div>
       </section>
       <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
         <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage →</Link></div>
@@ -250,11 +254,11 @@ export default function Dashboard() {
       </aside>
       </div>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
-        <div className="daily-brief-heading"><div><span>Fresh this visit</span><h2 id="daily-brief-title">Daily Brief</h2></div><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
-        {visibleDailyInsights.length>0?<div className="daily-brief-rail">{visibleDailyInsights.map(insight=><Link href={insight.href} onClick={()=>void openDailyInsight(insight.id)} key={insight.id} className="daily-insight" data-tone={insight.tone}>
-          <div className="daily-insight-icon" aria-hidden="true">{insight.kind==='rent'?<Banknote size={19}/>:insight.kind==='expense'?(insight.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div>
-          <span>{insight.kicker}</span><strong>{insight.title}</strong><p>{insight.detail}</p>
-        </Link>)}</div>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
+        <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
+        {activeBrief?<><article className="daily-insight" data-tone={activeBrief.tone}>
+          <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(activeBrief.id)} aria-label={`Dismiss ${activeBrief.kicker}`}><X size={18}/></button>
+          <Link href={activeBrief.href} onClick={()=>void openDailyInsight(activeBrief.id)} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
+        </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
       </section>
       <section className="pulse-action-section">
         <div className="pulse-action-center">
