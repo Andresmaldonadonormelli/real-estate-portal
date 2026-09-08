@@ -807,7 +807,6 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   border-radius: 0 !important;
 }
 .action-row { padding: 15px 2px !important; grid-template-columns: 38px minmax(0,1fr) auto !important; }
-.action-row:hover { background: color-mix(in srgb, var(--accent-soft) 35%, transparent) !important; }
 .action-icon {
   width: 36px;
   height: 36px;
@@ -837,7 +836,6 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   border-top: 1px solid var(--border-color);
 }
 .action-center button.action-row,
-.action-center button.action-row:hover,
 .action-center button.action-row:focus,
 .action-center button.action-row:active,
 .actions-page a.action-row,
@@ -856,9 +854,6 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
 }
 .action-center button.action-row:first-child { border-top: 0 !important; }
 .action-center button.action-row:last-child { border-bottom: 0 !important; }
-.action-center button.action-row:hover {
-  background: color-mix(in srgb, var(--accent-soft) 28%, transparent) !important;
-}
 .action-center-footer {
   display: flex;
   justify-content: flex-start;
@@ -1251,7 +1246,6 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
 .top-tab:hover{background:var(--surface-hover)}
 .top-tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast)}
 .action-center.card{border:1px solid color-mix(in srgb,var(--text-primary) 22%,var(--border-color))!important;background:color-mix(in srgb,var(--bg-secondary) 94%,var(--bg-primary) 6%)!important;box-shadow:0 6px 24px rgba(0,0,0,.055)!important;}
-.action-center button.action-row:hover{background:var(--surface-hover)!important;}
 .action-icon{color:var(--action-color,var(--text-primary))!important;background:color-mix(in srgb,var(--action-color,var(--text-primary)) 13%,var(--bg-secondary))!important;}
 .action-icon[data-action="rent"]{--action-color:var(--category-rent)}
 .action-icon[data-action="insurance"]{--action-color:var(--category-insurance)}
@@ -2796,7 +2790,6 @@ button.ledger-month-head:focus:not(:focus-visible){
   background:var(--bg-card)!important;
   box-shadow:var(--card-shadow)!important;
 }
-.action-center button.action-row:hover{background:var(--surface-hover)!important}
 
 /* Expandable detail rows read as controls, with a rotating chevron. */
 .sheet-details-toggle,
@@ -3022,9 +3015,6 @@ button.ledger-month-head:focus:not(:focus-visible){
 .action-center button.action-row:active {
   background: transparent !important;
 }
-.action-center button.action-row:hover {
-  background: var(--surface-hover) !important;
-}
 
 /* ==========================================================
    V2.2.23 ACTION CENTER CARD MATCH
@@ -3060,9 +3050,6 @@ button.ledger-month-head:focus:not(:focus-visible){
 .action-center button.action-row:focus,
 .action-center button.action-row:active {
   background: transparent !important;
-}
-.action-center button.action-row:hover {
-  background: var(--surface-hover) !important;
 }
 
 /* ==========================================================

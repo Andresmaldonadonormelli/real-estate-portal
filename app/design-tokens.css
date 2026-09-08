@@ -73,7 +73,7 @@
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-subtle: #f1f2f3;
-  --theme-surface-hover: #eef0f2;
+  --theme-surface-hover: #F6F8FA;
   --theme-elevated: #ffffff;
   --theme-input: #f5f6f7;
   --theme-text-primary: #171918;
@@ -123,7 +123,7 @@
   --theme-card: #111312;
   --theme-surface: #111312;
   --theme-surface-subtle: #191c1a;
-  --theme-surface-hover: #202421;
+  --theme-surface-hover: #1F2124;
   --theme-elevated: #1e211f;
   --theme-input: #0d0f0e;
   --theme-text-primary: #f4f5f3;
