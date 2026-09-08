@@ -209,7 +209,7 @@ export default function Dashboard() {
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const rentEarned=expectedMonthlyRent*(now.getDate()/daysInMonth);
   const dailyRent=expectedMonthlyRent/daysInMonth;
-  const propertyRentEarned=properties.map(property=>{const expected=units.filter(unit=>unit.property_id===property.id&&unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);return {property,earned:expected*(now.getDate()/daysInMonth)}}).filter(item=>item.earned>0);
+  const propertyRentEarned=properties.map(property=>{const expected=units.filter(unit=>unit.property_id===property.id&&unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);return {property,earned:expected*(now.getDate()/daysInMonth)}});
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
   const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
@@ -258,7 +258,7 @@ export default function Dashboard() {
       </section>
       <section className="pulse-action-section">
         <div className="pulse-action-center">
-          <div className="pulse-section-head"><div><span>Needs you</span><div className="pulse-action-title"><h2>Action Center</h2>{actionItems.length>0&&<em>{actionItems.length}</em>}</div></div></div>
+          <div className="pulse-section-head"><div><span>Needs you</span><div className="pulse-action-title"><h2>Action Center{actionItems.length>0?` (${actionItems.length})`:''}</h2></div></div></div>
           {actionItems.length>0?<><div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span></button>)}</div><button className="pulse-see-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>See all</button></>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
         </div>
       </section>
