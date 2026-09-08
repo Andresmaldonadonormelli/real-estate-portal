@@ -70,6 +70,7 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .portfolio-rail-row>strong{grid-column:auto;grid-row:auto;text-align:right}
 .portfolio-rail-head a,.pulse-section-title a{color:var(--positive)!important;font-weight:var(--weight-semibold)}.portfolio-rail-head a:hover,.portfolio-rail-head a:focus-visible,.pulse-section-title a:hover,.pulse-section-title a:focus-visible{text-decoration:underline;text-underline-offset:var(--space-1)}
 .portfolio-sparkline.is-negative polyline{stroke:var(--negative)}
+.portfolio-sparkline .portfolio-sparkline-zero{stroke:var(--text-muted);stroke-width:1;stroke-dasharray:1 3}
 .daily-brief{width:100%;margin-top:var(--space-8);padding:0;border:0;border-radius:0;background:transparent}
 .daily-brief-heading{align-items:center}.daily-brief-heading h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .daily-insight{position:relative;min-height:150px;padding:0;box-shadow:none;color:var(--text-primary);overflow:hidden;animation:daily-insight-next 180ms ease-out}.daily-insight[data-direction="previous"]{animation-name:daily-insight-previous}.daily-insight-link{display:block;height:100%;padding:var(--space-5);color:var(--text-primary)}

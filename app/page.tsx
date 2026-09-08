@@ -266,7 +266,7 @@ export default function Dashboard() {
         <div className="portfolio-rail-head"><div><span>Portfolio</span><h2 id="portfolio-rail-title">Properties</h2></div><Link href="/properties">Manage</Link></div>
         <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const propertyCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':propertyCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
           <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
-          <MiniSparkline rows={history} negative={propertyCashFlow<0}/><strong className={propertyCashFlow>=0?'amount-positive':'amount-negative'}>{formatCurrency(propertyCashFlow)}</strong>
+          <MiniSparkline rows={history} negative={propertyCashFlow<0}/><strong className={propertyCashFlow>=0?'amount-positive':'amount-negative'}>{formatRailCurrency(propertyCashFlow)}</strong>
         </Link>})}</div>
       </aside>
       </div>
@@ -280,7 +280,8 @@ export default function Dashboard() {
   </div>;
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
-function MiniSparkline({rows,negative=false}:{rows:MonthlyFinancialPoint[];negative?:boolean}){const values=rows.map(row=>row.cashFlow);const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(1,max-min);const points=values.map((value,index)=>`${index*(64/Math.max(1,values.length-1))},${18-((value-min)/span)*16}`).join(' ');return <svg className={`portfolio-sparkline ${negative?'is-negative':'is-positive'}`} viewBox="0 0 64 20" aria-hidden="true"><polyline points={points}/></svg>}
+function MiniSparkline({rows,negative=false}:{rows:MonthlyFinancialPoint[];negative?:boolean}){const values=rows.map(row=>row.cashFlow);const maxAbs=Math.max(1,...values.map(value=>Math.abs(value)));const points=values.map((value,index)=>`${2+index*(60/Math.max(1,values.length-1))},${10-(value/maxAbs)*8}`).join(' ');return <svg className={`portfolio-sparkline ${negative?'is-negative':'is-positive'}`} viewBox="0 0 64 20" aria-hidden="true"><line x1="2" x2="62" y1="10" y2="10" className="portfolio-sparkline-zero"/><polyline points={points}/></svg>}
+function formatRailCurrency(value:number){return formatCurrency(Math.round(value)).replace(/\.00$/,'')}
 function CountUpCurrency({value}:{value:number}){
   const [display,setDisplay]=useState(0);
   useEffect(()=>{
