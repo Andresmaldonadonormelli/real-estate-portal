@@ -414,8 +414,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .recent-activity-copy strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:500; }
 .recent-ledger-button { margin-top:16px; width:max-content; }
 
-/* Buttons are pills. Navigation remains rounded rectangles. */
-button:not(.nav-link):not(.bottom-nav-link):not(.mobile-menu-item):not(.icon-button):not(.unit-card):not(.interactive-card):not(.segment-control):not(.recent-activity-row):not(.action-row):not(.origin-breakdown-toggle):not(.ledger-modern-row):not(.ledger-feed-row):not(.ledger-month-head):not(.ledger-tx-row) { border-radius:999px !important; }
+/* Shape is owned by each component. Only explicit CTA and pill classes use pill geometry. */
 
 @media (max-width: 767px) {
   .dashboard-page { padding:18px 16px 92px !important; }
