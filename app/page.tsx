@@ -45,6 +45,8 @@ export default function Dashboard() {
   const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
   const [briefUpdatedAt,setBriefUpdatedAt]=useState<Date|null>(null);
   const [briefIndex,setBriefIndex]=useState(0);
+  const briefTouchStart=useRef<{x:number;y:number}|null>(null);
+  const briefSwipeHandled=useRef(false);
   const [rentExpanded,setRentExpanded]=useState(false);
   const visitRecorded=useRef(false);
 
@@ -251,9 +253,9 @@ export default function Dashboard() {
         </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
-        {activeBrief?<><article key={activeBrief.id} className="daily-insight" data-tone={activeBrief.tone} data-direction={briefDirection}>
+        {activeBrief?<><article key={activeBrief.id} className="daily-insight" data-tone={activeBrief.tone} data-direction={briefDirection} onTouchStart={event=>{const touch=event.touches[0];briefTouchStart.current={x:touch.clientX,y:touch.clientY};briefSwipeHandled.current=false;}} onTouchEnd={event=>{const start=briefTouchStart.current;const touch=event.changedTouches[0];briefTouchStart.current=null;if(!start||visibleDailyInsights.length<2)return;const dx=touch.clientX-start.x;const dy=touch.clientY-start.y;if(Math.abs(dx)<42||Math.abs(dx)<=Math.abs(dy)*1.2)return;briefSwipeHandled.current=true;if(dx<0){setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}else{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}}>
           <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(activeBrief.id)} aria-label={`Dismiss ${activeBrief.kicker}`}><X size={18}/></button>
-          <Link href={activeBrief.href} onClick={()=>void openDailyInsight(activeBrief.id)} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
+          <Link href={activeBrief.href} onClick={event=>{if(briefSwipeHandled.current){event.preventDefault();briefSwipeHandled.current=false;return}void openDailyInsight(activeBrief.id)}} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
         </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
       </section>
       <section className="pulse-action-section">
