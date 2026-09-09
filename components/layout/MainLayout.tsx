@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, UserRound, X } from 'lucide-react';
+import { Archive, LogOut, UserRound, X } from 'lucide-react';
 import BottomNav from './BottomNav';
 import SideNav from './SideNav';
 import ThemeToggle from './ThemeToggle';
+import { supabase } from '@/lib/supabase';
 
 interface MainLayoutProps { children: React.ReactNode; }
 
@@ -34,7 +35,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <div className="mobile-menu-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Menu">
             <div className="mobile-menu-header"><strong>Menu</strong><button type="button" className="icon-button" onClick={() => setShowNav(false)} aria-label="Close menu"><X size={20} /></button></div>
             <Link href="/account" className="mobile-menu-item"><UserRound size={19} strokeWidth={1.8}/><span>Account</span></Link>
-            <ThemeToggle />
+            <ThemeToggle variant="menu" />
+            <Link href="/archive" className="mobile-menu-item"><Archive size={19} strokeWidth={1.8}/><span>Archive</span></Link>
+            <button type="button" className="mobile-menu-item mobile-menu-sign-out" onClick={() => void supabase.auth.signOut()}><LogOut size={19} strokeWidth={1.8}/><span>Sign out</span></button>
           </div>
         </div>
       )}
