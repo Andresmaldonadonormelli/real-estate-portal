@@ -15,6 +15,9 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
+import MiniSparkline from '@/components/charts/MiniSparkline';
+import ActionCenter from '@/components/dashboard/ActionCenter';
+import RecentActivity from '@/components/dashboard/RecentActivity';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
 
 type DailyInsight={id:string;kicker:'Changed'|'Watch'|'Progress';title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy';href:string;opened?:boolean;resolved?:boolean};
@@ -258,13 +261,8 @@ export default function Dashboard() {
           <Link href={activeBrief.href} onClick={event=>{if(briefSwipeHandled.current){event.preventDefault();briefSwipeHandled.current=false;return}void openDailyInsight(activeBrief.id)}} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
         </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>You’re caught up</strong><span>New portfolio changes will appear on your next visit.</span></div>}
       </section>
-      <section className="pulse-action-section">
-        <div className="pulse-action-center">
-          <div className="pulse-section-head"><div><span>Needs you</span><div className="pulse-action-title"><h2>Action Center{actionItems.length>0?` (${actionItems.length})`:''}</h2></div></div>{actionItems.length>3&&<button type="button" className="pulse-view-all" onClick={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}>View all</button>}</div>
-          {actionItems.length>0?<div className="action-list">{actionItems.slice(0,3).map(item=><button key={item.id} className="action-row" onClick={()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger');}}><ActionIcon kind={item.kind} title={item.title}/><span><strong>{item.title}</strong><small>{item.detail}{item.test?' · Test preview':''}</small></span><em className="pulse-row-action">{item.kind==='rent'?'Confirm':'Review'}</em></button>)}</div>:<div className="pulse-all-clear"><strong>All clear</strong><span>No portfolio tasks need attention.</span></div>}
-        </div>
-      </section>
-      <section className="pulse-activity-section"><div className="pulse-section-title"><h2>Recent Activity</h2><Link href="/ledger">Open ledger</Link></div><div className="recent-activity-feed"><div className="recent-activity-list">{transactions.filter(t=>(t.status||'posted')==='posted').slice(0,6).map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <button type="button" className="recent-activity-row" key={tx.id} onClick={()=>router.push('/ledger')} aria-label={`Open ${tx.description} in ledger`}><div className="recent-activity-copy"><strong>{property?.address||'Portfolio activity'}</strong><span>{tx.description}{unit?.unit_number?` · Unit ${unit.unit_number}`:''} · {new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong className={tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{tx.type==='expense'?'-':''}{formatCurrency(Math.abs(tx.amount))}</strong></button>})}</div></div></section>
+      <ActionCenter items={actionItems.map(item=>({...item,detail:`${item.detail}${item.test?' · Test preview':''}`,onSelect:()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.kind==='review'?'/ledger?review=1':'/ledger')}}))} onViewAll={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}/>
+      <RecentActivity items={transactions.filter(t=>(t.status||'posted')==='posted').map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return {id:tx.id,title:property?.address||'Portfolio activity',detail:`${tx.description}${unit?.unit_number?` · Unit ${unit.unit_number}`:''} · ${new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`,amount:tx.amount,type:tx.type,href:'/ledger'}})}/>
       </main>
       <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
         <div className="portfolio-rail-head"><h2 id="portfolio-rail-title">Properties</h2><Link href="/properties">Manage</Link></div>
@@ -284,7 +282,6 @@ export default function Dashboard() {
   </div>;
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
-function MiniSparkline({rows,negative=false}:{rows:MonthlyFinancialPoint[];negative?:boolean}){const values=rows.map(row=>row.cashFlow);const maxAbs=Math.max(1,...values.map(value=>Math.abs(value)));const points=values.map((value,index)=>`${2+index*(60/Math.max(1,values.length-1))},${10-(value/maxAbs)*8}`).join(' ');return <svg className={`portfolio-sparkline ${negative?'is-negative':'is-positive'}`} viewBox="0 0 64 20" aria-hidden="true"><line x1="2" x2="62" y1="10" y2="10" className="portfolio-sparkline-zero"/><polyline points={points}/></svg>}
 function formatRailCurrency(value:number){return formatCurrency(Math.round(value)).replace(/\.00$/,'')}
 function CountUpCurrency({value}:{value:number}){
   const [display,setDisplay]=useState(0);
