@@ -708,7 +708,9 @@ const primary: React.CSSProperties = {
   borderRadius: "var(--radius-pill)",
   background: "var(--accent)",
   color: "var(--accent-contrast)",
-  fontWeight: "var(--weight-semibold)",
+  fontSize: "var(--type-button-size)",
+  lineHeight: "var(--type-button-line)",
+  fontWeight: "var(--type-button-weight)",
   cursor: "pointer",
 };
 const secondary: React.CSSProperties = {
@@ -717,7 +719,9 @@ const secondary: React.CSSProperties = {
   borderRadius: "var(--radius-pill)",
   background: "var(--bg-primary)",
   color: "var(--text-primary)",
-  fontWeight: "var(--weight-semibold)",
+  fontSize: "var(--type-button-size)",
+  lineHeight: "var(--type-button-line)",
+  fontWeight: "var(--type-button-weight)",
   cursor: "pointer",
 };
 const danger: React.CSSProperties = { ...secondary, color: "var(--danger)" };
