@@ -98,6 +98,7 @@
 
   /* Semantic financial states */
   --theme-income: #10a35a;
+  --theme-on-income: #ffffff;
   --theme-income-soft: #eaf8f0;
   --theme-income-border: #b9e5cb;
   --theme-expense: #ef4b43;
@@ -144,6 +145,7 @@
   --theme-nav-active-text: #ffffff;
   --theme-focus: #6ca9ff;
   --theme-income: #2bd275;
+  --theme-on-income: #ffffff;
   --theme-income-soft: rgba(43, 210, 117, 0.13);
   --theme-income-border: rgba(43, 210, 117, 0.30);
   --theme-expense: #ff6056;
