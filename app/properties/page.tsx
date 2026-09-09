@@ -10,6 +10,8 @@ import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { categoryKey } from '@/lib/accounting';
+import MiniSparkline from '@/components/charts/MiniSparkline';
+import { buildMonthlyFinancialHistory } from '@/lib/financialHistory';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -212,7 +214,7 @@ export default function PropertiesPage() {
     <div className="mobile-page-shell properties-page">
       <div className="properties-page-head">
         <div><h1>Properties</h1><p>Every property, ranked by what needs attention.</p></div>
-        <button onClick={startAddProperty} style={primaryButton}>+ Add property</button>
+        <button onClick={startAddProperty} className="workspace-primary-button">+ Add property</button>
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -220,7 +222,7 @@ export default function PropertiesPage() {
         <div className="properties-empty-state">
           <h2>Add your first property</h2>
           <p>Your dashboard and ledger will build from the properties and transactions you enter here.</p>
-          <button onClick={startAddProperty} style={primaryButton}>Add property</button>
+          <button onClick={startAddProperty} className="workspace-primary-button">Add property</button>
         </div>
       ) : (
         <div className="compact-properties-list">
@@ -245,6 +247,7 @@ export default function PropertiesPage() {
             const expenseRatio=income>0 ? operatingExpenses/income : null;
             const hasFinancialActivity=propertyTx.some(tx=>Math.abs(Number(tx.amount||0))>0);
             const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
+            const sparklineRows=buildMonthlyFinancialHistory(transactions as any[],'1Y',property.id);
             return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card card">
               <div className="property-preview-head">
                 <div className="property-preview-identity">
@@ -259,8 +262,7 @@ export default function PropertiesPage() {
                   <span>{hasFinancialActivity ? 'YTD cash flow' : (occupied===0 ? (potentialRent>0?'Potential monthly rent':'Performance') : 'YTD cash flow')}</span>
                   <strong className={hasFinancialActivity?(cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''):''}>{hasFinancialActivity ? formatCurrency(cashFlow) : (occupied===0 ? (potentialRent>0?formatCurrency(potentialRent):'Pending') : formatCurrency(cashFlow))}</strong>
                 </div>
-                <div className={`property-health-track health-${health.tone}`}><i style={{width:`${health.fill}%`}}/></div>
-                <div className="property-health-caption"><strong>{health.label}</strong><span>{health.detail}</span></div>
+                <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/><span>{health.detail}</span></div>
               </div>
             </Link>;
           })}
