@@ -26,6 +26,9 @@
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --type-button-size: var(--type-small-size);
+  --type-button-line: var(--type-small-line);
+  --type-button-weight: var(--weight-semibold);
 
   /* Compatibility aliases for legacy screens while they migrate. */
   --type-heading-lg-size: var(--type-page-title-size);

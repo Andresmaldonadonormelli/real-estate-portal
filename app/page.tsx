@@ -316,7 +316,8 @@ function buildDailyBrief(properties:Property[],units:Unit[],transactions:Transac
   return items.slice(0,3);
 }
 
-const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:650,cursor:'pointer'};
-const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
+const sharedButtonType:React.CSSProperties={fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)'};
+const primaryButton:React.CSSProperties={...sharedButtonType,padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',cursor:'pointer'};
+const secondaryButton:React.CSSProperties={...sharedButtonType,padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:18};
 const overlay:React.CSSProperties={position:'fixed',inset:0,background:'var(--theme-overlay)',display:'grid',placeItems:'center',padding:18,zIndex:1000};
