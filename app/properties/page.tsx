@@ -366,7 +366,8 @@ function getPropertyHealth({occupied,total,cashFlow,expenseRatio,hasFinancialAct
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };
-const primaryButton: React.CSSProperties = { padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontWeight: 600, cursor: 'pointer' };
-const secondaryButton: React.CSSProperties = { padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
+const sharedButtonType: React.CSSProperties = { fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)' };
+const primaryButton: React.CSSProperties = { ...sharedButtonType, padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', cursor: 'pointer' };
+const secondaryButton: React.CSSProperties = { ...sharedButtonType, padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
 const dangerButton: React.CSSProperties = { ...secondaryButton, color: 'var(--danger)' };
 const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 };
