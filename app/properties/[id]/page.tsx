@@ -9,6 +9,9 @@ import { formatCurrency } from '@/lib/formatters';
 import { categoryKey } from '@/lib/accounting';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
+import PropertyExpenseTrendsChart from '@/components/charts/PropertyExpenseTrendsChart';
+import ActionCenter, { type ActionCenterItem } from '@/components/dashboard/ActionCenter';
+import RecentActivity from '@/components/dashboard/RecentActivity';
 import { buildMonthlyFinancialHistory, type HistoryMode, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
 
 type Tab = 'overview' | 'improve' | 'units' | 'documents';
@@ -143,13 +146,11 @@ export default function PropertyWorkspacePage(){
       </div>
     </div>
     <div className="property-skeleton-tabs skeleton-block"/>
-    <div className="property-skeleton-kpis">
-      {[0,1,2,3].map(i=><div className="property-skeleton-kpi" key={i}><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>)}
+    <div className="property-skeleton-overview">
+      <div className="property-skeleton-chart skeleton-block"/>
+      <div className="property-skeleton-pulse skeleton-block"/>
     </div>
-    <div className="property-skeleton-panels">
-      <div className="property-skeleton-panel"><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>
-      <div className="property-skeleton-panel"><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>
-    </div>
+    <div className="property-skeleton-sections">{[0,1,2,3].map(i=><div className="property-skeleton-section" key={i}><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>)}</div>
   </div>;
   if(error || !property) return <div className="property-workspace"><Link href="/properties" className="property-back"><ArrowLeft size={16}/> Properties</Link><div className="card property-empty">{error || 'Property not found.'}</div></div>;
 
@@ -173,8 +174,8 @@ export default function PropertyWorkspacePage(){
   </div>;
 }
 
-function Overview({property,units,transactions,documents,expectedRent,metrics,onNavigate,onPropertyUpdated}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];expectedRent:number;metrics:ReturnType<typeof calculateMetrics>;onNavigate:(tab:Tab)=>void;onPropertyUpdated:(patch:Record<string,unknown>)=>void}){
-  const [period,setPeriod]=useState<HistoryPeriod>('3M');
+function Overview({property,units,transactions,documents,expectedRent,metrics,onNavigate}:{property:Property;units:Unit[];transactions:Tx[];documents:PropertyDocument[];expectedRent:number;metrics:ReturnType<typeof calculateMetrics>;onNavigate:(tab:Tab)=>void;onPropertyUpdated:(patch:Record<string,unknown>)=>void}){
+  const [period,setPeriod]=useState<HistoryPeriod>('1Y');
   const [mode,setMode]=useState<HistoryMode>('cashFlow');
   const [inspected,setInspected]=useState<MonthlyFinancialPoint|null>(null);
   const history=useMemo(()=>buildMonthlyFinancialHistory(transactions,period,property.id),[transactions,period,property.id]);
@@ -184,8 +185,10 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   const currentExpenses=mode==='cashFlow'?(displayed?.cashExpenses||0):(displayed?.operatingExpenses||0);
   const currentMonth=new Date().toISOString().slice(0,7);
   const collectedRent=transactions.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&tx.category==='Rent'&&(tx.status||'posted')==='posted').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-  const expenseRatio=metrics.income>0?metrics.operatingExpenses/metrics.income:0;
-  const breakdown=buildBreakdown(transactions.filter(tx=>tx.status!=='declined'&&Number(tx.transaction_date.slice(0,4))===new Date().getFullYear()));
+  const periodTransactions=transactions.filter(tx=>tx.status!=='declined'&&history.some(month=>tx.transaction_date.startsWith(month.key)));
+  const periodMetrics=calculateMetrics(periodTransactions);
+  const expenseRatio=periodMetrics.income>0?periodMetrics.operatingExpenses/periodMetrics.income:0;
+  const breakdown=buildBreakdown(periodTransactions);
   const breakdownTotal=breakdown.reduce((sum,item)=>sum+item.amount,0);
   const pendingRent=transactions.filter(tx=>tx.status==='pending'&&tx.category==='Rent').length;
   const needsReview=transactions.filter(tx=>(tx.status||'posted')==='posted'&&(tx.needs_review||tx.category==='Needs Review')).length;
@@ -193,7 +196,21 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   const leaseUnits=units as (Unit&{lease_end_date?:string|null})[];
   const nextLease=leaseUnits.filter(unit=>unit.lease_end_date).map(unit=>({unit,date:new Date(`${unit.lease_end_date}T12:00:00`)})).filter(item=>item.date>=today).sort((a,b)=>a.date.getTime()-b.date.getTime())[0];
   const leaseDays=nextLease?Math.ceil((nextLease.date.getTime()-today.getTime())/86400000):null;
-  const actionCount=(pendingRent?1:0)+(needsReview?1:0)+(leaseDays!=null&&leaseDays<=90?1:0);
+  const actionItems:ActionCenterItem[]=[];
+  if(pendingRent)actionItems.push({id:'rent',kind:'rent',title:'Confirm rent',detail:`${pendingRent} payment${pendingRent===1?'':'s'} waiting`,onSelect:()=>location.href=`/ledger?property=${property.id}`});
+  if(needsReview)actionItems.push({id:'review',kind:'review',title:'Review transactions',detail:`${needsReview} need categorization`,onSelect:()=>location.href=`/ledger?property=${property.id}&review=1`});
+  if(leaseDays!=null&&leaseDays<=90)actionItems.push({id:'lease',kind:'document',title:'Lease ending',detail:`${nextLease?.unit.unit_number||'Unit'} · ${leaseDays} days left`,onSelect:()=>onNavigate('units')});
+  const occupied=units.filter(unit=>unit.occupied).length;
+  const mortgage=Number(property.monthly_mortgage_payment||0);
+  const repairExpenses=periodTransactions.filter(tx=>tx.type==='expense'&&['maintenance','repairs'].includes(categoryKey(tx.category))).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+  const recentAverage=period==='3M'?repairExpenses/3:period==='6M'?repairExpenses/6:period==='9M'?repairExpenses/9:repairExpenses/12;
+  const currentRepairs=periodTransactions.filter(tx=>tx.type==='expense'&&tx.transaction_date.startsWith(currentMonth)&&['maintenance','repairs'].includes(categoryKey(tx.category))).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+  const condition=currentRepairs>recentAverage&&recentAverage>0?{label:'Watch',detail:`Repairs are ${Math.round((currentRepairs/recentAverage-1)*100)}% above the recent monthly average.`}:{label:'On track',detail:occupied===units.length&&units.length>0?'Every unit is currently occupied.':'Review occupancy and current expenses.'};
+  const periodTotals=history.reduce((sum,row)=>({income:sum.income+row.income,operating:sum.operating+row.operatingExpenses,cash:sum.cash+row.cashExpenses}),{income:0,operating:0,cash:0});
+  const totalMortgage=Math.max(0,periodTotals.cash-periodTotals.operating);
+  const periodNoi=periodTotals.income-periodTotals.operating;
+  const periodCashFlow=periodTotals.income-periodTotals.cash;
+  const recentItems=transactions.filter(tx=>(tx.status||'posted')==='posted').map(tx=>({id:tx.id,title:tx.description||tx.category,detail:`${tx.category} · ${formatDate(tx.transaction_date)}`,amount:Number(tx.amount||0),type:tx.type,href:`/ledger?property=${property.id}`}));
 
   return <div className="property-overview-pulse">
     <div className="property-overview-top">
@@ -203,30 +220,14 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
         <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode==='cashFlow'?'cash flow':'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
         <div className="property-chart-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(value=><button key={value} className={period===value?'active':''} onClick={()=>setPeriod(value)}>{value}</button>)}</div>
       </section>
-      <aside className="property-overview-actions">
-        <div className="property-overview-actions-head"><div><span>Needs you</span><h2>Property Action Center</h2></div>{actionCount>0&&<em>{actionCount}</em>}</div>
-        {actionCount?<div className="property-overview-action-list">
-          {pendingRent>0&&<Link href={`/ledger?property=${property.id}`}><Banknote size={18}/><span><strong>Confirm rent</strong><small>{pendingRent} payment{pendingRent===1?'':'s'} waiting</small></span><ChevronRight size={16}/></Link>}
-          {needsReview>0&&<Link href={`/ledger?property=${property.id}&review=1`}><ClipboardCheck size={18}/><span><strong>Review transactions</strong><small>{needsReview} need categorization</small></span><ChevronRight size={16}/></Link>}
-          {leaseDays!=null&&leaseDays<=90&&<button type="button" onClick={()=>onNavigate('units')}><FileText size={18}/><span><strong>Lease ending</strong><small>{nextLease?.unit.unit_number||'Unit'} · {leaseDays} days left</small></span><ChevronRight size={16}/></button>}
-        </div>:<div className="property-overview-all-clear"><strong>All clear</strong><span>No property tasks need attention.</span></div>}
-      </aside>
+      <aside className="property-pulse-rail"><h2>Property Pulse</h2><div className="property-pulse-list"><div><span>Occupancy</span><strong>{occupied}/{units.length}</strong></div><div><span>September rent</span><strong>{formatCurrency(collectedRent)} of {formatCurrency(expectedRent)} confirmed</strong></div><div><span>Mortgage</span><strong>{formatCurrency(mortgage)} monthly</strong></div><div><span>Balance</span><strong>{formatCurrency(Number(property.mortgage_balance||0))}</strong></div><div className="property-pulse-condition"><strong>{condition.label}</strong><span>{condition.detail}</span></div></div></aside>
     </div>
-
-    <div className="property-overview-metrics" aria-label="Property metrics">
-      <Kpi label="Expected rent" value={formatKpiCurrency(expectedRent)} sub="Monthly"/>
-      <Kpi label="Collected rent" value={formatKpiCurrency(collectedRent)} sub="This month" tone="positive"/>
-      <Kpi label="YTD NOI" value={formatKpiCurrency(metrics.noi)} sub="Before debt service" tone={metrics.noi>=0?'positive':'negative'}/>
-      <Kpi label="Expense ratio" value={metrics.income?`${(expenseRatio*100).toFixed(1)}%`:'—'} sub="YTD" tone={metrics.income?(expenseRatio>=.7?'negative':expenseRatio>=.55?'warning':'positive'):undefined}/>
-      <Kpi label="Mortgage balance" value={(property as any).mortgage_enabled===false?'—':formatKpiCurrency(Number(property.mortgage_balance||0))} sub={(property as any).mortgage_enabled===false?'No mortgage':'Current balance'}/>
-    </div>
-
-    <MortgageOverview property={property} onUpdated={onPropertyUpdated}/>
-    <div className="property-overview-lower">
-      <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">BREAKDOWN</div><h2>Operating expenses</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View ledger <ChevronRight size={15}/></Link></div><div className="origin-breakdown">{breakdown.length?breakdown.map(item=><BreakdownRow key={item.category} item={item} total={breakdownTotal} propertyId={property.id}/>):<Empty text="No operating expenses recorded."/>}</div></section>
-      <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">RECENT</div><h2>Transactions</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View all <ChevronRight size={15}/></Link></div><div className="property-list">{transactions.slice(0,5).map(tx=><TransactionRow key={tx.id} tx={tx}/>)}{!transactions.length&&<Empty text="No transactions yet."/>}</div></section>
-    </div>
-    <section className="property-open-panel"><div className="property-panel-head"><div><div className="eyebrow">DOCUMENTS</div><h2>Property paperwork</h2></div><button type="button" className="property-text-action" onClick={()=>onNavigate('documents')}>Open documents <ChevronRight size={15}/></button></div><div className="property-doc-summary"><FileText size={22}/><div><strong>{documents.length} {documents.length===1?'document':'documents'}</strong><span>Leases, insurance, registrations, invoices and property records.</span></div></div></section>
+    <ActionCenter items={actionItems} title="Property Action Center" showEyebrow={false} hideWhenEmpty/>
+    <section className="property-financial-breakdown"><div className="property-section-head"><h2>Financial breakdown</h2></div>{[['Rental income',periodTotals.income,'income'],['Operating expenses',-periodTotals.operating,'expense'],['NOI',periodNoi,''],['Mortgage payments',-totalMortgage,'expense'],['Net cash flow',periodCashFlow,periodCashFlow>=0?'income':'expense']].map(([label,value,tone])=><Link href={`/ledger?property=${property.id}`} key={String(label)}><span>{label}</span><strong className={tone==='income'?'amount-positive':tone==='expense'?'amount-negative':''}>{formatCurrency(Number(value))}</strong></Link>)}</section>
+    <PropertyExpenseTrendsChart months={history} transactions={periodTransactions}/>
+    <section className="property-open-panel"><div className="property-panel-head"><div><h2>Operating expenses</h2></div><Link href={`/ledger?property=${property.id}`} className="property-text-action">View ledger</Link></div><div className="origin-breakdown">{breakdown.length?breakdown.map(item=><BreakdownRow key={item.category} item={item} total={breakdownTotal} propertyId={property.id}/>):<Empty text="No operating expenses recorded."/>}</div></section>
+    <section className="property-key-statistics"><div className="property-section-head"><h2>Key statistics</h2></div><div>{[['Purchase price',property.purchase_price?formatCurrency(Number(property.purchase_price)):'—'],['Acquisition date',property.purchase_date?formatDate(property.purchase_date):'—'],['Monthly rent',formatCurrency(expectedRent)],['Occupancy',`${occupied}/${units.length}`],['Trailing NOI',formatCurrency(periodNoi)],['Cap rate',property.purchase_price&&period==='1Y'?`${(periodNoi/Number(property.purchase_price)*100).toFixed(1)}%`:'—'],['Expense ratio',periodMetrics.income?`${(expenseRatio*100).toFixed(1)}%`:'—'],['Debt-service coverage',totalMortgage?`${(periodNoi/totalMortgage).toFixed(2)}×`:'—'],['Mortgage balance',formatCurrency(Number(property.mortgage_balance||0))]].map(([label,value])=><span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div></section>
+    <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`}/>
   </div>;
 }
 
