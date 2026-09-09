@@ -8,19 +8,21 @@ function Block({ className = '', style }: { className?: string; style?: React.CS
 
 export default function PageSkeleton({ variant = 'ledger' }: { variant?: Variant }) {
   if (variant === 'dashboard') {
-    return <div aria-label="Loading dashboard" role="status">
-      <div className="skeleton-grid skeleton-grid-3" style={{ marginBottom: 14 }}>
-        {[0,1,2].map(i => <Block key={i} style={{ height: 82 }} />)}
-      </div>
-      <div className="skeleton-grid skeleton-grid-4" style={{ marginBottom: 28 }}>
-        {[0,1,2,3].map(i => <Block key={i} style={{ height: 90 }} />)}
-      </div>
-      <Block style={{ width: 150, height: 18, marginBottom: 14 }} />
-      <div style={{ display:'grid', gap:12, marginBottom:28 }}>
-        {[0,1].map(i => <div key={i} className="skeleton-card-row"><Block style={{ width:72, height:58, flex:'0 0 auto' }} /><div style={{ flex:1, minWidth:0 }}><Block style={{ width:'42%', height:17, marginBottom:9 }} /><Block style={{ width:'65%', height:12 }} /></div><Block style={{ width:90, height:28 }} /></div>)}
-      </div>
-      <Block style={{ width:130, height:18, marginBottom:14 }} />
-      <Block style={{ height:210 }} />
+    return <div className="dashboard-skeleton" aria-label="Loading dashboard" role="status">
+      <main className="dashboard-skeleton-main">
+        <Block className="dashboard-skeleton-kicker" />
+        <Block className="dashboard-skeleton-total" />
+        <Block className="dashboard-skeleton-detail" />
+        <Block className="dashboard-skeleton-detail" />
+        <Block className="dashboard-skeleton-chart" />
+        <div className="dashboard-skeleton-controls"><Block/><Block/></div>
+        <Block className="dashboard-skeleton-rent" />
+        {['brief','actions','activity'].map((section,index)=><section className={`dashboard-skeleton-section dashboard-skeleton-${section}`} key={section}>
+          <Block className="dashboard-skeleton-heading" />
+          {index===0?<Block className="dashboard-skeleton-card"/>:<div className="dashboard-skeleton-rows">{[0,1].map(row=><Block key={row}/>)}</div>}
+        </section>)}
+      </main>
+      <aside className="dashboard-skeleton-rail"><Block className="dashboard-skeleton-rail-title"/>{[0,1,2].map(row=><Block key={row}/>)}</aside>
     </div>;
   }
 
