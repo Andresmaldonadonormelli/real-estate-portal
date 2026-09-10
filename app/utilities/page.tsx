@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import PageSkeleton from "@/components/common/PageSkeleton";
 import type { Property, UtilityAccount } from "@/lib/types";
 import { withTimeout } from "@/lib/async";
+import { cachedSupabaseRequest, PROPERTY_FIELDS } from "@/lib/supabaseData";
 
 const types = [
   "Electric",
@@ -65,14 +66,10 @@ export default function UtilitiesPage() {
         Promise.all([
           supabase
             .from("utility_accounts")
-            .select("*")
+            .select("id,property_id,utility_type,provider,account_number,username_email,login_url,autopay,responsibility,billing_cycle,password_reference,notes,created_at,archived_at")
             .is("archived_at", null)
             .order("utility_type"),
-          supabase
-            .from("properties")
-            .select("*")
-            .is("archived_at", null)
-            .order("address"),
+          cachedSupabaseRequest('shared:properties',async()=>await supabase.from("properties").select(PROPERTY_FIELDS).is("archived_at", null).order("address")),
           supabase
             .from("utility_account_properties")
             .select("utility_account_id,property_id"),
@@ -194,12 +191,12 @@ export default function UtilitiesPage() {
           .from("utility_accounts")
           .update(payload)
           .eq("id", editing.id)
-          .select("*")
+          .select("id")
           .single()
       : await supabase
           .from("utility_accounts")
           .insert(payload)
-          .select("*")
+          .select("id")
           .single();
     if (r.error) {
       setError(r.error.message);
