@@ -79,19 +79,6 @@ export default function PropertiesPage() {
     }, {});
   }, [units]);
 
-  const rankedProperties = useMemo(() => [...properties].sort((a, b) => {
-    const attention = (property: Property) => {
-      const propertyUnits = unitsByProperty[property.id] || [];
-      const vacant = propertyUnits.filter(unit => !unit.occupied).length;
-      const year = new Date().getFullYear();
-      const cashFlow = transactions
-        .filter(tx => tx.property_id === property.id && Number(String(tx.transaction_date || '').slice(0, 4)) === year)
-        .reduce((sum, tx) => sum + (tx.type === 'income' ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0))), 0);
-      return vacant * 100000 + Math.max(0, -cashFlow);
-    };
-    return attention(b) - attention(a);
-  }), [properties, transactions, unitsByProperty]);
-
   function startAddProperty() {
     setEditingProperty(null);
     setPropertyImage(null);
@@ -227,7 +214,7 @@ export default function PropertiesPage() {
   return (
     <div className="mobile-page-shell properties-page">
       <div className="properties-page-head">
-        <div><h1>Properties</h1><p>Every property, ranked by what needs attention.</p></div>
+        <div><h1>Properties</h1><p>Every property in your portfolio.</p></div>
         <button onClick={startAddProperty} className="workspace-primary-button">+ Add property</button>
       </div>
 
@@ -240,7 +227,7 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <div className="compact-properties-list">
-          {rankedProperties.map((property) => {
+          {properties.map((property) => {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
             const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);

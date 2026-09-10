@@ -645,7 +645,7 @@ function PerformanceAnimatedValue({value,animate}:{value:number;animate:boolean}
     const tick=(time:number)=>{const progress=Math.min(1,(time-start)/duration);setDisplay(value*(1-Math.pow(1-progress,3)));if(progress<1)frame=requestAnimationFrame(tick);};
     frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
   },[value,animate]);
-  return <strong className={display<0?'negative':''}>{formatKpiCurrency(display)}</strong>;
+  return <strong className={display<0?'amount-negative':display>0?'amount-positive':''}>{formatKpiCurrency(display)}</strong>;
 }
 
 function PerformanceMetric({label,value,change,inverse,tone}:{label:string;value:string;change?:number|null;inverse?:boolean;tone?:'positive'|'negative'|'warning'}){
