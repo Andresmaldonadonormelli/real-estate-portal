@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Building2, Gauge, Settings, UserRound, WalletCards } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
+import { cachedSupabaseRequest } from '@/lib/supabaseData';
 
 type PropertyLink = { id:string; address:string };
 
@@ -16,8 +17,8 @@ export default function SideNav() {
 
   useEffect(()=>{ let alive=true; (async()=>{
     const [p,t]=await Promise.all([
-      supabase.from('properties').select('id,address').is('archived_at',null).order('address'),
-      supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('needs_review',true).neq('status','declined')
+      cachedSupabaseRequest('nav:properties',async()=>await supabase.from('properties').select('id,address').is('archived_at',null).order('address')),
+      cachedSupabaseRequest('nav:review-count',async()=>await supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('needs_review',true).neq('status','declined'))
     ]);
     if(!alive)return;
     if(!p.error)setProperties((p.data||[]) as PropertyLink[]);
