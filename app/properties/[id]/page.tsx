@@ -13,7 +13,7 @@ import PropertyExpenseTrendsChart from '@/components/charts/PropertyExpenseTrend
 import ActionCenter, { type ActionCenterItem } from '@/components/dashboard/ActionCenter';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { buildMonthlyFinancialHistory, type HistoryMode, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
-import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
+import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 type Tab = 'overview' | 'improve' | 'units' | 'documents';
 type Tx = {
@@ -119,7 +119,13 @@ export default function PropertyWorkspacePage(){
     ]);
     if(p.error){ setError(p.error.message); setLoading(false); return; }
     const prop=p.data as Property;
-    const synced=await syncLegacyUnitLeases(propertyId,(u.data||[]) as Unit[],(d.data||[]) as PropertyDocument[]);
+    let unitRows=(u.data||[]) as Unit[];
+    if(u.error){
+      const fallback=await cachedSupabaseRequest(`property:${propertyId}:units:core`,async()=>await supabase.from('units').select(UNIT_FIELDS).eq('property_id',propertyId).is('archived_at',null).order('unit_number'));
+      if(fallback.error){setError(fallback.error.message);setLoading(false);return;}
+      unitRows=(fallback.data||[]) as Unit[];
+    }
+    const synced=await syncLegacyUnitLeases(propertyId,unitRows,(d.data||[]) as PropertyDocument[]);
     setProperty(prop); setUnits(synced.units as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments(synced.documents as PropertyDocument[]);
     if(prop.image_path){ const signed=await supabase.storage.from('property-images').createSignedUrl(prop.image_path,3600); if(signed.data?.signedUrl) setImageUrl(signed.data.signedUrl); }
     setLoading(false);
@@ -244,8 +250,7 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   return <div className="property-overview-pulse"><div className="property-overview-layout">
     <main className="property-overview-main">
       <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><h2>{mode==='cashFlow'?'Cash flow':'NOI'}</h2><div className="property-chart-modes" aria-label="Chart metric"><button className={mode==='cashFlow'?'active':''} onClick={()=>setMode('cashFlow')}>Cash flow</button><button className={mode==='noi'?'active':''} onClick={()=>setMode('noi')}>NOI</button></div></div>
-        <div className="property-overview-summary"><div className="property-overview-value-row"><span className={currentValue<0?'amount-negative':currentValue>0?'amount-positive':''}><PerformanceAnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span>{formatKpiCurrency(displayed?.income||0)}</b><b><span>Expenses</span>{formatKpiCurrency(currentExpenses)}</b></div></div>
+        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{mode==='cashFlow'?'Cash flow':'NOI'}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={currentValue<0?'amount-negative':currentValue>0?'amount-positive':''}><PerformanceAnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span>{formatKpiCurrency(displayed?.income||0)}</b><b><span>Expenses</span>{formatKpiCurrency(currentExpenses)}</b></div></div></div><div className="property-chart-modes" aria-label="Chart metric"><button className={mode==='cashFlow'?'active':''} onClick={()=>setMode('cashFlow')}>Cash flow</button><button className={mode==='noi'?'active':''} onClick={()=>setMode('noi')}>NOI</button></div></div>
         <div className="property-chart-legend" aria-label="Chart legend"><span><i className={currentValue<0?'is-negative':'is-positive'}/>Cash flow</span><span><i className="is-expense"/>Expenses</span></div>
         <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode==='cashFlow'?'cash flow':'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
         <div className={`property-chart-periods ${currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(value=><button key={value} className={period===value?'active':''} onClick={()=>setPeriod(value)}>{value}</button>)}</div>
