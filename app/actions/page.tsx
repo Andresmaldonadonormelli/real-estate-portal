@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { Property, PropertyDocument, Transaction } from '@/lib/types';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, TRANSACTION_FIELDS } from '@/lib/supabaseData';
+import { formatCurrency } from '@/lib/formatters';
 
 type ActionItem = {
   id: string;
@@ -56,7 +57,7 @@ export default function ActionsPage() {
         id: `rent-${id}`,
         kind: 'rent',
         title: `Confirm ${new Date().toLocaleString('en-US', { month: 'long' })} rents`,
-        detail: `${property?.address || 'Property'} · ${rows.length} unit${rows.length === 1 ? '' : 's'} · $${total.toLocaleString('en-US', { maximumFractionDigits: 2 })} expected`,
+        detail: `${property?.address || 'Property'} · ${rows.length} unit${rows.length === 1 ? '' : 's'} · ${formatCurrency(total)} expected`,
         href: '/',
         days: -999,
       });

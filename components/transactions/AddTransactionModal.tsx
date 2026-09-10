@@ -5,6 +5,7 @@ import { Check, ChevronDown, FileText, Paperclip, Search, X } from 'lucide-react
 import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { ACCOUNTING_CATEGORIES, categoryNeedsReview } from '@/lib/accounting';
+import { formatCurrency } from '@/lib/formatters';
 
 type TxType = 'income' | 'expense' | 'transfer';
 type Doc = {id:string;title:string|null;file_name:string;category:string};
@@ -119,7 +120,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
         <div className="quick-add-two"><label>Category<select value={form.category} onChange={e=>{const category=e.target.value;setForm({...form,category,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         <div className="quick-add-two"><label><span className="quick-add-label-title">Type</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></select></label></div>
         {isMortgage&&<div className="mortgage-split-box">
-          <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{mortgageAllocated.toLocaleString(undefined,{style:'currency',currency:'USD'})} / {mortgageAmount.toLocaleString(undefined,{style:'currency',currency:'USD'})}</span></div></div>
+          <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{formatCurrency(mortgageAllocated)} / {formatCurrency(mortgageAmount)}</span></div></div>
           <div className="mortgage-split-fields">
             <label>Principal<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.principal} onChange={e=>setMortgageSplit({...mortgageSplit,principal:e.target.value})}/></label>
             <label>Interest<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.interest} onChange={e=>setMortgageSplit({...mortgageSplit,interest:e.target.value})}/></label>
@@ -129,14 +130,14 @@ export default function AddTransactionModal({ userId, properties, units, transac
         </div>}
         {recurringMortgage&&<div style={{padding:'14px 15px',borderRadius:16,background:'var(--surface-subtle, rgba(127,127,127,.08))',display:'grid',gap:8}}>
           <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}>
-            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · day {Number((selectedProperty as any)?.mortgage_due_day||1)}{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · $${Number((selectedProperty as any).monthly_mortgage_payment).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:''}</small></div>
+            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · day {Number((selectedProperty as any)?.mortgage_due_day||1)}{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · ${formatCurrency(Number((selectedProperty as any).monthly_mortgage_payment))}`:''}</small></div>
             <button type="button" onClick={toggleRecurringMortgage} style={{border:0,borderRadius:999,padding:'7px 11px',background:'var(--surface-strong, rgba(127,127,127,.14))',color:'var(--text-primary)',fontWeight:650,cursor:'pointer'}}>{recurringEnabled?'Pause':'Resume'}</button>
           </div>
           <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
         </div>}
         {editing&&(form.needs_review||transaction?.needs_review)&&<div style={{padding:'14px 15px',borderRadius:16,background:'rgba(196,127,0,.09)',display:'grid',gap:8}}>
           <div><strong style={{display:'block',fontSize:14}}>Why this needs review</strong><small style={{display:'block',marginTop:5,color:'var(--text-secondary)',lineHeight:1.45}}>{reviewReason}</small></div>
-          {form.needs_review&&<button type="button" onClick={()=>setForm({...form,needs_review:false})} style={{justifySelf:'start',border:0,borderRadius:999,padding:'8px 12px',background:'var(--text-primary)',color:'var(--bg-primary)',fontWeight:700,cursor:'pointer'}}>Mark reviewed</button>}
+          {form.needs_review&&<button type="button" className="primary-action" onClick={()=>setForm({...form,needs_review:false})} style={{justifySelf:'start',border:0,borderRadius:999,padding:'8px 12px',background:'var(--text-primary)',color:'var(--bg-primary)',fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)',cursor:'pointer'}}>Mark reviewed</button>}
           {!form.needs_review&&<small style={{color:'var(--text-secondary)'}}>Marked reviewed. Save changes to keep it cleared.</small>}
         </div>}
         <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>

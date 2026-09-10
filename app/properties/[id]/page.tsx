@@ -177,7 +177,8 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   const [inspected,setInspected]=useState<MonthlyFinancialPoint|null>(null);
   const history=useMemo(()=>buildMonthlyFinancialHistory(transactions,period,property.id),[transactions,period,property.id]);
   const current=history[history.length-1];
-  const displayed=inspected||current;
+  const periodDisplayed=history.reduce((sum,row)=>({...row,income:sum.income+row.income,cashExpenses:sum.cashExpenses+row.cashExpenses,operatingExpenses:sum.operatingExpenses+row.operatingExpenses,cashFlow:sum.cashFlow+row.cashFlow,noi:sum.noi+row.noi}),{...(current||{key:'',label:'',fullLabel:'',periodLabel:''}),income:0,cashExpenses:0,operatingExpenses:0,cashFlow:0,noi:0});
+  const displayed=inspected||periodDisplayed;
   const currentValue=mode==='cashFlow'?(displayed?.cashFlow||0):(displayed?.noi||0);
   const currentExpenses=mode==='cashFlow'?(displayed?.cashExpenses||0):(displayed?.operatingExpenses||0);
   const currentMonth=new Date().toISOString().slice(0,7);
@@ -191,12 +192,13 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   const needsReview=transactions.filter(tx=>(tx.status||'posted')==='posted'&&(tx.needs_review||tx.category==='Needs Review')).length;
   const today=new Date();today.setHours(0,0,0,0);
   const leaseUnits=units as (Unit&{lease_end_date?:string|null})[];
-  const nextLease=leaseUnits.filter(unit=>unit.lease_end_date).map(unit=>({unit,date:new Date(`${unit.lease_end_date}T12:00:00`)})).filter(item=>item.date>=today).sort((a,b)=>a.date.getTime()-b.date.getTime())[0];
+  const leaseCandidates=leaseUnits.filter(unit=>unit.occupied&&unit.lease_end_date).map(unit=>({unit,date:new Date(`${unit.lease_end_date}T12:00:00`)}));
+  const nextLease=leaseCandidates.filter(item=>item.date>=today).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]||leaseCandidates.filter(item=>item.date<today).sort((a,b)=>b.date.getTime()-a.date.getTime())[0];
   const leaseDays=nextLease?Math.ceil((nextLease.date.getTime()-today.getTime())/86400000):null;
   const actionItems:ActionCenterItem[]=[];
   if(pendingRent)actionItems.push({id:'rent',kind:'rent',title:'Confirm rent',detail:`${pendingRent} payment${pendingRent===1?'':'s'} waiting`,onSelect:()=>location.href=`/ledger?property=${property.id}`});
   if(needsReview)actionItems.push({id:'review',kind:'review',title:'Review transactions',detail:`${needsReview} need categorization`,onSelect:()=>location.href=`/ledger?property=${property.id}&review=1`});
-  if(leaseDays!=null&&leaseDays<=90)actionItems.push({id:'lease',kind:'document',title:'Lease ending',detail:`${nextLease?.unit.unit_number||'Unit'} · ${leaseDays} days left`,onSelect:()=>onNavigate('units')});
+  if(leaseDays!=null&&leaseDays<=90)actionItems.push({id:'lease',kind:'document',title:leaseDays<0?'Lease expired':'Lease ending',detail:`${nextLease?.unit.unit_number||'Unit'} · ${leaseDays<0?`${Math.abs(leaseDays)} days ago`:leaseDays===0?'Ends today':`${leaseDays} days left`}`,onSelect:()=>onNavigate('units')});
   const occupied=units.filter(unit=>unit.occupied).length;
   const vacantUnits=leaseUnits.filter(unit=>!unit.occupied);
   const vacancyStarts=vacantUnits.map(unit=>unit.lease_end_date||property.purchase_date).filter(Boolean).map(value=>new Date(`${value}T12:00:00`)).filter(date=>date<=today);
@@ -214,16 +216,23 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
   const rentDueDay=Math.min(28,Math.max(1,Math.min(...units.map(unit=>Number((unit as any).rent_due_day||5)),5)));
   const isPastRentDue=today.getDate()>rentDueDay;
   const expectedByToday=expectedRent?Math.min(100,Math.round(today.getDate()/new Date(today.getFullYear(),today.getMonth()+1,0).getDate()*100)):0;
-  const expenseUnusual=currentRepairs>recentAverage+Math.max(100,recentAverage*.2)&&recentAverage>0;
+  const expenseDelta=currentRepairs-recentAverage;
+  const expenseRatioToTypical=recentAverage>0?expenseDelta/recentAverage:0;
+  const expenseTone=recentAverage<=0?'neutral':expenseRatioToTypical>=.5?'negative':expenseRatioToTypical>=.2?'warning':expenseRatioToTypical<=-.2?'positive':'neutral';
+  const expenseStatus=expenseTone==='negative'?'Materially above normal':expenseTone==='warning'?'Above normal':expenseTone==='positive'?'Better than normal':'Within normal range';
+  const expenseUnusual=expenseTone==='negative'||expenseTone==='warning';
   const rentLate=isPastRentDue&&rentOutstanding>0;
   const cashBelowTypical=hasCashHistory&&cashDelta<-baselineThreshold;
   const pulseHeadline=rentLate?`Rent is ${formatKpiCurrency(rentOutstanding)} behind pace`:cashBelowTypical?'Repairs pushed cash flow below typical':rentProgress===100?`${new Date().toLocaleDateString('en-US',{month:'long'})} rent is complete`:expenseUnusual?'Expenses are above the recent average':'Performance is stable';
-  const pulseExplanation=rentLate?`${formatKpiCurrency(collectedRent)} confirmed of ${formatKpiCurrency(expectedRent)} expected.`:cashBelowTypical?`${formatKpiCurrency(Math.abs(cashDelta))} below a typical month.`:rentProgress===100?`${formatKpiCurrency(expectedRent)} confirmed.`:expenseUnusual?`Repairs are ${formatKpiCurrency(currentRepairs-recentAverage)} above the recent monthly average.`:hasCashHistory?`Cash flow is within the recent monthly range.`:'Not enough history for comparison.';
+  const pulseExplanation=rentLate?`${formatKpiCurrency(collectedRent)} confirmed of ${formatKpiCurrency(expectedRent)} expected.`:cashBelowTypical?`${formatKpiCurrency(Math.abs(cashDelta))} below a typical month.`:rentProgress===100?`${formatKpiCurrency(expectedRent)} confirmed.`:expenseUnusual?`Repairs are ${formatKpiCurrency(expenseDelta)} above the recent monthly average.`:hasCashHistory?`Cash flow is within the recent monthly range.`:'Current property status based on recorded activity.';
+  const occupancyTone=units.length===0?'neutral':occupied===units.length?'positive':occupied===0?'negative':'warning';
+  const leaseTone=leaseDays==null||leaseDays>90?'neutral':leaseDays<=30?'negative':'warning';
+  const leaseValue=leaseDays==null||leaseDays>90?'No leases ending within 90 days':leaseDays<0?`Expired ${Math.abs(leaseDays)} days ago`:leaseDays===0?'Ends today':`Ends in ${leaseDays} days`;
   const pulseSignals=[
-    {key:'cash',label:'Cash flow',value:formatKpiCurrency(currentCashFlow),detail:hasCashHistory?`${cashDelta<0?formatKpiCurrency(Math.abs(cashDelta))+' below':formatKpiCurrency(cashDelta)+' above'} a typical month.`:'Current month',tone:cashBelowTypical?'negative':hasCashHistory&&cashDelta>baselineThreshold?'positive':'neutral',priority:cashBelowTypical?1:3,action:()=>location.href=`/ledger?property=${property.id}`},
-    {key:'occupancy',label:'Occupancy',value:`${occupied}/${units.length} occupied`,detail:vacantUnits.length?(vacancyDays!=null?`${vacantUnits.length} vacant for ${vacancyDays} day${vacancyDays===1?'':'s'}.`:`${vacantUnits.length} vacant. Start date unavailable.`):'',tone:occupied<units.length?'negative':'neutral',priority:occupied<units.length?1:4,action:()=>onNavigate('units')},
-    {key:'lease',label:'Lease risk',value:leaseDays!=null&&leaseDays<=90?`${leaseDays} days`:'None within 90 days',detail:leaseDays!=null&&leaseDays<=90?`${nextLease?.unit.unit_number||'Unit'} lease is ending.`:'',tone:leaseDays!=null&&leaseDays<=90?'warning':'neutral',priority:leaseDays!=null&&leaseDays<=90?2:5,action:()=>onNavigate('units')},
-    ...(expenseUnusual?[{key:'expenses',label:'Expenses',value:`${formatKpiCurrency(currentRepairs-recentAverage)} above average`,detail:'Repairs are meaningfully above the recent monthly average.',tone:'warning',priority:1,action:()=>location.href=`/ledger?property=${property.id}`}]:[]),
+    {key:'cash',label:'Cash flow this month',value:formatKpiCurrency(currentCashFlow),detail:'',tone:currentCashFlow>0?'positive':currentCashFlow<0?'negative':'neutral',priority:cashBelowTypical?1:3,action:()=>location.href=`/ledger?property=${property.id}`},
+    {key:'occupancy',label:'Occupancy',value:vacantUnits.length&&vacancyDays!=null?`${occupied}/${units.length} · ${vacancyDays}d vacant`:`${occupied}/${units.length} occupied`,detail:'',tone:occupancyTone,priority:occupied<units.length?1:4,action:()=>onNavigate('units')},
+    {key:'lease',label:'Lease risk',value:leaseValue,detail:'',tone:leaseTone,priority:leaseTone==='negative'?1:leaseTone==='warning'?2:5,action:()=>onNavigate('units')},
+    {key:'expenses',label:'Expenses',value:expenseStatus,detail:'',tone:expenseTone,priority:expenseTone==='negative'?1:expenseTone==='warning'?2:6,action:()=>location.href=`/ledger?property=${property.id}`},
   ].sort((a,b)=>a.priority-b.priority);
   const pulseUpdatedAt=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   const periodTotals=history.reduce((sum,row)=>({income:sum.income+row.income,operating:sum.operating+row.operatingExpenses,cash:sum.cash+row.cashExpenses}),{income:0,operating:0,cash:0});
@@ -248,7 +257,7 @@ function Overview({property,units,transactions,documents,expectedRent,metrics,on
     <section className="property-key-statistics"><div className="property-section-head"><h2>Key statistics</h2></div><div>{[['Purchase price',property.purchase_price?formatKpiCurrency(Number(property.purchase_price)):'—'],['Acquisition date',property.purchase_date?formatDate(property.purchase_date):'—'],['Monthly rent',formatKpiCurrency(expectedRent)],['Occupancy',`${occupied}/${units.length}`],['Trailing NOI',formatKpiCurrency(periodNoi)],['Cap rate',property.purchase_price&&period==='1Y'?`${(periodNoi/Number(property.purchase_price)*100).toFixed(1)}%`:'—'],['Expense ratio',periodMetrics.income?`${(expenseRatio*100).toFixed(1)}%`:'—'],['Debt-service coverage',totalMortgage?`${(periodNoi/totalMortgage).toFixed(2)}×`:'—'],['Mortgage balance',formatKpiCurrency(Number(property.mortgage_balance||0))]].map(([label,value])=><span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div></section>
     <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`}/>
     </main>
-    <aside className="property-pulse-rail"><div className="property-pulse-head"><h2>Property Pulse</h2><span>Updated {pulseUpdatedAt}</span></div><div className="property-pulse-summary"><strong>{pulseHeadline}</strong><span>{pulseExplanation}</span></div><div className="property-pulse-rent-progress" aria-label={`${rentProgress}% of expected rent confirmed; ${expectedByToday}% expected by today`}><i><b style={{width:`${rentProgress}%`}}/><em style={{left:`${expectedByToday}%`}}/></i><span><b>{formatKpiCurrency(collectedRent)} confirmed</b><small>{formatKpiCurrency(expectedRent)} expected</small></span></div><div className="property-pulse-list">{pulseSignals.map(signal=><button type="button" onClick={signal.action} key={signal.key} className={`property-pulse-row is-${signal.tone}`}><span>{signal.label}</span><strong>{signal.value}</strong>{signal.detail&&<small>{signal.detail}</small>}</button>)}</div></aside>
+    <aside className="property-pulse-rail"><div className="property-pulse-head"><h2>Property Pulse</h2><span>Updated {pulseUpdatedAt}</span></div><div className="property-pulse-summary"><strong>{pulseHeadline}</strong><span>{pulseExplanation}</span></div><div className="property-pulse-rent-progress" aria-label={`${rentProgress}% of expected rent confirmed; ${expectedByToday}% expected by today`}><i><em style={{width:`${expectedByToday}%`}}/><b style={{width:`${rentProgress}%`}}/></i><span><b>{formatKpiCurrency(collectedRent)} confirmed</b><small>{formatKpiCurrency(expectedRent)} expected</small></span></div><div className="property-pulse-list">{pulseSignals.map(signal=><button type="button" onClick={signal.action} key={signal.key} className={`property-pulse-row is-${signal.tone}`}><span>{signal.label}</span><strong>{signal.value}</strong></button>)}</div></aside>
   </div></div>;
 }
 

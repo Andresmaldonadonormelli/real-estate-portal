@@ -27,7 +27,6 @@ export default function SideNav() {
 
   const activePropertyId=useMemo(()=>pathname.match(/^\/properties\/([^/]+)/)?.[1]||'',[pathname]);
   return <nav className="side-nav">
-    <div className="side-nav-brand" aria-label="RE Portal"><img src="/brand-logo.png" alt="" /></div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><Gauge size={18}/>Dashboard</Link>
 
