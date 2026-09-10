@@ -53,15 +53,10 @@ export default function Dashboard() {
   const [rentExpanded,setRentExpanded]=useState(false);
   const visitRecorded=useRef(false);
 
-  useEffect(()=>{
-    const propertyId=new URLSearchParams(window.location.search).get('reviewProperty');
-    if(propertyId)setReviewPropertyId(propertyId);
-  },[]);
-
   const refreshTransactions = useCallback(async () => {
     try {
       invalidateSupabaseCache('dashboard:transactions');
-      const r = await withTimeout(Promise.resolve(supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart()).order('transaction_date',{ascending:false})), 8000, 'The ledger took too long to refresh.');
+      const r = await withTimeout(Promise.resolve(supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false})), 8000, 'The ledger took too long to refresh.');
       if (!r.error) setTransactions((r.data||[]) as Transaction[]);
     } catch {
       // Background refresh failure should never hide the dashboard.
@@ -122,7 +117,7 @@ export default function Dashboard() {
       const [p,u,t,d] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
         cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
-        cachedSupabaseRequest('dashboard:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart()).order('transaction_date',{ascending:false})),
+        cachedSupabaseRequest('dashboard:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false})),
         cachedSupabaseRequest('dashboard:documents',async()=>await supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at',null).order('created_at',{ascending:false})),
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
       const err=p.error||u.error||t.error||d.error; if(err) throw err;
@@ -188,13 +183,13 @@ export default function Dashboard() {
   const testPendingForProperty=(propertyId:string)=>testModeActive?units.filter(u=>u.property_id===propertyId&&u.occupied&&u.recurring_rent_enabled!==false&&Number(u.current_rent||0)>0&&!testResolvedUnitIds.includes(u.id)).length:0;
 
   const actionItems=useMemo(()=>{
-    const items:{id:string;kind:'rent'|'document'|'review';title:string;detail:string;propertyId?:string;days?:number;test?:boolean}[]=[];
+    const items:{id:string;kind:'rent'|'document'|'review';title:string;detail:string;actionLabel?:string;propertyId?:string;days?:number;test?:boolean}[]=[];
     const grouped=new Map<string,number>(); pendingRents.forEach(t=>grouped.set(t.property_id,(grouped.get(t.property_id)||0)+1));
-    grouped.forEach((count,propertyId)=>{const prop=properties.find(p=>p.id===propertyId);items.push({id:`rent-${propertyId}`,kind:'rent',propertyId,title:`Confirm ${monthLabel} rent`,detail:`${prop?.address||'Property'} · ${count} unit${count===1?'':'s'} waiting`});});
+    grouped.forEach((count,propertyId)=>{const prop=properties.find(p=>p.id===propertyId);items.push({id:`rent-${propertyId}`,kind:'rent',propertyId,title:`Confirm ${count} ${monthLabel} rent payment${count===1?'':'s'}`,detail:`${prop?.address||'Property'} is waiting for confirmation before cash flow is final.`,actionLabel:'Confirm'});});
     const today=new Date(); today.setHours(0,0,0,0);
     documents.filter(d=>d.expires_at).forEach(doc=>{const due=new Date(`${doc.expires_at}T12:00:00`);const days=Math.ceil((due.getTime()-today.getTime())/86400000);const remind=Number(doc.reminder_days||60);if(days<=remind){const prop=properties.find(p=>p.id===doc.property_id);items.push({id:`doc-${doc.id}`,kind:'document',title:days<0?`${doc.category} expired`:days===0?`${doc.category} due today`:`${doc.category} due in ${days} days`,detail:`${prop?.address||'Property'} · ${doc.title}`,days});}});
     const needsReview=transactions.filter(tx=>(tx.status||'posted')==='posted'&&((tx as Transaction & {needs_review?:boolean}).needs_review||tx.category==='Needs Review'));
-    if(needsReview.length){items.push({id:'needs-review',kind:'review',title:`${needsReview.length} transaction${needsReview.length===1?'':'s'} need categorization`,detail:'Review these before year-end accountant export',days:-500});}
+    if(needsReview.length){items.push({id:'needs-review',kind:'review',title:`Review ${needsReview.length} transaction${needsReview.length===1?'':'s'}`,detail:`Categorize them before ${monthLabel} reporting.`,actionLabel:'Review',days:-500});}
     if(testActionsActive){
       const sampleProperty=properties[0];
       items.unshift(
@@ -207,12 +202,10 @@ export default function Dashboard() {
   },[documents,pendingRents,properties,monthLabel,testActionsActive,transactions]);
 
   const expectedMonthlyRent=useMemo(()=>units.filter(unit=>unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0),[units]);
-  const confirmedRent=useMemo(()=>postedThisMonth.filter(tx=>tx.type==='income'&&tx.category==='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0),[postedThisMonth]);
   const now=new Date();
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const rentEarned=expectedMonthlyRent*(now.getDate()/daysInMonth);
   const dailyRent=expectedMonthlyRent/daysInMonth;
-  const propertyRentEarned=properties.map(property=>{const expected=units.filter(unit=>unit.property_id===property.id&&unit.occupied&&unit.recurring_rent_enabled!==false).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);return {property,earned:expected*(now.getDate()/daysInMonth)}});
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
   const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
@@ -249,8 +242,8 @@ export default function Dashboard() {
           <div className="pulse-chart-head"><span className="pulse-kicker">Net cash flow</span></div>
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><b>Income</b><strong>{formatCurrency(displayedCashFlow?.income||0)}</strong></span><span><b>Expenses</b><strong>{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong></span></div></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
-          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><div className="pulse-property-select"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><ChevronDown size={17} aria-hidden="true"/></div></div>
-          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-breakdown">{propertyRentEarned.map(({property,earned})=><Link href={`/properties/${property.id}`} key={property.id}><span>{property.address}</span><strong>{formatCurrency(earned)}</strong></Link>)}</div>}</div>
+          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y','3Y','5Y','10Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><div className="pulse-property-select"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><ChevronDown size={17} aria-hidden="true"/></div></div>
+          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatKpiCurrency(rentEarned)}</strong><b className="amount-positive">+{formatKpiCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-pace"><strong>{formatKpiCurrency(dailyRent)} per day</strong><span>for {now.getDate()} days this month</span></div>}</div>
         </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>

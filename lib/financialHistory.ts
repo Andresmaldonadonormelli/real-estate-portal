@@ -1,6 +1,6 @@
 import { categoryKey } from '@/lib/accounting';
 
-export type HistoryPeriod='3M'|'6M'|'9M'|'1Y';
+export type HistoryPeriod='3M'|'6M'|'9M'|'1Y'|'3Y'|'5Y'|'10Y';
 export type HistoryMode='cashFlow'|'noi';
 export type HistoryTransaction={
   transaction_date:string;
@@ -22,13 +22,25 @@ export type MonthlyFinancialPoint={
   noi:number;
 };
 
-const PERIOD_MONTHS:Record<HistoryPeriod,number>={'3M':3,'6M':6,'9M':9,'1Y':12};
+const PERIOD_MONTHS:Record<HistoryPeriod,number>={'3M':3,'6M':6,'9M':9,'1Y':12,'3Y':36,'5Y':60,'10Y':120};
 const OPERATING_EXCLUSIONS=['mortgage-interest','mortgage-principal','mortgage','capex','distribution'];
 
 export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],period:HistoryPeriod,propertyId=''):MonthlyFinancialPoint[]{
   const now=new Date();
   const monthCount=PERIOD_MONTHS[period];
   const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
+  if(period==='5Y'||period==='10Y'){
+    const yearCount=period==='5Y'?5:10;
+    return Array.from({length:yearCount},(_,index)=>{
+      const year=now.getFullYear()-(yearCount-1-index);
+      const yearRows=posted.filter(tx=>Number(tx.transaction_date.slice(0,4))===year);
+      const income=yearRows.filter(tx=>tx.type==='income').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+      const expenseRows=yearRows.filter(tx=>tx.type==='expense');
+      const cashExpenses=expenseRows.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+      const operatingExpenses=expenseRows.filter(tx=>!OPERATING_EXCLUSIONS.includes(categoryKey(tx.category||''))).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+      return {key:String(year),label:String(year),fullLabel:String(year),periodLabel:String(year),income,cashExpenses,operatingExpenses,cashFlow:income-cashExpenses,noi:income-operatingExpenses};
+    });
+  }
   return Array.from({length:monthCount},(_,index)=>{
     const date=new Date(now.getFullYear(),now.getMonth()-(monthCount-1-index),1);
     const year=date.getFullYear();
