@@ -19,6 +19,7 @@ import MiniSparkline from '@/components/charts/MiniSparkline';
 import ActionCenter from '@/components/dashboard/ActionCenter';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
+import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 type DailyInsight={id:string;kicker:'Changed'|'Watch'|'Progress';title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy';href:string;opened?:boolean;resolved?:boolean};
 
@@ -33,7 +34,6 @@ export default function Dashboard() {
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
-  const [imageUrls, setImageUrls] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewPropertyId, setReviewPropertyId] = useState<string | null>(null);
@@ -55,7 +55,8 @@ export default function Dashboard() {
 
   const refreshTransactions = useCallback(async () => {
     try {
-      const r = await withTimeout(Promise.resolve(supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false})), 8000, 'The ledger took too long to refresh.');
+      invalidateSupabaseCache('dashboard:transactions');
+      const r = await withTimeout(Promise.resolve(supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart()).order('transaction_date',{ascending:false})), 8000, 'The ledger took too long to refresh.');
       if (!r.error) setTransactions((r.data||[]) as Transaction[]);
     } catch {
       // Background refresh failure should never hide the dashboard.
@@ -69,7 +70,7 @@ export default function Dashboard() {
     window.sessionStorage.setItem(sessionKey,'1'); window.localStorage.setItem(activityKey,String(now.getTime()));
     if(!newVisit){try{const saved=JSON.parse(window.sessionStorage.getItem(snapshotKey)||'null');if(saved?.items){setBriefItems(saved.items);setBriefUpdatedAt(new Date(saved.updatedAt));return;}}catch{}}
     let previousVisit:string|null=null; let events:any[]=[];
-    try{const visit=await supabase.from('dashboard_visits').select('last_seen_at,current_visit_started_at').eq('user_id',user.id).maybeSingle();previousVisit=(visit.data as any)?.current_visit_started_at||(visit.data as any)?.last_seen_at||null;if(previousVisit){const eventResult=await supabase.from('app_events').select('*').gt('occurred_at',previousVisit).order('occurred_at',{ascending:false});if(!eventResult.error)events=eventResult.data||[];}}catch{}
+    try{const visit=await supabase.from('dashboard_visits').select('last_seen_at,current_visit_started_at').eq('user_id',user.id).maybeSingle();previousVisit=(visit.data as any)?.current_visit_started_at||(visit.data as any)?.last_seen_at||null;if(previousVisit){const eventResult=await supabase.from('app_events').select('id,event_type,entity_type,entity_id,property_id,unit_id,occurred_at,metadata').gt('occurred_at',previousVisit).order('occurred_at',{ascending:false}).limit(50);if(!eventResult.error)events=eventResult.data||[];}}catch{}
     const items=buildDailyBrief(props,unitRows,txRows,docRows,events,previousVisit,now); const snapshot={items,updatedAt:nowIso};
     window.sessionStorage.setItem(snapshotKey,JSON.stringify(snapshot)); setBriefItems(items); setBriefUpdatedAt(now);
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,previous_visit_at:previousVisit,current_visit_started_at:nowIso,last_seen_at:nowIso,brief_items:items,brief_opened_ids:[],brief_resolved_ids:[],updated_at:nowIso},{onConflict:'user_id'});}catch{}
@@ -114,10 +115,10 @@ export default function Dashboard() {
     setLoading(true); setError('');
     try {
       const [p,u,t,d] = await withTimeout(Promise.all([
-        supabase.from('properties').select('*').is('archived_at',null).order('address'),
-        supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
-        supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false}),
-        supabase.from('documents').select('*').is('archived_at',null).order('created_at',{ascending:false}),
+        cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
+        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('dashboard:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart()).order('transaction_date',{ascending:false})),
+        cachedSupabaseRequest('dashboard:documents',async()=>await supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at',null).order('created_at',{ascending:false})),
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
       const err=p.error||u.error||t.error||d.error; if(err) throw err;
       const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; const txRows=(t.data||[]) as Transaction[];
@@ -127,14 +128,6 @@ export default function Dashboard() {
       setProperties(props); setUnits(unitRows); setTransactions(txRows); setDocuments(docRows); setLoading(false);
       if(!visitRecorded.current){visitRecorded.current=true;void initializeDashboardVisit(props,unitRows,txRows,docRows);}
 
-      // Images and recurring bookkeeping happen after render and never block it.
-      void (async()=>{
-        const urls:Record<string,string>={};
-        await Promise.all(props.filter(x=>x.image_path).map(async prop=>{
-          try { const r=await supabase.storage.from('property-images').createSignedUrl(prop.image_path!,3600); if(r.data?.signedUrl) urls[prop.id]=r.data.signedUrl; } catch {}
-        }));
-        setImageUrls(urls);
-      })();
       void ensureRecurring(props, unitRows, txRows);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load the dashboard.');
@@ -169,12 +162,12 @@ export default function Dashboard() {
     const up=await supabase.from('transactions').update({status:'posted',confirmed_at:new Date().toISOString(),notes:'Recurring rent confirmed received'}).eq('id',tx.id).eq('status','pending');
     if(up.error){setError(up.error.message);setConfirming(null);return;}
     if(feePercent>0){ const fee=Math.round(Math.abs(Number(tx.amount))*feePercent)/100; const fr=await supabase.from('transactions').upsert({user_id:user.id,property_id:tx.property_id,unit_id:tx.unit_id||null,transaction_date:tx.transaction_date,type:'expense',category:'Management Fee',description:`Management fee (${feePercent}%)`,payee_source:'Property manager',amount:-fee,notes:`Automatically created when rent was confirmed. Rate: ${feePercent}%`,source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`management-fee:${tx.id}`},{onConflict:'user_id,import_key',ignoreDuplicates:true}); if(fr.error)setError(fr.error.message); }
-    await load(); setConfirming(null);
+    invalidateSupabaseCache();await load(); setConfirming(null);
   }
   async function declineRent(tx:Transaction){
     if(!confirm('Remove this rent confirmation for this month? It will not come back this month.')) return;
     const r=await supabase.from('transactions').update({status:'declined',notes:'Recurring rent suggestion declined'}).eq('id',tx.id).eq('status','pending');
-    if(r.error)setError(r.error.message); else await load();
+    if(r.error)setError(r.error.message); else {invalidateSupabaseCache();await load();}
   }
 
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
@@ -273,7 +266,7 @@ export default function Dashboard() {
       </aside>
       </div>
     </>}
-    {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{await load();setToast(message||'Transaction added')}}/>}
+    {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction added')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
       {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
