@@ -12,6 +12,7 @@ import { withTimeout } from '@/lib/async';
 import { categoryKey } from '@/lib/accounting';
 import MiniSparkline from '@/components/charts/MiniSparkline';
 import { buildMonthlyFinancialHistory } from '@/lib/financialHistory';
+import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -48,9 +49,9 @@ export default function PropertiesPage() {
     setError('');
     try {
       const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }] = await withTimeout(Promise.all([
-        supabase.from('properties').select('*').is('archived_at',null).order('address'),
-        supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
-        supabase.from('transactions').select('id,property_id,transaction_date,type,category,amount').is('archived_at',null).order('transaction_date',{ascending:false}),
+        cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
+        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('properties:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(13)).order('transaction_date',{ascending:false})),
       ]), 8000, 'Properties took too long to load. Please retry.');
       if (propError || unitError || txError) throw (propError || unitError || txError);
       const propertyRows = (props || []) as Property[];
@@ -149,7 +150,7 @@ export default function PropertiesPage() {
       const imageUpdate = await supabase.from('properties').update({ image_path: path }).eq('id', propertyId);
       if (imageUpdate.error) { setError(imageUpdate.error.message); setSaving(false); return; }
     }
-    setShowPropertyForm(false); setPropertyImage(null); await loadData();
+    setShowPropertyForm(false); setPropertyImage(null); invalidateSupabaseCache();await loadData();
     setSaving(false);
   }
 
@@ -191,14 +192,14 @@ export default function PropertiesPage() {
       ? await supabase.from('units').update(payload).eq('id', editingUnit.id)
       : await supabase.from('units').insert(payload);
     if (result.error) setError(result.error.message);
-    else { setShowUnitForm(false); setEditingUnit(null); await loadData(); }
+    else { setShowUnitForm(false); setEditingUnit(null); invalidateSupabaseCache();await loadData(); }
     setSaving(false);
   }
 
   async function deleteUnit(unit: Unit) {
     if (!confirm(`Archive ${unit.unit_number}? You can restore it later from Archive.`)) return;
     const { error: deleteError } = await supabase.from('units').update({archived_at:new Date().toISOString()}).eq('id', unit.id);
-    if (deleteError) setError(deleteError.message); else { setShowUnitForm(false); setEditingUnit(null); await loadData(); }
+    if (deleteError) setError(deleteError.message); else { setShowUnitForm(false); setEditingUnit(null); invalidateSupabaseCache();await loadData(); }
   }
 
   function requestDeleteProperty(property: Property) {
@@ -218,7 +219,7 @@ export default function PropertiesPage() {
       setDeleteConfirmText('');
       setShowPropertyForm(false);
       setEditingProperty(null);
-      await loadData();
+      invalidateSupabaseCache();await loadData();
     }
     setDeletingProperty(false);
   }
