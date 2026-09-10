@@ -5,6 +5,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { calculateMonthlyTotals, groupTransactionsByMonth } from '@/lib/calculations';
 import { formatCurrency, formatMonthYear } from '@/lib/formatters';
 import type { Transaction } from '@/lib/types';
+import { cachedSupabaseRequest, TRANSACTION_FIELDS } from '@/lib/supabaseData';
 
 export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
   const [transactions,setTransactions]=useState<Transaction[]>([]);
@@ -12,9 +13,9 @@ export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyI
   const [error,setError]=useState('');
   useEffect(()=>{(async()=>{
     setLoading(true); setError('');
-    let q=supabase.from('transactions').select('*').is('archived_at',null).order('transaction_date',{ascending:false});
+    let q=supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).order('transaction_date',{ascending:false}).limit(2000);
     if(selectedPropertyId) q=q.eq('property_id',selectedPropertyId);
-    const {data,error}=await q;
+    const {data,error}=await cachedSupabaseRequest(`statements:${selectedPropertyId||'all'}`,async()=>await q);
     if(error)setError(error.message); else setTransactions((data||[]) as Transaction[]);
     setLoading(false);
   })();},[selectedPropertyId]);

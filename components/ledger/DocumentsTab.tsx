@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
+import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
@@ -25,9 +26,9 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   async function loadData() {
     setLoading(true); setError('');
     const [p,u,d] = await Promise.all([
-      supabase.from('properties').select('*').is('archived_at',null).order('address'),
-      supabase.from('units').select('*').is('archived_at',null).order('unit_number'),
-      supabase.from('documents').select('*').is('archived_at',null).order('created_at',{ascending:false}),
+      cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
+      cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+      supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at',null).order('created_at',{ascending:false}).limit(500),
     ]);
     const err = p.error || u.error || d.error;
     if (err) setError(err.message);
@@ -164,8 +165,9 @@ function DetailRow({label,value}:{label:string;value:string}){return <div style=
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:'var(--space-2)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}>{label}{children}</label>}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'var(--theme-overlay)',display:'grid',placeItems:'center',padding:'var(--space-5)',zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:'var(--space-6)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-5)'}}><h2 style={{fontSize:'var(--type-section-title-size)',lineHeight:'var(--type-section-title-line)'}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
 const inputStyle:React.CSSProperties={width:'100%',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--input-bg)',color:'var(--text-primary)',fontSize:'var(--type-body-size)'};
-const primaryButton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',fontWeight:600,cursor:'pointer'};
-const secondaryButton:React.CSSProperties={padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
+const sharedButtonType:React.CSSProperties={fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)'};
+const primaryButton:React.CSSProperties={...sharedButtonType,padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',cursor:'pointer'};
+const secondaryButton:React.CSSProperties={...sharedButtonType,padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
 const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
 const errorBox:React.CSSProperties={padding:'var(--space-3)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:'var(--radius-control)',marginBottom:'var(--space-4)',fontSize:'var(--type-small-size)'};
