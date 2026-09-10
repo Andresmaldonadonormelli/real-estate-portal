@@ -53,6 +53,11 @@ export default function Dashboard() {
   const [rentExpanded,setRentExpanded]=useState(false);
   const visitRecorded=useRef(false);
 
+  useEffect(()=>{
+    const propertyId=new URLSearchParams(window.location.search).get('reviewProperty');
+    if(propertyId)setReviewPropertyId(propertyId);
+  },[]);
+
   const refreshTransactions = useCallback(async () => {
     try {
       invalidateSupabaseCache('dashboard:transactions');
