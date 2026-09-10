@@ -8,6 +8,7 @@ import StatementsTab from '@/components/ledger/StatementsTab';
 import DocumentsTab from '@/components/ledger/DocumentsTab';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { withTimeout } from '@/lib/async';
+import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
@@ -25,7 +26,7 @@ export default function LedgerDocsPage(){
     setSelectedPropertyId(searchParams.get('property') || '');
   },[searchParams]);
 
-  useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(Promise.resolve(supabase.from('properties').select('*').is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
+  useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
   return <div className="ledger-page ledger-v230-page">
     <header className="ledger-v230-page-head"><h1 className="type-page-title type-semibold">Ledger & Docs</h1><p className="type-small type-secondary">Your money and property paperwork in one place.</p></header>
     <div className="ledger-v230-workspace">
