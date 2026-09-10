@@ -17,9 +17,9 @@ export default function FinancialHistoryChart({rows,mode='cashFlow',label,onInsp
   const y=(value:number)=>pad.top+((chartMax-value)/(chartMax-chartMin))*(height-pad.top-pad.bottom);
   const mainPoints=mainValues.map((value,index)=>`${x(index)},${y(value)}`).join(' ');
   const expensePoints=expenseValues.map((value,index)=>`${x(index)},${y(value)}`).join(' ');
-  const mainNegative=mainValues.reduce((sum,value)=>sum+value,0)<0;
   const active=selected==null?null:rows[selected];
   const activeValue=active?(mode==='cashFlow'?active.cashFlow:active.noi):0;
+  const mainNegative=(selected==null?(mainValues[mainValues.length-1]||0):activeValue)<0;
 
   function inspect(event:React.PointerEvent<SVGSVGElement>){
     if(!rows.length)return;
