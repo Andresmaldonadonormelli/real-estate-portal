@@ -7,6 +7,7 @@ import { Banknote, ShieldCheck, FileText, ClipboardCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Property, PropertyDocument, Transaction } from '@/lib/types';
 import PageSkeleton from '@/components/common/PageSkeleton';
+import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, TRANSACTION_FIELDS } from '@/lib/supabaseData';
 
 type ActionItem = {
   id: string;
@@ -30,9 +31,9 @@ export default function ActionsPage() {
   useEffect(() => {
     (async () => {
       const [p, d, t] = await Promise.all([
-        supabase.from('properties').select('*').is('archived_at', null).order('address'),
-        supabase.from('documents').select('*').is('archived_at', null),
-        supabase.from('transactions').select('*').is('archived_at', null),
+        cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at', null).order('address')),
+        supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at', null).not('expires_at','is',null),
+        supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at', null).or('status.eq.pending,needs_review.eq.true,category.eq.Needs Review'),
       ]);
       if (p.error || d.error || t.error) setError((p.error || d.error || t.error)!.message);
       else {
