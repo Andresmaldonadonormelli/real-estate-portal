@@ -78,6 +78,19 @@ export default function PropertiesPage() {
     }, {});
   }, [units]);
 
+  const rankedProperties = useMemo(() => [...properties].sort((a, b) => {
+    const attention = (property: Property) => {
+      const propertyUnits = unitsByProperty[property.id] || [];
+      const vacant = propertyUnits.filter(unit => !unit.occupied).length;
+      const year = new Date().getFullYear();
+      const cashFlow = transactions
+        .filter(tx => tx.property_id === property.id && Number(String(tx.transaction_date || '').slice(0, 4)) === year)
+        .reduce((sum, tx) => sum + (tx.type === 'income' ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0))), 0);
+      return vacant * 100000 + Math.max(0, -cashFlow);
+    };
+    return attention(b) - attention(a);
+  }), [properties, transactions, unitsByProperty]);
+
   function startAddProperty() {
     setEditingProperty(null);
     setPropertyImage(null);
@@ -226,7 +239,7 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <div className="compact-properties-list">
-          {properties.map((property) => {
+          {rankedProperties.map((property) => {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
             const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);
@@ -249,20 +262,18 @@ export default function PropertiesPage() {
             const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
             const sparklineRows=buildMonthlyFinancialHistory(transactions as any[],'1Y',property.id);
             return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card card">
-              <div className="property-preview-head">
+              <div className="property-preview-left">
                 <div className="property-preview-identity">
                   {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
                   <div><strong>{property.address}</strong><span>{property.city}, {property.state}</span></div>
                 </div>
-                <span className="property-preview-chevron" aria-hidden="true"><ChevronRight size={20}/></span>
+                <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{occupied===0 && potentialRent<=0 ? 'Rent not set' : `${formatCurrency(occupied===0?potentialRent:monthlyRent)}/mo ${occupied===0?'potential':'rent'}`}</span></div>
               </div>
-              <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{occupied===0 && potentialRent<=0 ? 'Rent not set' : `${formatCurrency(occupied===0?potentialRent:monthlyRent)}/mo ${occupied===0?'potential':'rent'}`}</span></div>
-              <div className="property-preview-performance">
-                <div className="property-preview-metric">
-                  <span>{hasFinancialActivity ? 'YTD cash flow' : (occupied===0 ? (potentialRent>0?'Potential monthly rent':'Performance') : 'YTD cash flow')}</span>
-                  <strong className={hasFinancialActivity?(cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''):''}>{hasFinancialActivity ? formatCurrency(cashFlow) : (occupied===0 ? (potentialRent>0?formatCurrency(potentialRent):'Pending') : formatCurrency(cashFlow))}</strong>
-                </div>
-                <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/><span>{health.detail}</span></div>
+              <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/></div>
+              <div className="property-preview-result">
+                <span>{hasFinancialActivity ? 'YTD cash flow' : (occupied===0 ? (potentialRent>0?'Potential monthly rent':'Performance') : 'YTD cash flow')}</span>
+                <strong className={hasFinancialActivity?(cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''):''}>{hasFinancialActivity ? formatCurrency(cashFlow) : (occupied===0 ? (potentialRent>0?formatCurrency(potentialRent):'Pending') : formatCurrency(cashFlow))}</strong>
+                <small>{health.detail}</small>
               </div>
             </Link>;
           })}
