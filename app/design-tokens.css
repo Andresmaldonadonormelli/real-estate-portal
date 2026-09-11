@@ -30,23 +30,11 @@
   --type-button-line: var(--type-small-line);
   --type-button-weight: var(--weight-semibold);
 
-  /* Compatibility aliases for legacy screens while they migrate. */
-  --type-heading-lg-size: var(--type-page-title-size);
-  --type-heading-lg-line: var(--type-page-title-line);
-  --type-heading-lg-weight: var(--weight-bold);
-  --type-heading-md-size: var(--type-section-title-size);
-  --type-heading-md-line: var(--type-section-title-line);
-  --type-heading-md-weight: var(--weight-semibold);
+  /* Compatibility aliases still consumed by legacy screens. */
   --type-body-lg-size: var(--type-body-size);
-  --type-body-lg-line: var(--type-body-line);
-  --type-body-lg-weight: var(--weight-regular);
-  --type-body-weight: var(--weight-regular);
   --type-caption-size: var(--type-label-size);
   --type-caption-line: var(--type-label-line);
-  --type-caption-weight: var(--weight-medium);
-  --type-kpi-lg-size: 30px;
   --type-kpi-md-size: var(--type-section-title-size);
-  --type-kpi-weight: var(--weight-bold);
 
   /* Spacing */
   --space-1: 4px;
@@ -66,10 +54,7 @@
   --radius-navigation: 18px;
   --control-height-desktop: 40px;
   --control-height-mobile: 48px;
-  --icon-small: 16px;
-  --icon-medium: 20px;
   --motion-fast: 160ms;
-  --motion-standard: 240ms;
 
   /* Light surfaces and text */
   --theme-page: #ffffff;
