@@ -98,7 +98,7 @@
   --theme-focus: #0866cc;
 
   /* Semantic financial states */
-  --theme-income: #10a35a;
+  --theme-income: #00cc00;
   --theme-on-income: #ffffff;
   --theme-income-soft: #eaf8f0;
   --theme-income-border: #b9e5cb;
@@ -106,7 +106,7 @@
   --theme-expense-series-2: #00a800;
   --theme-expense-series-3: #67d500;
   --theme-expense-series-4: #b6f600;
-  --theme-expense: #ef4b43;
+  --theme-expense: #ff3b00;
   --theme-expense-soft: #fff0ee;
   --theme-expense-border: #f5c3bf;
   --theme-warning: #c88700;
@@ -149,7 +149,7 @@
   --theme-nav-active: #1a1a1a;
   --theme-nav-active-text: #ffffff;
   --theme-focus: #6ca9ff;
-  --theme-income: #2bd275;
+  --theme-income: #02e002;
   --theme-on-income: #ffffff;
   --theme-income-soft: rgba(43, 210, 117, 0.13);
   --theme-income-border: rgba(43, 210, 117, 0.30);
@@ -157,7 +157,7 @@
   --theme-expense-series-2: #00a800;
   --theme-expense-series-3: #67d500;
   --theme-expense-series-4: #b6f600;
-  --theme-expense: #ff6056;
+  --theme-expense: #ff1109;
   --theme-expense-soft: rgba(255, 96, 86, 0.13);
   --theme-expense-border: rgba(255, 96, 86, 0.30);
   --theme-warning: #f2a73a;

@@ -1,6 +1,6 @@
 import { categoryKey } from '@/lib/accounting';
 
-export type HistoryPeriod='3M'|'6M'|'9M'|'1Y'|'3Y'|'5Y'|'10Y';
+export type HistoryPeriod='3M'|'6M'|'9M'|'1Y';
 export type HistoryMode='cashFlow'|'noi';
 export type HistoryTransaction={
   transaction_date:string;
@@ -22,14 +22,14 @@ export type MonthlyFinancialPoint={
   noi:number;
 };
 
-const PERIOD_MONTHS:Record<HistoryPeriod,number>={'3M':3,'6M':6,'9M':9,'1Y':12,'3Y':36,'5Y':60,'10Y':120};
+const PERIOD_MONTHS:Record<HistoryPeriod,number>={'3M':3,'6M':6,'9M':9,'1Y':12};
 const OPERATING_EXCLUSIONS=['mortgage-interest','mortgage-principal','mortgage','capex','distribution'];
 
 export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],period:HistoryPeriod,propertyId=''):MonthlyFinancialPoint[]{
   const now=new Date();
   const monthCount=PERIOD_MONTHS[period];
   const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
-  const monthly=Array.from({length:monthCount},(_,index)=>{
+  return Array.from({length:monthCount},(_,index)=>{
     const date=new Date(now.getFullYear(),now.getMonth()-(monthCount-1-index),1);
     const year=date.getFullYear();
     const month=date.getMonth()+1;
@@ -52,8 +52,4 @@ export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],p
       noi:income-operatingExpenses,
     };
   });
-  if(period!=='5Y'&&period!=='10Y')return monthly;
-  const years=new Map<number,MonthlyFinancialPoint[]>();
-  monthly.forEach(row=>{const year=Number(row.key.slice(0,4));years.set(year,[...(years.get(year)||[]),row])});
-  return [...years.entries()].map(([year,rows])=>({key:String(year),label:String(year),fullLabel:String(year),periodLabel:String(year),income:rows.reduce((sum,row)=>sum+row.income,0),cashExpenses:rows.reduce((sum,row)=>sum+row.cashExpenses,0),operatingExpenses:rows.reduce((sum,row)=>sum+row.operatingExpenses,0),cashFlow:rows.reduce((sum,row)=>sum+row.cashFlow,0),noi:rows.reduce((sum,row)=>sum+row.noi,0)}));
 }
