@@ -72,7 +72,7 @@
   --theme-border: rgba(18, 22, 20, 0.10);
   --theme-border-strong: rgba(18, 22, 20, 0.18);
   --theme-overlay: rgba(9, 12, 10, 0.48);
-  --theme-shadow-card: 0 10px 30px rgba(20, 28, 23, 0.055);
+  --theme-shadow-card: none;
 
   /* Monochrome actions */
   --theme-action: #171918;
@@ -109,6 +109,12 @@
   --theme-capex: #bd4c9d;
   --theme-legal: #7659c7;
   --theme-review: #b88700;
+
+  /* Compatibility aliases resolve through the active theme. */
+  --expense-series-1: var(--theme-expense-series-1);
+  --expense-series-2: var(--theme-expense-series-2);
+  --expense-series-3: var(--theme-expense-series-3);
+  --expense-series-4: var(--theme-expense-series-4);
 }
 
 [data-theme="dark"] {
