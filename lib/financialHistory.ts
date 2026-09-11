@@ -29,19 +29,7 @@ export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],p
   const now=new Date();
   const monthCount=PERIOD_MONTHS[period];
   const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
-  if(period==='5Y'||period==='10Y'){
-    const yearCount=period==='5Y'?5:10;
-    return Array.from({length:yearCount},(_,index)=>{
-      const year=now.getFullYear()-(yearCount-1-index);
-      const yearRows=posted.filter(tx=>Number(tx.transaction_date.slice(0,4))===year);
-      const income=yearRows.filter(tx=>tx.type==='income').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      const expenseRows=yearRows.filter(tx=>tx.type==='expense');
-      const cashExpenses=expenseRows.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      const operatingExpenses=expenseRows.filter(tx=>!OPERATING_EXCLUSIONS.includes(categoryKey(tx.category||''))).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      return {key:String(year),label:String(year),fullLabel:String(year),periodLabel:String(year),income,cashExpenses,operatingExpenses,cashFlow:income-cashExpenses,noi:income-operatingExpenses};
-    });
-  }
-  return Array.from({length:monthCount},(_,index)=>{
+  const monthly=Array.from({length:monthCount},(_,index)=>{
     const date=new Date(now.getFullYear(),now.getMonth()-(monthCount-1-index),1);
     const year=date.getFullYear();
     const month=date.getMonth()+1;
@@ -64,4 +52,8 @@ export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],p
       noi:income-operatingExpenses,
     };
   });
+  if(period!=='5Y'&&period!=='10Y')return monthly;
+  const years=new Map<number,MonthlyFinancialPoint[]>();
+  monthly.forEach(row=>{const year=Number(row.key.slice(0,4));years.set(year,[...(years.get(year)||[]),row])});
+  return [...years.entries()].map(([year,rows])=>({key:String(year),label:String(year),fullLabel:String(year),periodLabel:String(year),income:rows.reduce((sum,row)=>sum+row.income,0),cashExpenses:rows.reduce((sum,row)=>sum+row.cashExpenses,0),operatingExpenses:rows.reduce((sum,row)=>sum+row.operatingExpenses,0),cashFlow:rows.reduce((sum,row)=>sum+row.cashFlow,0),noi:rows.reduce((sum,row)=>sum+row.noi,0)}));
 }

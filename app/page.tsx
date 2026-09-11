@@ -53,6 +53,11 @@ export default function Dashboard() {
   const [rentExpanded,setRentExpanded]=useState(false);
   const visitRecorded=useRef(false);
 
+  useEffect(()=>{
+    const propertyId=new URLSearchParams(window.location.search).get('reviewProperty');
+    if(propertyId)setReviewPropertyId(propertyId);
+  },[]);
+
   const refreshTransactions = useCallback(async () => {
     try {
       invalidateSupabaseCache('dashboard:transactions');
@@ -185,11 +190,11 @@ export default function Dashboard() {
   const actionItems=useMemo(()=>{
     const items:{id:string;kind:'rent'|'document'|'review';title:string;detail:string;actionLabel?:string;propertyId?:string;days?:number;test?:boolean}[]=[];
     const grouped=new Map<string,number>(); pendingRents.forEach(t=>grouped.set(t.property_id,(grouped.get(t.property_id)||0)+1));
-    grouped.forEach((count,propertyId)=>{const prop=properties.find(p=>p.id===propertyId);items.push({id:`rent-${propertyId}`,kind:'rent',propertyId,title:`Confirm ${count} ${monthLabel} rent payment${count===1?'':'s'}`,detail:`${prop?.address||'Property'} is waiting for confirmation before cash flow is final.`,actionLabel:'Confirm'});});
+    grouped.forEach((count,propertyId)=>{const prop=properties.find(p=>p.id===propertyId);items.push({id:`rent-${propertyId}`,kind:'rent',propertyId,title:`Confirm ${monthLabel} rent`,detail:`${count} payment${count===1?' is':'s are'} waiting. Confirm them before monthly reporting.`,actionLabel:'Confirm'});});
     const today=new Date(); today.setHours(0,0,0,0);
     documents.filter(d=>d.expires_at).forEach(doc=>{const due=new Date(`${doc.expires_at}T12:00:00`);const days=Math.ceil((due.getTime()-today.getTime())/86400000);const remind=Number(doc.reminder_days||60);if(days<=remind){const prop=properties.find(p=>p.id===doc.property_id);items.push({id:`doc-${doc.id}`,kind:'document',title:days<0?`${doc.category} expired`:days===0?`${doc.category} due today`:`${doc.category} due in ${days} days`,detail:`${prop?.address||'Property'} · ${doc.title}`,days});}});
     const needsReview=transactions.filter(tx=>(tx.status||'posted')==='posted'&&((tx as Transaction & {needs_review?:boolean}).needs_review||tx.category==='Needs Review'));
-    if(needsReview.length){items.push({id:'needs-review',kind:'review',title:`Review ${needsReview.length} transaction${needsReview.length===1?'':'s'}`,detail:`Categorize them before ${monthLabel} reporting.`,actionLabel:'Review',days:-500});}
+    if(needsReview.length){items.push({id:'needs-review',kind:'review',title:`Review ${needsReview.length} transaction${needsReview.length===1?'':'s'}`,detail:`Categorize ${needsReview.length===1?'it':'them'} before September reporting.`,actionLabel:'Review',days:-500});}
     if(testActionsActive){
       const sampleProperty=properties[0];
       items.unshift(
@@ -243,7 +248,7 @@ export default function Dashboard() {
           <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><b>Income</b><strong>{formatCurrency(displayedCashFlow?.income||0)}</strong></span><span><b>Expenses</b><strong>{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong></span></div></div>
           <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio cash flow and expenses" onInspect={setInspectedCashFlow}/>
           <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y','3Y','5Y','10Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><div className="pulse-property-select"><select aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select><ChevronDown size={17} aria-hidden="true"/></div></div>
-          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatKpiCurrency(rentEarned)}</strong><b className="amount-positive">+{formatKpiCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-pace"><strong>{formatKpiCurrency(dailyRent)} per day</strong><span>for {now.getDate()} days this month</span></div>}</div>
+          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-pace"><strong>{formatCurrency(dailyRent)} per day</strong><span>for {now.getDate()} days this month</span></div>}</div>
         </section>
       <section className="daily-brief" aria-labelledby="daily-brief-title">
         <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
