@@ -275,10 +275,7 @@ export default function UtilitiesPage() {
           {grouped.map(({ property, utilities }) => (
             <section key={property.id} className="utility-property-group">
               <div className="utility-property-head">
-                <div>
-                  <span>PROPERTY</span>
-                  <h2>{property.address}</h2>
-                </div>
+                <h2>{property.address}</h2>
                 <small>
                   {utilities.length}{" "}
                   {utilities.length === 1 ? "utility" : "utilities"}
@@ -288,7 +285,7 @@ export default function UtilitiesPage() {
                 {utilities.map((x) => (
                   <div
                     key={`${property.id}-${x.id}`}
-                    className="utility-directory-card"
+                    className="utility-directory-card utility-directory-row"
                     role="button"
                     tabIndex={0}
                     onClick={() => openDetail(x)}
