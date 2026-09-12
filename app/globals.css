@@ -5107,7 +5107,7 @@ button.ledger-month-head:focus:not(:focus-visible){
 .ledger-v230-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3)}
 .ledger-v230-view-switch{display:flex;padding:3px;border:1px solid var(--border-color);border-radius:var(--radius-pill);background:var(--surface-subtle)}
 .ledger-v230-view-switch button{min-height:34px;padding:0 var(--space-4);border-radius:var(--radius-pill);color:var(--text-secondary);font-size:var(--type-small-size);font-weight:var(--weight-semibold)}
-.ledger-v230-view-switch button.active{background:var(--accent);color:var(--accent-contrast)}
+.ledger-v230-view-switch button.active{background:var(--text-primary);color:var(--bg-primary)}
 .ledger-v230-tools{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2)}
 .ledger-v230-tools>button,.ledger-v230-more-wrap>button{
   min-height:var(--control-height-desktop);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 var(--space-3);
