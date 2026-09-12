@@ -4960,57 +4960,6 @@ button.ledger-month-head:focus:not(:focus-visible){
 .units-directory-panel{padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
 .units-directory-panel>.property-panel-head{padding:0 2px 14px!important;margin:0!important;border:0!important}
 .units-directory-list{display:grid;gap:14px}
-.unit-directory-item{padding:20px 22px!important;border:1px solid var(--border-subtle,var(--border-color))!important;border-radius:20px!important;box-shadow:none!important}
-.unit-directory-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 15px}
-.unit-directory-identity{min-width:0}
-.unit-directory-title-row{display:flex;align-items:center;gap:9px;min-width:0}
-.unit-directory-title-row h3{margin:0;font-size:20px;line-height:1.2;letter-spacing:-.02em}
-.unit-directory-title-row .unit-status{margin:0!important;flex:0 0 auto}
-.unit-directory-identity p{margin:4px 0 0;color:var(--text-secondary);font-size:14px}
-.unit-edit-action{flex:0 0 auto;width:max-content!important;height:36px!important;padding:0 13px!important}
-.unit-core-facts{display:flex;align-items:center;gap:0;margin:0 0 13px}
-.unit-core-facts>div{display:flex;align-items:baseline;gap:7px;min-width:0;padding:0 18px;border-left:1px solid var(--border-subtle,var(--border-color))}
-.unit-core-facts>div:first-child{padding-left:0;border-left:0}
-.unit-core-facts span{color:var(--text-secondary);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
-.unit-core-facts strong{font-size:15px;line-height:1.25;white-space:nowrap}
-.unit-lease-summary,.unit-document-state{min-height:40px;border-top:1px solid var(--border-subtle,var(--border-color));display:flex;align-items:center;gap:9px;padding:10px 0 0;margin-top:0;background:transparent!important;border-radius:0!important}
-.unit-lease-summary{color:var(--text-secondary)}
-.unit-lease-summary>svg{flex:0 0 auto}
-.unit-lease-summary>span{font-size:12px;font-weight:700;color:var(--text-secondary)}
-.unit-lease-summary>strong{font-size:14px;color:var(--text-primary);font-weight:600}
-.lease-state-badge{margin-left:auto;padding:0!important;background:transparent!important;font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
-.lease-state-badge.warning{color:var(--warning)}
-.lease-state-badge.danger{color:var(--negative)}
-.unit-document-state{justify-content:space-between;margin-top:9px}
-.unit-document-state-main{display:flex;align-items:center;gap:9px;min-width:0;color:var(--text-secondary)}
-.unit-document-state-main strong{font-size:13px;line-height:1.2;font-weight:600;color:var(--text-secondary)}
-.unit-document-state.uploaded .unit-document-state-main,.unit-document-state.uploaded .unit-document-state-main strong{color:var(--positive)}
-.unit-document-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.unit-document-actions .property-secondary-action{height:34px!important;padding:0 12px!important;width:max-content!important}
-@media(max-width:760px){
-  .units-directory-list{gap:12px}
-  .unit-directory-item{padding:17px 16px!important;border-radius:18px!important}
-  .unit-directory-head{margin-bottom:13px}
-  .unit-directory-title-row h3{font-size:19px}
-  .unit-core-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
-  .unit-core-facts>div{display:block;padding:0 10px}
-  .unit-core-facts>div:first-child{padding-left:0}
-  .unit-core-facts span{display:block;margin-bottom:4px;font-size:10px}
-  .unit-core-facts strong{font-size:14px;white-space:normal}
-  .unit-lease-summary{display:grid;grid-template-columns:auto auto 1fr;gap:7px 8px;align-items:center}
-  .unit-lease-summary>strong{min-width:0}
-  .lease-state-badge{grid-column:3;margin:0!important;font-size:11px}
-}
-@media(max-width:430px){
-  .unit-directory-head{gap:10px}
-  .unit-directory-title-row{align-items:flex-start;flex-direction:column;gap:5px}
-  .unit-core-facts{grid-template-columns:1fr 1fr}
-  .unit-core-facts>div:nth-child(3){display:none}
-  .unit-lease-summary{grid-template-columns:auto 1fr}
-  .unit-lease-summary>span{display:none}
-  .unit-lease-summary>strong{font-size:13px}
-  .lease-state-badge{grid-column:2}
-}
 
 /* ==========================================================
    V2.3 DAILY PORTFOLIO PULSE
