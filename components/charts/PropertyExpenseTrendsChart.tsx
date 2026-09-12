@@ -1,16 +1,63 @@
 'use client';
-import { useMemo,useState } from 'react';
-type Tx={transaction_date:string;type:string;category:string;amount:number;status?:string|null};type View='quarterly'|'annual';
+
+import { useMemo, useRef, useState } from 'react';
+
+type Tx={transaction_date:string;type:string;category:string;amount:number;status?:string|null};
+type View='quarterly'|'annual';
+
 const wholeCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
 function axisMaximum(value:number){if(value<=0)return 1;const power=10**Math.floor(Math.log10(value));const normalized=value/power;return (normalized<=2?2:normalized<=5?5:10)*power}
 function compactCurrency(value:number){if(value>=1000000)return `$${(value/1000000).toFixed(value>=10000000?0:1)}M`;if(value>=1000)return `$${(value/1000).toFixed(value>=10000?0:1)}K`;return `$${Math.round(value)}`}
-export default function PropertyExpenseTrendsChart({transactions}:{transactions:Tx[]}){
- const [view,setView]=useState<View>('quarterly'),[selectedKey,setSelectedKey]=useState(''),[hoveredKey,setHoveredKey]=useState('');const now=useMemo(()=>new Date(),[]);
- const expense=useMemo(()=>transactions.filter(t=>t.type==='expense'&&t.status!=='declined'),[transactions]);const currentYear=now.getFullYear();const viewExpense=view==='quarterly'?expense.filter(t=>Number(t.transaction_date.slice(0,4))===currentYear):expense;
- const totals=new Map<string,number>();viewExpense.forEach(t=>totals.set(t.category,(totals.get(t.category)||0)+Math.abs(Number(t.amount||0))));const categories=[...totals.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name);const years=[...new Set(expense.map(t=>Number(t.transaction_date.slice(0,4))))].filter(Boolean).sort((a,b)=>a-b);
- const groups=view==='quarterly'?[0,1,2,3].map(q=>({key:`${currentYear}-Q${q+1}`,label:`Q${q+1}`,sub:String(currentYear),partial:q===Math.floor(now.getMonth()/3),matches:(t:Tx)=>Number(t.transaction_date.slice(0,4))===currentYear&&Math.floor((Number(t.transaction_date.slice(5,7))-1)/3)===q})):years.map(year=>({key:String(year),label:String(year),sub:'Annual',partial:year===currentYear,matches:(t:Tx)=>Number(t.transaction_date.slice(0,4))===year}));
- const rows=groups.map(group=>({...group,values:categories.map(category=>expense.filter(t=>t.category===category&&group.matches(t)).reduce((sum,t)=>sum+Math.abs(Number(t.amount||0)),0))}));const inspectionKey=hoveredKey||selectedKey;const active=rows.find(row=>row.key===inspectionKey);const activeIndex=active?rows.findIndex(row=>row.key===active.key):-1;const axisMax=axisMaximum(Math.max(0,...rows.flatMap(row=>row.values)));const ticks=[axisMax,axisMax/2,0];const topTotal=categories.reduce((sum,category)=>sum+(totals.get(category)||0),0),allTotal=[...totals.values()].reduce((sum,value)=>sum+value,0);
- const choose=(key:string)=>setSelectedKey(current=>current===key?'':key);
- return <section className="property-expense-trends"><div className="property-section-head"><h2>Expense trends</h2></div><div className="expense-view-switch" aria-label="Expense trend period"><button className={view==='quarterly'?'active':''} onClick={()=>{setView('quarterly');setSelectedKey('');setHoveredKey('')}}>Quarterly</button><button className={view==='annual'?'active':''} onClick={()=>{setView('annual');setSelectedKey('');setHoveredKey('')}}>Annual</button></div><p className="expense-share-copy">{allTotal?Math.round(topTotal/allTotal*100):0}% of expenses are represented by the top three categories.</p>{categories.length?<><div className="expense-chart-legend">{categories.map((category,index)=><span key={category}><i style={{background:`var(--expense-series-${index+1})`}}/>{category}</span>)}</div><div className="expense-chart" onMouseLeave={()=>setHoveredKey('')}><div className="expense-axis" aria-hidden="true">{ticks.map(tick=><span key={tick}>{compactCurrency(tick)}</span>)}</div><div className="expense-plot">{active&&<div className="expense-inspection" data-edge={activeIndex===0?'left':activeIndex===rows.length-1?'right':'center'} style={{left:`${((activeIndex+.5)/Math.max(1,rows.length))*100}%`}}><strong>{active.label} {active.sub}</strong>{categories.map((category,index)=><span key={category}><i style={{background:`var(--expense-series-${index+1})`}}/>{category}<b>{wholeCurrency(active.values[index]||0)}</b></span>)}<em>Total <b>{wholeCurrency(active.values.reduce((sum,value)=>sum+value,0))}</b></em></div>}<div className="expense-gridlines" aria-hidden="true">{ticks.map(tick=><i key={tick}/>)}</div><div className="expense-chart-grid" style={{gridTemplateColumns:`repeat(${Math.max(1,rows.length)},minmax(0,1fr))`}}>{rows.map(row=>{const activeRow=active?.key===row.key;return <button key={row.key} onMouseEnter={()=>setHoveredKey(row.key)} onFocus={()=>setHoveredKey(row.key)} onBlur={()=>setHoveredKey('')} onClick={()=>choose(row.key)} className={`${activeRow?'active':''} ${inspectionKey&&!activeRow?'is-dimmed':''}`} aria-pressed={selectedKey===row.key} aria-label={`${row.label} ${row.sub}, ${wholeCurrency(row.values.reduce((sum,value)=>sum+value,0))} total expenses`}><span className="expense-bars">{row.values.map((value,index)=><i key={categories[index]} style={{height:`${Math.max(value?4:0,value/axisMax*100)}%`,background:`var(--expense-series-${index+1})`}}/>)}</span><em>{row.label}</em><small>{row.sub}{row.partial?' · To date':''}</small></button>})}</div></div></div></>:<p className="property-empty-copy">No operating expenses recorded.</p>}</section>;
-}
 
+export default function PropertyExpenseTrendsChart({transactions}:{transactions:Tx[]}){
+  const [view,setView]=useState<View>('quarterly');
+  const [hoveredKey,setHoveredKey]=useState('');
+  const [pressedKey,setPressedKey]=useState('');
+  const plotRef=useRef<HTMLDivElement>(null);
+  const now=useMemo(()=>new Date(),[]);
+  const expense=useMemo(()=>transactions.filter(t=>t.type==='expense'&&t.status!=='declined'),[transactions]);
+  const currentYear=now.getFullYear();
+  const viewExpense=view==='quarterly'?expense.filter(t=>Number(t.transaction_date.slice(0,4))===currentYear):expense;
+  const totals=new Map<string,number>();
+  viewExpense.forEach(t=>totals.set(t.category,(totals.get(t.category)||0)+Math.abs(Number(t.amount||0))));
+  const categories=[...totals.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name);
+  const years=[...new Set(expense.map(t=>Number(t.transaction_date.slice(0,4))))].filter(Boolean).sort((a,b)=>a-b);
+  const groups=view==='quarterly'
+    ?[0,1,2,3].map(q=>({key:`${currentYear}-Q${q+1}`,label:`Q${q+1}`,sub:String(currentYear),partial:q===Math.floor(now.getMonth()/3),matches:(t:Tx)=>Number(t.transaction_date.slice(0,4))===currentYear&&Math.floor((Number(t.transaction_date.slice(5,7))-1)/3)===q}))
+    :years.map(year=>({key:String(year),label:String(year),sub:'Annual',partial:year===currentYear,matches:(t:Tx)=>Number(t.transaction_date.slice(0,4))===year}));
+  const rows=groups.map(group=>({...group,values:categories.map(category=>expense.filter(t=>t.category===category&&group.matches(t)).reduce((sum,t)=>sum+Math.abs(Number(t.amount||0)),0))}));
+  const inspectionKey=pressedKey||hoveredKey;
+  const active=rows.find(row=>row.key===inspectionKey);
+  const activeIndex=active?rows.findIndex(row=>row.key===active.key):-1;
+  const axisMax=axisMaximum(Math.max(0,...rows.flatMap(row=>row.values)));
+  const ticks=[axisMax,axisMax/2,0];
+  const topTotal=categories.reduce((sum,category)=>sum+(totals.get(category)||0),0);
+  const allTotal=[...totals.values()].reduce((sum,value)=>sum+value,0);
+
+  function inspectPointer(event:React.PointerEvent<HTMLDivElement>){
+    if(event.pointerType==='mouse'||!rows.length)return;
+    const rect=plotRef.current?.getBoundingClientRect();
+    if(!rect)return;
+    const index=Math.max(0,Math.min(rows.length-1,Math.floor((event.clientX-rect.left)/Math.max(1,rect.width)*rows.length)));
+    setPressedKey(rows[index].key);
+  }
+  function finishPointer(){setPressedKey('')}
+  function changeView(next:View){setView(next);setHoveredKey('');setPressedKey('')}
+
+  return <section className="property-expense-trends">
+    <div className="property-section-head"><h2>Expense trends</h2></div>
+    <div className="expense-view-switch" aria-label="Expense trend period"><button className={view==='quarterly'?'active':''} onClick={()=>changeView('quarterly')}>Quarterly</button><button className={view==='annual'?'active':''} onClick={()=>changeView('annual')}>Annual</button></div>
+    <p className="expense-share-copy">{allTotal?Math.round(topTotal/allTotal*100):0}% of expenses are represented by the top three categories.</p>
+    {categories.length?<>
+      <div className="expense-chart-legend">{categories.map((category,index)=><span key={category}><i style={{background:`var(--expense-series-${index+1})`}}/>{category}</span>)}</div>
+      <div className="expense-chart" onMouseLeave={()=>setHoveredKey('')}>
+        <div className="expense-axis" aria-hidden="true">{ticks.map(tick=><span key={tick}>{compactCurrency(tick)}</span>)}</div>
+        <div ref={plotRef} className="expense-plot" onPointerDown={event=>{if(event.pointerType==='mouse')return;event.currentTarget.setPointerCapture(event.pointerId);inspectPointer(event)}} onPointerMove={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))inspectPointer(event)}} onPointerUp={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);finishPointer()}} onPointerCancel={finishPointer}>
+          {active&&<div className="expense-inspection" data-edge={activeIndex===0?'left':activeIndex===rows.length-1?'right':'center'} style={{left:`${((activeIndex+.5)/Math.max(1,rows.length))*100}%`}}><strong>{active.label} {active.sub}</strong>{categories.map((category,index)=><span key={category}><i style={{background:`var(--expense-series-${index+1})`}}/>{category}<b>{wholeCurrency(active.values[index]||0)}</b></span>)}<em>Total <b>{wholeCurrency(active.values.reduce((sum,value)=>sum+value,0))}</b></em></div>}
+          <div className="expense-gridlines" aria-hidden="true">{ticks.map(tick=><i key={tick}/>)}</div>
+          <div className="expense-chart-grid" style={{gridTemplateColumns:`repeat(${Math.max(1,rows.length)},minmax(0,1fr))`}}>{rows.map(row=>{const activeRow=active?.key===row.key;return <button key={row.key} type="button" onMouseEnter={()=>setHoveredKey(row.key)} onFocus={()=>setHoveredKey(row.key)} onBlur={()=>setHoveredKey('')} className={`${activeRow?'active':''} ${inspectionKey&&!activeRow?'is-dimmed':''}`} aria-label={`${row.label} ${row.sub}, ${wholeCurrency(row.values.reduce((sum,value)=>sum+value,0))} total expenses`}><span className="expense-bars">{row.values.map((value,index)=><i key={categories[index]} style={{height:`${Math.max(value?4:0,value/axisMax*100)}%`,background:`var(--expense-series-${index+1})`}}/>)}</span><em>{row.label}</em><small>{row.sub}{row.partial?' · To date':''}</small></button>})}</div>
+        </div>
+      </div>
+    </>:<p className="property-empty-copy">No operating expenses recorded.</p>}
+  </section>;
+}

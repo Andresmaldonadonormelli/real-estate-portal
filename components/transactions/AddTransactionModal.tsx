@@ -104,9 +104,9 @@ export default function AddTransactionModal({ userId, properties, units, transac
   }
 
   async function archive(){
-    if(!transaction)return;const recurring=transaction.source==='recurring';if(!confirm(recurring?'Skip this recurring transaction for this month?':'Archive this transaction?'))return;setSaving(true);setError('');
-    const r=recurring?await supabase.from('transactions').update({status:'declined',notes:[transaction.notes,'Skipped by owner'].filter(Boolean).join(' · ')}).eq('id',transaction.id):await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',transaction.id);
-    if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.(recurring?'Recurring transaction skipped':'Transaction archived');onClose();setSaving(false);
+    if(!transaction||!confirm('Delete this transaction?'))return;setSaving(true);setError('');
+    const r=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',transaction.id);
+    if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.('Transaction deleted');onClose();setSaving(false);
   }
 
   const linkedDocs=documents.filter(d=>linkedDocumentIds.includes(d.id));
@@ -152,7 +152,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Turn this on only when you want this transaction to return to the review queue.</small></span></label>
         </div>}
-        <div className="quick-add-footer">{editing?<button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>{transaction?.source==='recurring'?'Skip month':'Archive'}</button>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
+        <div className="quick-add-footer">{editing?<button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
       </form>
     </div>
   </div>;

@@ -61,7 +61,7 @@ export default function PropertiesPage() {
       setLoading(false);
       void (async()=>{
         const urls: Record<string,string> = {};
-        await Promise.all(propertyRows.filter(p => p.image_path).map(async p => { try { const r = await supabase.storage.from('property-images').createSignedUrl(p.image_path!, 3600); if (r.data?.signedUrl) urls[p.id] = r.data.signedUrl; } catch {} }));
+        await Promise.all(propertyRows.filter(p => p.image_path).map(async p => { try { const r = await supabase.storage.from('property-images').createSignedUrl(p.image_path!,3600,{transform:{width:192,height:192,resize:'cover',quality:80}}); if (r.data?.signedUrl) urls[p.id] = r.data.signedUrl; } catch {} }));
         setImageUrls(urls);
       })();
     } catch (e) {
@@ -214,7 +214,7 @@ export default function PropertiesPage() {
   return (
     <div className="mobile-page-shell properties-page">
       <div className="properties-page-head">
-        <div><h1>Properties</h1><p>Every property in your portfolio.</p></div>
+        <div><h1>Properties</h1></div>
         <button onClick={startAddProperty} className="workspace-primary-button">+ Add property</button>
       </div>
 
@@ -227,7 +227,7 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <div className="compact-properties-list">
-          {properties.map((property) => {
+          {properties.map((property,index) => {
             const propertyUnits = unitsByProperty[property.id] || [];
             const occupied = propertyUnits.filter((u) => u.occupied).length;
             const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);
@@ -245,6 +245,12 @@ export default function PropertiesPage() {
               }
             }
             const cashFlow=income-expenses;
+            const fullyVacant=propertyUnits.length>0&&occupied===0;
+            const today=new Date();today.setHours(0,0,0,0);
+            const vacancyDates=propertyUnits.map(unit=>(unit as Unit&{lease_end_date?:string|null}).lease_end_date).filter(Boolean).map(value=>new Date(`${value}T12:00:00`)).filter(date=>date<=today);
+            const vacancyStart=vacancyDates.length?new Date(Math.max(...vacancyDates.map(date=>date.getTime()))):(property.purchase_date?new Date(`${property.purchase_date}T12:00:00`):null);
+            const vacancyDays=vacancyStart?Math.max(0,Math.floor((today.getTime()-vacancyStart.getTime())/86400000)):0;
+            const holdingCosts=fullyVacant?propertyTx.filter(tx=>tx.type==='expense'&&(!vacancyStart||new Date(`${tx.transaction_date}T12:00:00`)>=vacancyStart)).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0):0;
             const expenseRatio=income>0 ? operatingExpenses/income : null;
             const hasFinancialActivity=propertyTx.some(tx=>Math.abs(Number(tx.amount||0))>0);
             const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
@@ -252,16 +258,16 @@ export default function PropertiesPage() {
             return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card card">
               <div className="property-preview-left">
                 <div className="property-preview-identity">
-                  {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
+                  {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb" width="96" height="96" loading={index===0?'eager':'lazy'} fetchPriority={index===0?'high':'auto'} decoding="async"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
                   <div><strong>{property.address}</strong><span>{property.city}, {property.state}</span></div>
                 </div>
-                <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span><span>{occupied===0 && potentialRent<=0 ? 'Rent not set' : `${formatCurrency(occupied===0?potentialRent:monthlyRent)}/mo ${occupied===0?'potential':'rent'}`}</span></div>
+                <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span>{occupied>0&&<span>{formatCurrency(monthlyRent)}/mo rent</span>}</div>
               </div>
               <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/></div>
               <div className="property-preview-result">
-                <span>{hasFinancialActivity ? 'YTD cash flow' : (occupied===0 ? (potentialRent>0?'Potential monthly rent':'Performance') : 'YTD cash flow')}</span>
-                <strong className={hasFinancialActivity?(cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''):''}>{hasFinancialActivity ? formatCurrency(cashFlow) : (occupied===0 ? (potentialRent>0?formatCurrency(potentialRent):'Pending') : formatCurrency(cashFlow))}</strong>
-                <small>{health.detail}</small>
+                <span>{fullyVacant?'Holding costs':'YTD cash flow'}</span>
+                <strong className={fullyVacant?'amount-negative':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{fullyVacant?formatCurrency(holdingCosts):formatCurrency(cashFlow)}</strong>
+                <small>{fullyVacant?`Vacant for ${vacancyDays} days`:health.detail}</small>
               </div>
             </Link>;
           })}

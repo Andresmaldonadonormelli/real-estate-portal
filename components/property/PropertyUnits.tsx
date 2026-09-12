@@ -18,7 +18,7 @@ export default function PropertyUnits({units,propertyId,onUnitsUpdated,onLeaseSy
   const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
   return <>
     <section className="property-tab-panel units-directory-panel">
-      <div className="property-panel-head"><div><h2>Units & tenants</h2></div></div>
+      {units.length>0&&<div className="units-directory-summary">{units.length} {units.length===1?'unit':'units'} · {units.filter(unit=>unit.occupied).length} occupied</div>}
       {!units.length?<Empty text="No units yet."/>:<div className="units-directory-list">
         {units.map((rawUnit,index)=>{
           const unit=rawUnit as any;

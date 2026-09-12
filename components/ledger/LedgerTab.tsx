@@ -9,7 +9,7 @@ import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculat
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, BadgeDollarSign, Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, Plus, X } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, BadgeDollarSign, Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
@@ -23,7 +23,7 @@ type PreviewRow = { row: CsvRow; date:string; propertyId:string; unitId:string|n
 const categories = [...ACCOUNTING_CATEGORIES];
 const emptyTx = { property_id:'', unit_id:'', transaction_date:new Date().toISOString().slice(0,10), type:'expense' as TxType, category:'Needs Review', description:'', payee_source:'', amount:'', notes:'', needs_review:true };
 
-export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange }:{ selectedPropertyId:string; onSelectedPropertyChange:(value:string)=>void }) {
+export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange, addRequest=0 }:{ selectedPropertyId:string; onSelectedPropertyChange:(value:string)=>void; addRequest?:number }) {
   const { user } = useAuth();
   const searchParams=useSearchParams();
   const reviewOnly=searchParams.get('review')==='1';
@@ -72,6 +72,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   }
   useEffect(()=>{loadData();},[]);
   useEffect(()=>{setReviewFilter(reviewOnly)},[reviewOnly]);
+  useEffect(()=>{if(addRequest>0)openAdd()},[addRequest]);
 
   const filtered = useMemo(()=>transactions.filter(tx=>{
     const q=filters.search.toLowerCase();
@@ -110,7 +111,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     const result=editing?await supabase.from('transactions').update(payload).eq('id',editing.id):await supabase.from('transactions').insert(payload);
     if(result.error)setError(result.error.message);else{setShowForm(false);await loadData();} setSaving(false);
   }
-  async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const recurring=tx.source==='recurring';const result=recurring?await supabase.from('transactions').update({status:'declined',notes:[tx.notes,'Skipped/deleted by owner'].filter(Boolean).join(' · ')}).eq('id',tx.id):await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',tx.id);if(result.error)setError(result.error.message);else{if(recurring)setNotice('Recurring entry skipped for this month. It will not be recreated.');await loadData();}}
+  async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const result=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',tx.id);if(result.error)setError(result.error.message);else{setNotice('Transaction deleted.');await loadData();}}
 
   function exportCsv(){const rows=[['Date','Property','Unit','Description','Category','Payee','Type','Status','Needs Review','Receipt Path','Amount'],...filtered.map(tx=>[tx.transaction_date,propertyName(tx.property_id),unitName(tx.unit_id),tx.description,tx.category,tx.payee_source||'',tx.type,tx.status||'posted',String(Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)),(tx as Transaction & {receipt_path?:string|null}).receipt_path||'',String(tx.amount)])];const csv=rows.map(r=>r.map(v=>`"${String(v).split('"').join('""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ledger.csv';a.click();URL.revokeObjectURL(url);}
 
@@ -146,7 +147,6 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   return <div className="ledger-v230-tab">
     <div className="ledger-v230-primary-row">
       <label className="ledger-v230-property-picker"><span>Property</span><select value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label>
-      <button className="ledger-v230-add" onClick={openAdd} disabled={!properties.length}><Plus size={18}/><span>Add transaction</span></button>
     </div>
     {error&&<div style={errorBox}>{error}</div>}
     {notice&&<div style={noticeBox}>{notice}</div>}

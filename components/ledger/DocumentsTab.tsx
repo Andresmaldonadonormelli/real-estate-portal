@@ -4,12 +4,13 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
+import DocumentFeed from '@/components/documents/DocumentFeed';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
-export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId:string }) {
+export default function DocumentsTab({ selectedPropertyId, uploadRequest=0 }:{ selectedPropertyId:string; uploadRequest?:number }) {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -42,6 +43,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   }
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { if (uploadRequest > 0) openUpload(); }, [uploadRequest]);
 
   const filtered = useMemo(() => documents.filter(d => {
     if (selectedPropertyId && d.property_id !== selectedPropertyId) return false;
@@ -115,7 +117,6 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
   }
 
   return <div className="documents-open-view">
-    <div className="document-toolbar"><button onClick={openUpload} disabled={!properties.length} style={primaryButton}>+ Upload document</button></div>
     {error && <div style={errorBox}>{error}</div>}
     {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
 
@@ -124,14 +125,7 @@ export default function DocumentsTab({ selectedPropertyId }:{ selectedPropertyId
     </div>
 
     {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
-      <div className="document-feed">{filtered.map(doc => <div key={doc.id} className="document-feed-row">
-        <button type="button" className="document-feed-copy" onClick={()=>openDocument(doc)} aria-label={`Open ${doc.title}`}>
-          <div className="document-feed-meta">{doc.category} · {propertyName(doc.property_id)}{unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}</div>
-          <strong>{doc.title}</strong>
-          <span>{doc.document_date || doc.file_name}</span>
-        </button>
-        <div className="document-feed-actions"><button onClick={()=>setSelectedDoc(doc)} style={secondaryButton}>Details</button></div>
-      </div>)}</div>
+      <DocumentFeed items={filtered.map(doc=>({id:doc.id,meta:`${doc.category} · ${propertyName(doc.property_id)}${unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}`,title:doc.title,subtext:doc.document_date||doc.file_name}))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>
     }
 
     {selectedDoc && <Modal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
