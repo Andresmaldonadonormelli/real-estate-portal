@@ -11,6 +11,10 @@ export function PageAction({children,onClick,disabled=false}:{children:ReactNode
   return <button type="button" className="product-page-action" onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
+export function SecondaryButton({children,onClick,className=''}:{children:ReactNode;onClick:()=>void;className?:string}){
+  return <button type="button" className={`product-secondary-button ${className}`.trim()} onClick={onClick}>{children}</button>;
+}
+
 export function ProductSelect({label,className='',children,...props}:SelectHTMLAttributes<HTMLSelectElement>&{label?:string;className?:string;children:ReactNode}){
   return <label className={`product-select ${className}`.trim()}>{label&&<span>{label}</span>}<span className="product-select-control"><select {...props}>{children}</select><ChevronDown size={17} aria-hidden="true"/></span></label>;
 }

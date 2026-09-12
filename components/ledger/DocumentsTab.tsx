@@ -11,7 +11,7 @@ import { ProductSelect } from '@/components/common/ProductControls';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
-export default function DocumentsTab({ selectedPropertyId, uploadRequest=0, onActionHandled }:{ selectedPropertyId:string; uploadRequest?:number; onActionHandled?:()=>void }) {
+export default function DocumentsTab({ selectedPropertyId, onSelectedPropertyChange, uploadRequest=0, onActionHandled }:{ selectedPropertyId:string; onSelectedPropertyChange:(value:string)=>void; uploadRequest?:number; onActionHandled?:()=>void }) {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -121,10 +121,10 @@ export default function DocumentsTab({ selectedPropertyId, uploadRequest=0, onAc
     {error && <div style={errorBox}>{error}</div>}
     {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
 
-    <div className="document-filter-row"><ProductSelect aria-label="Document category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect></div>
+    <div className="document-filter-row"><ProductSelect aria-label="Property" value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect><ProductSelect aria-label="Document category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect></div>
 
     {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
-      <DocumentFeed items={filtered.map(doc=>({id:doc.id,meta:`${doc.category} · ${propertyName(doc.property_id)}${unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}`,title:doc.title,subtext:doc.document_date||doc.file_name}))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>
+      <DocumentFeed items={filtered.map(doc=>documentFeedItem(doc,propertyName(doc.property_id),unitName(doc.unit_id)))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>
     }
 
     {selectedDoc && <Modal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
@@ -152,6 +152,15 @@ export default function DocumentsTab({ selectedPropertyId, uploadRequest=0, onAc
       <button disabled={saving} style={primaryButton}>{saving?'Uploading…':'Upload document'}</button>
     </form></Modal>}
   </div>;
+}
+
+function documentFeedItem(doc:PropertyDocument,property:string,unit:string){
+  if(doc.category==='Lease'){
+    const tenant=doc.title.split('·').map(part=>part.trim()).filter(Boolean).at(-1);
+    const expires=doc.expires_at?new Date(`${doc.expires_at}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'No expiration date';
+    return {id:doc.id,meta:'',title:`${property}${tenant?` · ${tenant}`:''}`,subtext:`Lease${unit?` · ${unit}`:''} · Exp. ${expires}`};
+  }
+  return {id:doc.id,meta:'',title:doc.title,subtext:`${doc.category} · ${property}${unit?` · ${unit}`:''}`};
 }
 
 function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:'var(--space-3)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}

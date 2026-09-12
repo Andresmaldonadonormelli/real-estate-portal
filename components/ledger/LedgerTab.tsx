@@ -14,6 +14,7 @@ import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/a
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { cachedSupabaseRequest, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
+import { SegmentedControl } from '@/components/common/ProductControls';
 
 type ViewMode = 'months' | 'table';
 type TxType = 'income' | 'expense' | 'transfer';
@@ -88,7 +89,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   }),[transactions,filters,selectedPropertyId,reviewFilter]);
 
   const total=useMemo(()=>calculateMonthlyTotals(filtered),[filtered]);
-  const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)).length,[transactions,selectedPropertyId]);
+  const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status!=='declined'&&Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)).length,[transactions,selectedPropertyId]);
   const activeFilterCount=[filters.type,filters.category,filters.min,filters.max].filter(Boolean).length;
   const groups=useMemo(()=>Object.entries(groupTransactionsByMonth(filtered)).sort(([a],[b])=>b.localeCompare(a)).map(([key,txs])=>({key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),transactions:[...txs].sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))})),[filtered]);
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';
@@ -150,7 +151,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     {!properties.length&&!loading&&<div className="card" style={{padding:18,marginBottom:18}}>Add a property before entering transactions.</div>}
 
     <div className="ledger-v230-toolbar">
-      <div className="ledger-v230-view-switch"><button onClick={()=>setViewMode('table')} className={viewMode==='table'?'active':''}>Table</button><button onClick={()=>setViewMode('months')} className={viewMode==='months'?'active':''}>Months</button></div>
+      <SegmentedControl value={viewMode} onChange={setViewMode} label="Ledger view" className="ledger-v230-view-switch" options={[{value:'table',label:'Table'},{value:'months',label:'Months'}]}/>
       <div className="ledger-v230-tools">
         <button className={showSearch||filters.search?'active':''} onClick={()=>setShowSearch(v=>!v)} aria-expanded={showSearch} aria-label="Search transactions"><Search size={17}/><span>Search</span></button>
         <button className={showFilters||activeFilterCount?'active':''} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>
@@ -183,7 +184,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
             <span className="ledger-feed-primary">
               <strong>{title}</strong>
             </span>
-            <span className="ledger-feed-secondary">
+            <span className="ledger-feed-secondary">{needsReview&&<TriangleAlert size={14} className="ledger-row-review-icon" aria-label="Requires review"/>}
               <span className="ledger-secondary-text">{propertyLabel}{unitLabel?` · ${unitLabel}`:''}{categoryLabel?` · ${categoryLabel}`:''}</span>
               {attachments>0&&<span className="ledger-paperclip" title={`${attachments} supporting ${attachments===1?'document':'documents'}`}><Paperclip size={12}/>{attachments}</span>}
             </span>
@@ -207,7 +208,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   </div>;
 }
 
-function TxRow({tx,property,unit,attachmentCount,onEdit}:{tx:Transaction;property:string;unit:string;attachmentCount:number;onEdit:()=>void}){const pending=tx.status==='pending';return <button type="button" className="ledger-feed-row ledger-month-transaction" onClick={onEdit}><span className="ledger-feed-main"><span className="ledger-feed-primary"><strong>{tx.description}</strong>{pending&&<span className="pending-badge">Pending</span>}</span><span className="ledger-feed-secondary">{property}{unit?` · ${unit}`:''} · {tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}{attachmentCount>0&&<span className="ledger-paperclip"><Paperclip size={12}/>{attachmentCount}</span>}</span></span><span className="ledger-feed-right"><strong className={pending?'':tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{formatCurrency(tx.amount)}</strong><small>{formatDateShort(tx.transaction_date)}</small></span><ChevronRight size={17} className="ledger-feed-chevron"/></button>}
+function TxRow({tx,property,unit,attachmentCount,onEdit}:{tx:Transaction;property:string;unit:string;attachmentCount:number;onEdit:()=>void}){const pending=tx.status==='pending';const needsReview=Boolean((tx as Transaction & {needs_review?:boolean}).needs_review);return <button type="button" className="ledger-feed-row ledger-month-transaction" onClick={onEdit}><span className="ledger-feed-main"><span className="ledger-feed-primary"><strong>{tx.description}</strong>{pending&&<span className="pending-badge">Pending</span>}</span><span className="ledger-feed-secondary">{needsReview&&<TriangleAlert size={14} className="ledger-row-review-icon" aria-label="Requires review"/>}{property}{unit?` · ${unit}`:''} · {tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}{attachmentCount>0&&<span className="ledger-paperclip"><Paperclip size={12}/>{attachmentCount}</span>}</span></span><span className="ledger-feed-right"><strong className={pending?'':tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{formatCurrency(tx.amount)}</strong><small>{formatDateShort(tx.transaction_date)}</small></span><ChevronRight size={17} className="ledger-feed-chevron"/></button>}
 
 function Metric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="ledger-summary-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
