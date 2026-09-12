@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { UnderlineTabs } from '@/components/common/ProductControls';
 
 type Tx={transaction_date:string;type:string;category:string;amount:number;status?:string|null};
 type View='quarterly'|'annual';
@@ -46,7 +47,7 @@ export default function PropertyExpenseTrendsChart({transactions}:{transactions:
 
   return <section className="property-expense-trends">
     <div className="property-section-head"><h2>Expense trends</h2></div>
-    <div className="expense-view-switch" aria-label="Expense trend period"><button className={view==='quarterly'?'active':''} onClick={()=>changeView('quarterly')}>Quarterly</button><button className={view==='annual'?'active':''} onClick={()=>changeView('annual')}>Annual</button></div>
+    <UnderlineTabs value={view} onChange={changeView} label="Expense trend period" className="expense-view-switch" options={[{value:'quarterly',label:'Quarterly'},{value:'annual',label:'Annual'}]}/>
     <p className="expense-share-copy">{allTotal?Math.round(topTotal/allTotal*100):0}% of expenses are represented by the top three categories.</p>
     {categories.length?<>
       <div className="expense-chart-legend">{categories.map((category,index)=><span key={category}><i style={{background:`var(--expense-series-${index+1})`}}/>{category}</span>)}</div>

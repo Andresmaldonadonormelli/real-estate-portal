@@ -9,6 +9,7 @@ import DocumentsTab from '@/components/ledger/DocumentsTab';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { withTimeout } from '@/lib/async';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
+import { PageAction, PageHeader, ProductSelect, UnderlineTabs } from '@/components/common/ProductControls';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
@@ -29,13 +30,15 @@ export default function LedgerDocsPage(){
   },[searchParams]);
 
   useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
+  function changeTab(next:Tab){setTab(next);setAddRequest(0);setUploadRequest(0)}
   return <div className="ledger-page ledger-v230-page">
-    <header className="ledger-v230-page-head"><h1 className="type-page-title type-semibold">Ledger & Docs</h1>{tab!=='statements'&&<button type="button" className="ledger-page-action" onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</button>}</header>
+    <PageHeader title="Ledger & Docs" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:undefined}/>
     <div className="ledger-v230-workspace">
-      <nav className="ledger-tabs ledger-v230-tabs" aria-label="Ledger sections">{(['ledger','statements','documents'] as Tab[]).map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'top-tab active':'top-tab'}>{t==='ledger'?'Ledger':t==='statements'?'Statements':'Documents'}</button>)}</nav>
+      <UnderlineTabs primary value={tab} onChange={changeTab} label="Ledger sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Ledger'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
+      {!loading&&<ProductSelect label="Property" value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'
-        ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest}/>
-        :<><label className="ledger-v230-secondary-picker"><span>Property</span><select value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label>{tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId} uploadRequest={uploadRequest}/>}</>}
+        ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest} onActionHandled={()=>setAddRequest(0)}/>
+        :tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId} uploadRequest={uploadRequest} onActionHandled={()=>setUploadRequest(0)}/>} 
     </div>
   </div>
 }

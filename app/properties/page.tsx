@@ -13,6 +13,7 @@ import { categoryKey } from '@/lib/accounting';
 import MiniSparkline from '@/components/charts/MiniSparkline';
 import { buildMonthlyFinancialHistory } from '@/lib/financialHistory';
 import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
+import { PageAction, PageHeader } from '@/components/common/ProductControls';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -213,10 +214,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="mobile-page-shell properties-page">
-      <div className="properties-page-head">
-        <div><h1>Properties</h1></div>
-        <button onClick={startAddProperty} className="workspace-primary-button">+ Add property</button>
-      </div>
+      <PageHeader title="Properties" action={<PageAction onClick={startAddProperty}>Add property</PageAction>}/>
 
       {error && <ErrorBox message={error} />}
       {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (

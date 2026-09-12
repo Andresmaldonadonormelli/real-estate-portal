@@ -7,10 +7,11 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import DocumentFeed from '@/components/documents/DocumentFeed';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
+import { ProductSelect } from '@/components/common/ProductControls';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
-export default function DocumentsTab({ selectedPropertyId, uploadRequest=0 }:{ selectedPropertyId:string; uploadRequest?:number }) {
+export default function DocumentsTab({ selectedPropertyId, uploadRequest=0, onActionHandled }:{ selectedPropertyId:string; uploadRequest?:number; onActionHandled?:()=>void }) {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -43,7 +44,7 @@ export default function DocumentsTab({ selectedPropertyId, uploadRequest=0 }:{ s
   }
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { if (uploadRequest > 0) openUpload(); }, [uploadRequest]);
+  useEffect(() => { if (uploadRequest > 0) { openUpload(); onActionHandled?.(); } }, [uploadRequest]);
 
   const filtered = useMemo(() => documents.filter(d => {
     if (selectedPropertyId && d.property_id !== selectedPropertyId) return false;
@@ -120,9 +121,7 @@ export default function DocumentsTab({ selectedPropertyId, uploadRequest=0 }:{ s
     {error && <div style={errorBox}>{error}</div>}
     {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
 
-    <div className="document-filter-row">
-      <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={inputStyle}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
-    </div>
+    <div className="document-filter-row"><ProductSelect aria-label="Document category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect></div>
 
     {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
       <DocumentFeed items={filtered.map(doc=>({id:doc.id,meta:`${doc.category} · ${propertyName(doc.property_id)}${unitName(doc.unit_id)?` · ${unitName(doc.unit_id)}`:''}`,title:doc.title,subtext:doc.document_date||doc.file_name}))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>

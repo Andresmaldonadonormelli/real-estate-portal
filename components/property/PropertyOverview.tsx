@@ -11,6 +11,7 @@ import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import PropertyExpenseTrendsChart from '@/components/charts/PropertyExpenseTrendsChart';
 import ActionCenter, { type ActionCenterItem } from '@/components/dashboard/ActionCenter';
 import RecentActivity from '@/components/dashboard/RecentActivity';
+import { ChartLegend, SegmentedControl } from '@/components/common/ProductControls';
 import {
   buildMonthlyFinancialHistory,
   type HistoryMode,
@@ -126,10 +127,10 @@ export default function PropertyOverview({ property, units, transactions, expect
   return <div className="property-overview-pulse"><div className="property-overview-layout">
     <main className="property-overview-main">
       <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{mode === 'cashFlow' ? 'Cash flow' : 'NOI'}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={currentValue < 0 ? 'amount-negative' : currentValue > 0 ? 'amount-positive' : ''}><AnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span>{formatKpiCurrency(displayed?.income || 0)}</b><b><span>Expenses</span>{formatKpiCurrency(currentExpenses)}</b></div></div></div><div className="property-chart-modes" aria-label="Chart metric"><button className={mode === 'cashFlow' ? 'active' : ''} onClick={() => setMode('cashFlow')}>Cash flow</button><button className={mode === 'noi' ? 'active' : ''} onClick={() => setMode('noi')}>NOI</button></div></div>
-        <div className="property-chart-legend" aria-label="Chart legend"><span><i className={currentValue < 0 ? 'is-negative' : 'is-positive'}/>Cash flow</span><span><i className="is-expense"/>Expenses</span></div>
+        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{mode === 'cashFlow' ? 'Cash flow' : 'NOI'}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={currentValue < 0 ? 'amount-negative' : currentValue > 0 ? 'amount-positive' : ''}><AnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span>{formatKpiCurrency(displayed?.income || 0)}</b><b><span>Expenses</span>{formatKpiCurrency(currentExpenses)}</b></div></div></div></div>
+        <ChartLegend negative={currentValue<0}/>
         <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode === 'cashFlow' ? 'cash flow' : 'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
-        <div className={`property-chart-periods ${currentValue < 0 ? 'is-negative' : 'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div>
+        <div className="property-chart-footer"><div className={`property-chart-periods ${currentValue < 0 ? 'is-negative' : 'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div><SegmentedControl value={mode} onChange={setMode} label="Chart metric" className="property-chart-modes" options={[{value:'cashFlow',label:'Cash flow'},{value:'noi',label:'NOI'}]}/></div>
       </section>
       <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`}/>
       <FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/>

@@ -11,6 +11,7 @@ import PropertyImprove from '@/components/property/PropertyImprove';
 import PropertyUnits from '@/components/property/PropertyUnits';
 import PropertyDocuments from '@/components/property/PropertyDocuments';
 import PropertyEditModal from '@/components/property/PropertyEditModal';
+import { SegmentedControl } from '@/components/common/ProductControls';
 import { formatDate, type PropertyTransaction as Tx } from '@/lib/propertyFinancials';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
@@ -156,7 +157,7 @@ export default function PropertyWorkspacePage(){
       </div>
     </header>
 
-    <nav className="property-subnav" aria-label="Property sections">{(['overview','improve','units','documents'] as Tab[]).map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav>
+    <SegmentedControl value={tab} onChange={setTab} label="Property sections" className="property-subnav" options={[{value:'overview',label:'Overview'},{value:'improve',label:'Improve'},{value:'units',label:'Units'},{value:'documents',label:'Documents'}]}/>
 
     {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} expectedRent={expectedRent} onNavigate={setTab}/>} 
     {tab==='improve' && <PropertyImprove property={property} units={units} transactions={transactions}/>} 

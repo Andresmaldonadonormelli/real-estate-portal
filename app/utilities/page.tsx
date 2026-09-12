@@ -18,6 +18,7 @@ import PageSkeleton from "@/components/common/PageSkeleton";
 import type { Property, UtilityAccount } from "@/lib/types";
 import { withTimeout } from "@/lib/async";
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from "@/lib/supabaseData";
+import { PageAction, PageHeader, ProductSelect } from "@/components/common/ProductControls";
 
 const types = [
   "Electric",
@@ -252,38 +253,17 @@ export default function UtilitiesPage() {
 
   return (
     <div className="mobile-page-shell utilities-page">
-      <div className="utilities-page-head">
-        <div>
-          <h1>Utilities</h1>
-          <p>
-            Service accounts and access details, organized around each property.
-          </p>
-        </div>
-        <button onClick={add} disabled={!properties.length} style={primary}>
-          + Add utility
-        </button>
-      </div>
+      <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
       {error && <div style={errorBox}>{error}</div>}
       <div className="utilities-toolbar">
-        <label>
-          <span>Property</span>
-          <select
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            style={input}
-          >
+        <ProductSelect label="Property" value={selected} onChange={(e) => setSelected(e.target.value)}>
             <option value="">All properties</option>
             {properties.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.address}
               </option>
             ))}
-          </select>
-        </label>
-      </div>
-      <div className="utilities-security-note">
-        Never enter a password here. Save only the name of the entry in your
-        password manager.
+        </ProductSelect>
       </div>
 
       {loading ? (
