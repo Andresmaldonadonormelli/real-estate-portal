@@ -10,6 +10,10 @@ export interface Property {
   purchase_price?: number | null;
   purchase_date?: string | null;
   monthly_mortgage_payment?: number | null;
+  mortgage_interest_rate?: number | null;
+  mortgage_term_years?: number | null;
+  mortgage_principal_interest_payment?: number | null;
+  mortgage_escrow_amount?: number | null;
   management_fee_percent?: number | null;
   image_path?: string | null;
   mortgage_start_date?: string | null;

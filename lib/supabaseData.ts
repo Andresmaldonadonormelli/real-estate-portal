@@ -1,7 +1,7 @@
 type CacheEntry<T>={expires:number;value?:T;pending?:Promise<T>};
 const requestCache=new Map<string,CacheEntry<unknown>>();
 
-export const PROPERTY_FIELDS='id,address,city,state,zip,mortgage_balance,property_type,purchase_price,purchase_date,monthly_mortgage_payment,management_fee_percent,image_path,mortgage_start_date,mortgage_recurring_enabled,archived_at,created_at';
+export const PROPERTY_FIELDS='id,address,city,state,zip,mortgage_balance,property_type,purchase_price,purchase_date,monthly_mortgage_payment,mortgage_interest_rate,mortgage_term_years,mortgage_principal_interest_payment,mortgage_escrow_amount,management_fee_percent,image_path,mortgage_start_date,mortgage_recurring_enabled,archived_at,created_at';
 export const UNIT_FIELDS='id,property_id,unit_number,bedroom_count,bathroom_count,sqft,current_rent,tenant_name,occupied,recurring_rent_enabled,archived_at,created_at';
 export const UNIT_DETAIL_FIELDS=`${UNIT_FIELDS},lease_start_date,lease_end_date,lease_document_path`;
 export const TRANSACTION_FIELDS='id,property_id,unit_id,transaction_date,type,category,description,payee_source,amount,notes,import_key,source,status,confirmed_at,archived_at,created_at,needs_review,receipt_path,supporting_document_id';
