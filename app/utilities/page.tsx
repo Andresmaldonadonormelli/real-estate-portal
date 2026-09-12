@@ -256,7 +256,7 @@ export default function UtilitiesPage() {
       <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
       {error && <div style={errorBox}>{error}</div>}
       <div className="utilities-toolbar">
-        <ProductSelect label="Property" value={selected} onChange={(e) => setSelected(e.target.value)}>
+        <ProductSelect aria-label="Property" value={selected} onChange={(e) => setSelected(e.target.value)}>
             <option value="">All properties</option>
             {properties.map((p) => (
               <option key={p.id} value={p.id}>
@@ -297,8 +297,9 @@ export default function UtilitiesPage() {
                     </div>
                     <div className="utility-card-copy">
                       <div className="utility-card-type">{x.utility_type}</div>
-                      <div className="utility-card-provider">{x.provider}</div>
-                      <div className="utility-card-meta">
+                      <div className="utility-card-provider">
+                        <span>{x.provider}</span>
+                        <span>·</span>
                         <span>{x.responsibility}</span>
                         <span>·</span>
                         <span>Autopay {x.autopay ? "on" : "off"}</span>

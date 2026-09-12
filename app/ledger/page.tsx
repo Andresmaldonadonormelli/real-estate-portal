@@ -35,7 +35,7 @@ export default function LedgerDocsPage(){
     <PageHeader title="Ledger & Docs" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:undefined}/>
     <div className="ledger-v230-workspace">
       <UnderlineTabs primary value={tab} onChange={changeTab} label="Ledger sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Ledger'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
-      {!loading&&tab!=='documents'&&<ProductSelect label="Property" value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+      {!loading&&tab!=='documents'&&<ProductSelect aria-label="Property" value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'
         ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest} onActionHandled={()=>setAddRequest(0)}/>
         :tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} uploadRequest={uploadRequest} onActionHandled={()=>setUploadRequest(0)}/>} 

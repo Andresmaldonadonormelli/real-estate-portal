@@ -29,7 +29,7 @@ export default function ThemeToggle({variant='button'}:{variant?:'button'|'menu'
 
   if (!mounted) return null;
 
-  if(variant==='menu')return <div className="appearance-menu" aria-label="Appearance"><div className="appearance-menu-label"><Monitor size={19} strokeWidth={1.8}/><span>Appearance</span></div><div className="appearance-options">{(['light','dark','system'] as ThemeChoice[]).map(choice=><button type="button" key={choice} className={theme===choice?'active':''} aria-pressed={theme===choice} onClick={()=>selectTheme(choice)}>{choice[0].toUpperCase()+choice.slice(1)}</button>)}</div></div>;
+  if(variant==='menu')return <div className="appearance-menu" aria-label="Appearance"><div className="appearance-options">{(['system','light','dark'] as ThemeChoice[]).map(choice=><button type="button" key={choice} className={theme===choice?'active':''} aria-pressed={theme===choice} onClick={()=>selectTheme(choice)}>{choice[0].toUpperCase()+choice.slice(1)}</button>)}</div></div>;
 
   const resolvedDark=document.documentElement.getAttribute('data-theme')==='dark';
   const Icon = resolvedDark ? Moon : Sun;

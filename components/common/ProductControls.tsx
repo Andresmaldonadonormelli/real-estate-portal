@@ -15,6 +15,10 @@ export function SecondaryButton({children,onClick,className='',disabled=false}:{
   return <button type="button" className={`product-secondary-button ${className}`.trim()} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
+export function SecondaryLink({children,href,className=''}:{children:ReactNode;href:string;className?:string}){
+  return <a className={`product-secondary-button ${className}`.trim()} href={href}>{children}</a>;
+}
+
 export function ProductSelect({label,className='',children,...props}:SelectHTMLAttributes<HTMLSelectElement>&{label?:string;className?:string;children:ReactNode}){
   return <label className={`product-select ${className}`.trim()}>{label&&<span>{label}</span>}<span className="product-select-control"><select {...props}>{children}</select><ChevronDown size={17} aria-hidden="true"/></span></label>;
 }

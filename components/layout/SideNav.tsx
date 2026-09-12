@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, Gauge, Settings, UserRound, WalletCards } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { cachedSupabaseRequest } from '@/lib/supabaseData';
 
@@ -43,7 +42,6 @@ export default function SideNav() {
     </div>
     <div className="side-nav-footer">
       <Link href="/account" className={`nav-link ${pathname.startsWith('/account')||pathname.startsWith('/archive')?'active':''}`}><UserRound size={18}/>Account</Link>
-      <ThemeToggle />
     </div>
   </nav>;
 }

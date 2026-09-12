@@ -5,6 +5,7 @@ import { CalendarDays, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Unit } from '@/lib/types';
 import { formatKpiCurrency } from '@/lib/propertyFinancials';
+import { SecondaryButton } from '@/components/common/ProductControls';
 
 const LEASE_DOC_PREFIX = 'property-documents:';
 function leaseStorageRef(value?: string | null) {
@@ -34,7 +35,7 @@ export default function PropertyUnits({units,propertyId,onUnitsUpdated,onLeaseSy
                 </div>
                 <p>{unit.tenant_name||'No tenant assigned'}</p>
               </div>
-              <button type="button" className="property-secondary-action unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit unit</button>
+              <SecondaryButton className="unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit unit</SecondaryButton>
             </div>
 
             <div className="unit-core-facts">
