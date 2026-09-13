@@ -164,7 +164,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       <div className="ledger-v230-tools">
         <button className={showSearch||filters.search?'active':''} onClick={()=>setShowSearch(v=>!v)} aria-expanded={showSearch} aria-label="Search transactions"><Search size={17}/><span>Search</span></button>
         <button className={showFilters||activeFilterCount?'active':''} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>
-        {reviewCount>0&&<button type="button" className={`ledger-v230-review ${reviewFilter?'active':''}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><TriangleAlert size={17}/><span>Needs review</span><em>{reviewCount}</em></button>}
+        {reviewCount>0&&<button type="button" className={`ledger-v230-review ${reviewFilter?'active':''}`} aria-label={`Needs review: ${reviewCount}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><TriangleAlert size={17}/><span>Needs review</span><em>{reviewCount}</em></button>}
         <div className="ledger-v230-more-wrap"><button className={showMore?'active':''} onClick={()=>setShowMore(v=>!v)} aria-label="More ledger actions" aria-expanded={showMore}><MoreHorizontal size={18}/><span>More</span></button>{showMore&&<div className="ledger-v230-more-menu"><button onClick={()=>{setShowMore(false);openImport();}}><Upload size={16}/>Import CSV</button><button onClick={()=>{setShowMore(false);exportCsv();}}><Download size={16}/>Export CSV</button></div>}</div>
       </div>
     </div>

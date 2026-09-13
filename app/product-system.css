@@ -76,7 +76,7 @@
 .pulse-row-action{margin:0!important;color:var(--positive)!important;font-size:var(--type-small-size);line-height:var(--type-small-line);font-style:normal;font-weight:var(--weight-semibold);white-space:nowrap}
 .pulse-all-clear{padding:var(--space-5)!important;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--bg-secondary);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .financial-history-main-line,.financial-history-expense-line{vector-effect:non-scaling-stroke}
-.financial-history-plot{position:relative}.financial-history-active-dot{position:absolute;z-index:3;width:12px;height:12px;border:3px solid var(--bg-primary);border-radius:var(--radius-pill);transform:translate(-50%,-50%);pointer-events:none}
+.financial-history-plot{position:relative}.financial-history-y-axis{position:absolute;inset:0 auto 0 0;z-index:2;width:52px;pointer-events:none}.financial-history-y-axis span{position:absolute;left:0;transform:translateY(-50%);color:var(--text-tertiary);font:var(--font-label-small);white-space:nowrap}.financial-history-active-dot{position:absolute;z-index:3;width:12px;height:12px;border:3px solid var(--bg-primary);border-radius:var(--radius-pill);transform:translate(-50%,-50%);pointer-events:none}
 .financial-history-active-dot.is-negative{background:var(--negative)}.financial-history-active-dot.is-positive{background:var(--positive)}
 .pulse-periods,.property-chart-periods{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
 .pulse-periods::-webkit-scrollbar,.property-chart-periods::-webkit-scrollbar{display:none}.pulse-periods button,.property-chart-periods button{flex:0 0 auto}
@@ -359,7 +359,7 @@
   .ledger-v230-page-head{margin-bottom:var(--space-5)}.ledger-v230-tabs{width:100%;justify-content:space-between;gap:var(--space-3)}
   .ledger-v230-tabs button{flex:1}.ledger-v230-primary-row{display:block}.ledger-v230-property-picker,.ledger-v230-secondary-picker{width:100%}.ledger-v230-secondary-picker select{height:var(--control-height-mobile)}.ledger-v230-toolbar{align-items:center}.ledger-v230-tools>button,.ledger-v230-more-wrap>button{width:44px!important;height:44px!important;min-height:44px!important;padding:0!important;border-radius:50%}.ledger-v230-review{min-height:44px!important}.ledger-feed,.document-feed,.statement-feed{border-top:0}.ledger-summary-inline{border-top:0}.ledger-feed-row{padding-left:0}.ledger-feed-secondary{padding-left:0}.ledger-month-transaction{padding-left:0}.property-documents-toolbar{align-items:stretch}.property-documents-toolbar select{flex:1;min-width:0;height:var(--control-height-mobile)}.property-documents-toolbar .property-secondary-action{flex:0 0 auto}.unit-directory-item{padding:var(--space-4)!important}
   .document-toolbar{margin-top:0;justify-content:flex-start}
-  .document-filter-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2)}.document-filter-row .product-select{min-width:0}
+  .ledger-v230-shared-property{width:100%!important;margin-bottom:var(--space-3)}.document-filter-row{grid-template-columns:1fr;gap:var(--space-3);width:100%;margin-bottom:var(--space-5)}.document-filter-row .product-select{width:100%;min-width:0}
   .utility-grid{grid-template-columns:1fr}
   .account-settings-row{align-items:flex-start;flex-direction:column;gap:var(--space-3)}.appearance-menu,.appearance-options{width:100%}.appearance-options button{flex:1}
 }
@@ -476,8 +476,8 @@ html[data-theme="dark"] select option{
   .pulse-chart-controls .pulse-periods button{flex:0 0 auto!important}
   .pulse-chart-controls .pulse-property-select{grid-row:2;width:100%!important;max-width:none}
   .ledger-v230-action-placeholder{width:48px;height:var(--control-height-mobile)}
-  .ledger-v230-review{width:auto!important;min-width:0!important;height:44px!important;padding:0 var(--space-3)!important;border-radius:var(--radius-pill)!important;white-space:nowrap}
-  .ledger-v230-tools>.ledger-v230-review>span{display:inline!important}
+  .ledger-v230-review{position:relative;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:50%!important;justify-content:center;white-space:nowrap}
+  .ledger-v230-tools>.ledger-v230-review>span,.ledger-v230-review>em{display:none!important}
   .ledger-v230-filter-backdrop{display:block;position:fixed;inset:0;z-index:1090;border:0;background:var(--theme-overlay)}
   .ledger-v230-filter-panel{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:1100;display:grid!important;grid-template-columns:1fr!important;gap:var(--space-3)!important;max-height:calc(100dvh - 96px - env(safe-area-inset-bottom));margin:0!important;padding:var(--space-4)!important;border:1px solid var(--border-color)!important;border-bottom:0!important;border-radius:var(--radius-card) var(--radius-card) 0 0!important;background:var(--surface-elevated)!important;box-shadow:var(--shadow-overlay);overflow-y:auto}
   .ledger-v230-filter-head{display:flex!important;grid-column:1;position:static!important}
