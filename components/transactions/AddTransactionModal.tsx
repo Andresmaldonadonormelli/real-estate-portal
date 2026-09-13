@@ -109,10 +109,17 @@ export default function AddTransactionModal({ userId, properties, units, transac
     if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.('Transaction deleted');onClose();setSaving(false);
   }
 
+  async function excludeFromCashFlow(){
+    if(!transaction)return;setSaving(true);setError('');
+    const r=await supabase.from('transactions').update({status:'declined',needs_review:false,notes:'Excluded from cash flow by owner'}).eq('id',transaction.id);
+    if(r.error){setError(r.error.message);setSaving(false);return;}await onSaved('Transaction excluded from cash flow');onClose();setSaving(false);
+  }
+
   const linkedDocs=documents.filter(d=>linkedDocumentIds.includes(d.id));
   return <div className="quick-add-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}>
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
       <div className="quick-add-head"><div><div className="eyebrow">LEDGER</div><h2 id="quick-add-title">{editing?'Edit transaction':'Add transaction'}</h2><p>{editing?'Update the accounting details or supporting documents.':'Get it in now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
+      {transaction?.source==='plaid'&&<div className="quick-add-source"><strong>{transaction.source_institution||'Connected bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='disconnected'?'Disconnected bank · imported transaction':'Imported transaction'}</span></div>}
       {error&&<div className="quick-add-error">{error}</div>}
       <form onSubmit={submit} className="quick-add-form">
         <div className="quick-add-two"><label>Amount<input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label><label>Property<select required value={form.property_id} onChange={e=>{setForm({...form,property_id:e.target.value,unit_id:''});setLinkedDocumentIds([])}}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></label></div>
@@ -152,7 +159,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Turn this on only when you want this transaction to return to the review queue.</small></span></label>
         </div>}
-        <div className="quick-add-footer">{editing?<button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
+        <div className="quick-add-footer">{editing?<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button>{transaction?.source==='plaid'&&transaction.status!=='declined'&&<button type="button" className="transaction-archive-button" disabled={saving} onClick={excludeFromCashFlow}>Exclude from cash flow</button>}</div>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
       </form>
     </div>
   </div>;

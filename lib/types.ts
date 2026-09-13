@@ -53,6 +53,9 @@ export interface Transaction {
   notes: string | null;
   import_key?: string | null;
   source?: string | null;
+  source_institution?: string | null;
+  source_account_mask?: string | null;
+  source_connection_status?: string | null;
   status?: 'pending' | 'posted' | 'declined';
   confirmed_at?: string | null;
   archived_at?: string | null;

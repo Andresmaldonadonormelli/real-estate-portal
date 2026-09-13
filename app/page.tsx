@@ -195,7 +195,9 @@ export default function Dashboard() {
     const today=new Date(); today.setHours(0,0,0,0);
     documents.filter(d=>d.expires_at).forEach(doc=>{const due=new Date(`${doc.expires_at}T12:00:00`);const days=Math.ceil((due.getTime()-today.getTime())/86400000);const remind=Number(doc.reminder_days||60);if(days<=remind){const prop=properties.find(p=>p.id===doc.property_id);items.push({id:`doc-${doc.id}`,kind:'document',title:days<0?`${doc.category} expired`:days===0?`${doc.category} due today`:`${doc.category} due in ${days} days`,detail:`${prop?.address||'Property'} · ${doc.title}`,days});}});
     const needsReview=transactions.filter(tx=>(tx.status||'posted')==='posted'&&((tx as Transaction & {needs_review?:boolean}).needs_review||tx.category==='Needs Review'));
-    if(needsReview.length){items.push({id:'needs-review',kind:'review',title:`Review ${needsReview.length} transaction${needsReview.length===1?'':'s'}`,detail:`Categorize ${needsReview.length===1?'it':'them'} before September reporting.`,actionLabel:'Review',days:-500});}
+    const importedReview=needsReview.filter(tx=>tx.source==='plaid');const otherReview=needsReview.filter(tx=>tx.source!=='plaid');
+    if(importedReview.length){items.push({id:'imported-review',kind:'review',title:`Review ${importedReview.length} imported transaction${importedReview.length===1?'':'s'}`,detail:'Assign accounting categories to new bank activity.',actionLabel:'Review',days:-501});}
+    if(otherReview.length){items.push({id:'needs-review',kind:'review',title:`Review ${otherReview.length} transaction${otherReview.length===1?'':'s'}`,detail:`Categorize ${otherReview.length===1?'it':'them'} before reporting.`,actionLabel:'Review',days:-500});}
     if(testActionsActive){
       const sampleProperty=properties[0];
       items.unshift(
@@ -299,7 +301,7 @@ function localDateKey(date:Date){return `${date.getFullYear()}-${String(date.get
 
 function buildDailyBrief(properties:Property[],units:Unit[],transactions:Transaction[],documents:PropertyDocument[],events:any[],previousVisit:string|null,now:Date):DailyInsight[]{
   const since=previousVisit?new Date(previousVisit).getTime():0; const month=now.toISOString().slice(0,7); const items:DailyInsight[]=[]; const recentEvents=events.filter(event=>new Date(event.occurred_at).getTime()>since);
-  const changedTx=transactions.filter(tx=>new Date(tx.confirmed_at||tx.created_at||0).getTime()>since&&(tx.status||'posted')!=='pending'); const rentEvent=recentEvents.find(event=>event.event_type==='rent_confirmed'||event.event_type==='rent_declined');
+  const changedTx=transactions.filter(tx=>tx.source!=='plaid'&&new Date(tx.confirmed_at||tx.created_at||0).getTime()>since&&(tx.status||'posted')!=='pending'); const rentEvent=recentEvents.find(event=>event.event_type==='rent_confirmed'||event.event_type==='rent_declined');
   if(rentEvent){const property=properties.find(p=>p.id===rentEvent.property_id);items.push({id:`changed-${rentEvent.id}`,kicker:'Changed',title:rentEvent.event_type==='rent_confirmed'?'Rent was confirmed':'Rent confirmation was declined',detail:property?.address||'Portfolio rent',tone:'positive',kind:'rent',href:rentEvent.property_id?`/ledger?property=${rentEvent.property_id}`:'/ledger'});}
   else if(changedTx.length){items.push({id:`changed-transactions-${since}`,kicker:'Changed',title:`${changedTx.length} transaction${changedTx.length===1?' was':'s were'} added or updated`,detail:'Since your previous visit',tone:'neutral',kind:'expense',href:'/ledger'});}
   else {const changedDocs=documents.filter(doc=>new Date(doc.created_at||0).getTime()>since);if(changedDocs.length)items.push({id:`changed-docs-${since}`,kicker:'Changed',title:`${changedDocs.length} document${changedDocs.length===1?' was':'s were'} added`,detail:'Since your previous visit',tone:'neutral',kind:'occupancy',href:'/ledger?tab=documents'});}

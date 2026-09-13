@@ -127,7 +127,7 @@ export default function PropertyOverview({ property, units, transactions, expect
   return <div className="property-overview-pulse"><div className="property-overview-layout">
     <main className="property-overview-main">
       <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{fullyVacant?(inspected?`${inspected.fullLabel} holding costs`:'Holding costs this month'):(inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month')}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={fullyVacant||currentValue<0?'amount-negative':'amount-positive'}><AnimatedValue value={fullyVacant?currentExpenses:currentValue} animate={!inspected}/></span></div>{!fullyVacant&&<div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div>}</div></div></div>
+        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{fullyVacant?(inspected?`${inspected.fullLabel} holding costs`:'Holding costs this month'):(inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month')}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={fullyVacant||currentValue<0?'amount-negative':'amount-positive'}><AnimatedValue value={fullyVacant?currentExpenses:currentValue} animate={!inspected} tone={fullyVacant?'negative':undefined}/></span></div>{!fullyVacant&&<div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div>}</div></div></div>
         {fullyVacant?<div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense"/>Holding costs</span></div>:<ChartLegend negative={currentValue<0}/>} 
         <FinancialHistoryChart rows={history} mode={mode} kind={fullyVacant?'holdingCosts':'cashFlow'} label={fullyVacant?`Monthly holding costs for ${property.address}`:`Monthly ${mode === 'cashFlow' ? 'cash flow' : 'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
         <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div>{!fullyVacant&&<SegmentedControl value={mode} onChange={setMode} label="Chart metric" className="property-chart-modes" options={[{value:'cashFlow',label:'Cash flow'},{value:'noi',label:'NOI'}]}/>}</div>
@@ -165,7 +165,7 @@ function RentConfirmationDialog({ count, confirming, onClose, onConfirm }: { cou
   return <div className="property-rent-dialog-backdrop" role="presentation" onMouseDown={onClose}><div className="property-rent-dialog" role="dialog" aria-modal="true" aria-labelledby="property-rent-dialog-title" onMouseDown={event => event.stopPropagation()}><div><h2 id="property-rent-dialog-title">Confirm rent</h2><button type="button" onClick={onClose} aria-label="Close">×</button></div><p>Confirm {count} pending rent {count === 1 ? 'payment' : 'payments'} for this property.</p><div className="property-rent-dialog-actions"><button type="button" className="secondary-pill" onClick={onClose}>Cancel</button><button type="button" className="primary-action" disabled={confirming} onClick={onConfirm}>{confirming ? 'Confirming…' : 'Confirm received'}</button></div></div></div>;
 }
 
-function AnimatedValue({ value, animate }: { value: number; animate: boolean }) {
+function AnimatedValue({ value, animate, tone }: { value: number; animate: boolean; tone?:'positive'|'negative' }) {
   const [display, setDisplay] = useState(value);
   useEffect(() => {
     if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setDisplay(value); return; }
@@ -175,7 +175,7 @@ function AnimatedValue({ value, animate }: { value: number; animate: boolean }) 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [value, animate]);
-  return <strong className={display < 0 ? 'amount-negative' : display > 0 ? 'amount-positive' : ''}>{formatKpiCurrency(display)}</strong>;
+  return <strong className={tone?`amount-${tone}`:display < 0 ? 'amount-negative' : display > 0 ? 'amount-positive' : ''}>{formatKpiCurrency(display)}</strong>;
 }
 
 function BreakdownRow({ item, index, total, propertyId }: { item: ReturnType<typeof buildBreakdown>[number]; index: number; total: number; propertyId: string }) {
