@@ -307,7 +307,7 @@
 
 /* Shared contained-module foundation. */
 .portfolio-rail,.property-preview-card,.property-pulse-rail,.improve-planner,.unit-directory-item,.utility-directory-card{border:1px solid var(--border-color);border-radius:var(--radius-card);box-shadow:none}
-.compact-properties-list{gap:0!important}.property-preview-card{border:0!important;border-bottom:1px solid var(--border-color)!important;border-radius:0!important;background:transparent!important}.property-preview-card:first-child{border-top:1px solid var(--border-color)!important}.property-preview-card:hover{border-radius:0!important;background:var(--surface-hover)!important;transform:none!important}
+.compact-properties-list{gap:var(--space-3)!important}.property-preview-card{border:1px solid var(--border-color)!important;border-radius:var(--radius-card)!important;background:transparent!important}.property-preview-card:hover{border-color:var(--border-strong)!important;background:var(--surface-hover)!important;transform:none!important}
 
 @media(max-width:1050px){
   .compact-properties-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -367,7 +367,7 @@
 .nav-count-review{color:var(--bg-primary)!important}
 .workspace-form-divider{height:1px;background:var(--border-color)}.workspace-checkbox{display:flex!important;align-items:center;gap:var(--space-2);padding-top:var(--space-5)}.workspace-checkbox input{width:auto!important;height:auto!important}.mortgage-delete-button{justify-self:start}
 
-@media (hover:none){.property-preview-card:hover,.property-preview-card:active{background:var(--bg-secondary)!important;transform:none!important}.property-preview-card *{transform:none!important}}
+@media (hover:none){.property-preview-card,.property-preview-card:hover,.property-preview-card:active,.property-preview-card:focus{background:transparent!important;transform:none!important}.property-preview-card *{transform:none!important}}
 
 .workspace-form-section-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .improve-control-head{display:flex;align-items:center;justify-content:space-between}.improve-control-head button,.improve-mortgage-assumptions button{color:var(--positive);font-size:var(--type-button-size);font-weight:var(--type-button-weight)}.improve-assumptions,.improve-mortgage-assumptions{padding-top:var(--space-4);border-top:1px solid var(--border-color);color:var(--text-secondary);font-size:var(--type-small-size)}.improve-mortgage-assumptions{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4)}.improve-mortgage-assumptions button{white-space:nowrap}
@@ -439,7 +439,7 @@ html[data-theme="dark"] select option{
 /* Financial history: reserve the top gutter for inspection and keep the plot readable. */
 .financial-history-grid{stroke:var(--border-color);stroke-width:1;stroke-dasharray:2 4}
 .financial-history-y-label{fill:var(--text-secondary);font-size:12px;font-weight:var(--weight-medium)}
-.financial-history-tooltip{top:0!important;min-width:200px!important;padding:var(--space-2) var(--space-3)!important;gap:var(--space-1) var(--space-4)!important;font-size:var(--type-small-size)!important;line-height:1.3}
+.financial-history-tooltip{top:0!important;min-width:200px!important;padding:var(--space-2) var(--space-3)!important;gap:var(--space-1) var(--space-4)!important;border-color:var(--border-strong)!important;background:var(--surface-elevated)!important;font-size:var(--type-small-size)!important;line-height:1.3}
 .financial-history-tooltip>b{display:flex;gap:var(--space-1)}
 .financial-history-tooltip>b i{color:var(--text-secondary)!important;font-weight:var(--weight-regular)}
 .financial-history-tooltip span strong{text-align:right;font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums}
@@ -461,13 +461,26 @@ html[data-theme="dark"] select option{
 .ledger-v230-filter-panel .product-select{min-width:0}
 .ledger-v230-filter-panel .product-select-control,.ledger-v230-filter-panel>input{height:var(--control-height-desktop)}
 .ledger-v230-filter-panel .product-select-control select{font-size:var(--type-small-size)}
+.ledger-v230-filter-backdrop,.ledger-v230-filter-apply{display:none}
+.ledger-v230-action-placeholder{display:block;width:148px;height:var(--control-height-desktop)}
 
 /* Annual and quarterly expense bars share one visual width. */
 .expense-bars i{flex:0 0 42px!important;width:42px!important;max-width:calc((100% - var(--space-2))/3)!important;border-radius:var(--radius-control) var(--radius-control) 0 0!important}
 
 @media(max-width:767px){
-  .financial-history-tooltip{top:var(--space-1)!important;min-width:146px!important;padding:var(--space-2)!important;gap:2px var(--space-2)!important;font-size:11px!important}
+  .financial-history-tooltip{top:0!important;min-width:146px!important;padding:var(--space-2)!important;gap:2px var(--space-2)!important;font-size:var(--type-label-size)!important;background:var(--surface-elevated)!important}
   .financial-tooltip-long{display:none}.financial-tooltip-short{display:inline}
   .expense-bars i{flex-basis:20px!important;width:20px!important}
-  .ledger-v230-filter-panel{grid-template-columns:1fr!important}
+  .pulse-chart-controls{display:grid!important;grid-template-columns:1fr!important;gap:var(--space-3)!important}
+  .pulse-chart-controls .pulse-periods{grid-row:1;width:100%;justify-content:flex-start!important;gap:var(--space-5)!important;overflow:visible}
+  .pulse-chart-controls .pulse-periods button{flex:0 0 auto!important}
+  .pulse-chart-controls .pulse-property-select{grid-row:2;width:100%!important;max-width:none}
+  .ledger-v230-action-placeholder{width:48px;height:var(--control-height-mobile)}
+  .ledger-v230-review{width:auto!important;min-width:0!important;height:44px!important;padding:0 var(--space-3)!important;border-radius:var(--radius-pill)!important;white-space:nowrap}
+  .ledger-v230-tools>.ledger-v230-review>span{display:inline!important}
+  .ledger-v230-filter-backdrop{display:block;position:fixed;inset:0;z-index:1090;border:0;background:var(--theme-overlay)}
+  .ledger-v230-filter-panel{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:1100;display:grid!important;grid-template-columns:1fr!important;gap:var(--space-3)!important;max-height:calc(100dvh - 96px - env(safe-area-inset-bottom));margin:0!important;padding:var(--space-4)!important;border:1px solid var(--border-color)!important;border-bottom:0!important;border-radius:var(--radius-card) var(--radius-card) 0 0!important;background:var(--surface-elevated)!important;box-shadow:var(--shadow-overlay);overflow-y:auto}
+  .ledger-v230-filter-head{display:flex!important;grid-column:1;position:static!important}
+  .ledger-v230-filter-panel .product-select-control,.ledger-v230-filter-panel>input{height:var(--control-height-mobile)}
+  .ledger-v230-filter-apply{display:block;min-height:var(--control-height-mobile);border-radius:var(--radius-pill);background:var(--text-primary);color:var(--bg-primary);font-size:var(--type-button-size);font-weight:var(--type-button-weight)}
 }

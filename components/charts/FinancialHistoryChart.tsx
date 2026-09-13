@@ -18,8 +18,8 @@ export default function FinancialHistoryChart({rows,mode='cashFlow',label,onInsp
   useEffect(()=>{setSelected(null);onInspect?.(null)},[rows,mode,onInspect]);
 
   const width=820;
-  const height=246;
-  const pad={left:50,right:4,top:68,bottom:10};
+  const height=276;
+  const pad={left:50,right:4,top:98,bottom:10};
   const innerWidth=width-pad.left-pad.right;
   const incomeValues=rows.map(row=>row.income);
   const expenseValues=rows.map(row=>mode==='cashFlow'?row.cashExpenses:row.operatingExpenses);

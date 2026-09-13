@@ -253,7 +253,7 @@ export default function PropertiesPage() {
             const hasFinancialActivity=propertyTx.some(tx=>Math.abs(Number(tx.amount||0))>0);
             const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
             const sparklineRows=buildMonthlyFinancialHistory(transactions as any[],'1Y',property.id);
-            return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card card">
+            return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card">
               <div className="property-preview-left">
                 <div className="property-preview-identity">
                   {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb" width="96" height="96" loading={index===0?'eager':'lazy'} fetchPriority={index===0?'high':'auto'} decoding="async"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}

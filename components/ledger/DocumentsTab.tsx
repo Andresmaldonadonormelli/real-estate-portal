@@ -121,7 +121,7 @@ export default function DocumentsTab({ selectedPropertyId, onSelectedPropertyCha
     {error && <div style={errorBox}>{error}</div>}
     {!properties.length && !loading && <div className="card" style={{padding:20,marginBottom:16}}>Add a property before uploading documents.</div>}
 
-    <div className="document-filter-row"><ProductSelect aria-label="Property" value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect><ProductSelect aria-label="Document category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect></div>
+    <div className="document-filter-row"><ProductSelect aria-label="Document category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect></div>
 
     {loading ? <PageSkeleton variant="ledger" /> : filtered.length === 0 ? <div className="ledger-open-empty">No documents yet.</div> :
       <DocumentFeed items={filtered.map(doc=>documentFeedItem(doc,propertyName(doc.property_id),unitName(doc.unit_id)))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>

@@ -56,6 +56,13 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [showFilters,setShowFilters]=useState(false);
   const [showMore,setShowMore]=useState(false);
 
+  useEffect(()=>{
+    if(!showFilters)return;
+    const previous=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    return()=>{document.body.style.overflow=previous};
+  },[showFilters]);
+
   async function loadData() {
     setLoading(true); setError('');
     try {
@@ -157,18 +164,19 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       <div className="ledger-v230-tools">
         <button className={showSearch||filters.search?'active':''} onClick={()=>setShowSearch(v=>!v)} aria-expanded={showSearch} aria-label="Search transactions"><Search size={17}/><span>Search</span></button>
         <button className={showFilters||activeFilterCount?'active':''} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>
-        {reviewCount>0&&<button type="button" className={`ledger-v230-review ${reviewFilter?'active':''}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><TriangleAlert size={17}/><span>Review</span><em>{reviewCount}</em></button>}
+        {reviewCount>0&&<button type="button" className={`ledger-v230-review ${reviewFilter?'active':''}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><TriangleAlert size={17}/><span>Needs review</span><em>{reviewCount}</em></button>}
         <div className="ledger-v230-more-wrap"><button className={showMore?'active':''} onClick={()=>setShowMore(v=>!v)} aria-label="More ledger actions" aria-expanded={showMore}><MoreHorizontal size={18}/><span>More</span></button>{showMore&&<div className="ledger-v230-more-menu"><button onClick={()=>{setShowMore(false);openImport();}}><Upload size={16}/>Import CSV</button><button onClick={()=>{setShowMore(false);exportCsv();}}><Download size={16}/>Export CSV</button></div>}</div>
       </div>
     </div>
     {showSearch&&<div className="ledger-v230-search"><Search size={18}/><input autoFocus placeholder="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})}/>{filters.search&&<button onClick={()=>setFilters({...filters,search:''})} aria-label="Clear search"><X size={16}/></button>}</div>}
-    {showFilters&&<div className="ledger-v230-filter-panel"><div className="ledger-v230-filter-head"><strong>Filters</strong><button onClick={()=>setShowFilters(false)} aria-label="Close filters"><X size={18}/></button></div>
+    {showFilters&&<><button type="button" className="ledger-v230-filter-backdrop" onClick={()=>setShowFilters(false)} aria-label="Close filters"/><div className="ledger-v230-filter-panel"><div className="ledger-v230-filter-head"><strong>Filters</strong><button onClick={()=>setShowFilters(false)} aria-label="Close filters"><X size={18}/></button></div>
       <ProductSelect aria-label="Transaction type" value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})}><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect>
       <ProductSelect aria-label="Transaction category" value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect>
       <input aria-label="Minimum amount" type="number" min="0" placeholder="Min amount" value={filters.min} onChange={e=>setFilters({...filters,min:e.target.value})}/>
       <input aria-label="Maximum amount" type="number" min="0" placeholder="Max amount" value={filters.max} onChange={e=>setFilters({...filters,max:e.target.value})}/>
       {activeFilterCount>0&&<button className="ledger-v230-clear" onClick={()=>setFilters({...filters,type:'',category:'',min:'',max:''})}>Clear filters</button>}
-    </div>}
+      <button className="ledger-v230-filter-apply" onClick={()=>setShowFilters(false)}>Apply filters</button>
+    </div></>}
     {activeFilterCount>0&&<div className="ledger-v230-filter-chips">{filters.type&&<button onClick={()=>setFilters({...filters,type:''})}>Type: {filters.type}<X size={13}/></button>}{filters.category&&<button onClick={()=>setFilters({...filters,category:''})}>{filters.category}<X size={13}/></button>}{filters.min&&<button onClick={()=>setFilters({...filters,min:''})}>Min ${filters.min}<X size={13}/></button>}{filters.max&&<button onClick={()=>setFilters({...filters,max:''})}>Max ${filters.max}<X size={13}/></button>}</div>}
 
     <div className="ledger-summary-inline"><Metric label="Income" value={formatCurrency(total.income)} tone="positive"/><Metric label="Expenses" value={formatCurrency(total.expense)} tone="negative"/><Metric label="Net" value={formatCurrency(total.net)} tone={total.net>=0?'positive':'negative'}/></div>
