@@ -1,5 +1,7 @@
 'use client';
 
+import { ProductSelect } from '@/components/common/ProductControls';
+
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';

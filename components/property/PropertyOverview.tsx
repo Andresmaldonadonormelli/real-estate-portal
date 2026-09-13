@@ -46,7 +46,7 @@ export default function PropertyOverview({ property, units, transactions, expect
     cashFlow: sum.cashFlow + row.cashFlow,
     noi: sum.noi + row.noi,
   }), { ...(current || { key: '', label: '', fullLabel: '', periodLabel: '' }), income: 0, cashExpenses: 0, operatingExpenses: 0, cashFlow: 0, noi: 0 });
-  const displayed = inspected || periodDisplayed;
+  const displayed = inspected || current;
   const currentValue = mode === 'cashFlow' ? (displayed?.cashFlow || 0) : (displayed?.noi || 0);
   const currentExpenses = mode === 'cashFlow' ? (displayed?.cashExpenses || 0) : (displayed?.operatingExpenses || 0);
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -127,7 +127,7 @@ export default function PropertyOverview({ property, units, transactions, expect
   return <div className="property-overview-pulse"><div className="property-overview-layout">
     <main className="property-overview-main">
       <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{mode === 'cashFlow' ? 'Cash flow' : 'NOI'}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={currentValue < 0 ? 'amount-negative' : currentValue > 0 ? 'amount-positive' : ''}><AnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span>{formatKpiCurrency(displayed?.income || 0)}</b><b><span>Expenses</span>{formatKpiCurrency(currentExpenses)}</b></div></div></div></div>
+        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month'}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className="amount-cash-flow"><AnimatedValue value={currentValue} animate={!inspected}/></span></div><div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div></div></div></div>
         <ChartLegend negative={currentValue<0}/>
         <FinancialHistoryChart rows={history} mode={mode} label={`Monthly ${mode === 'cashFlow' ? 'cash flow' : 'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
         <div className="property-chart-footer"><div className={`property-chart-periods ${currentValue < 0 ? 'is-negative' : 'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div><SegmentedControl value={mode} onChange={setMode} label="Chart metric" className="property-chart-modes" options={[{value:'cashFlow',label:'Cash flow'},{value:'noi',label:'NOI'}]}/></div>
