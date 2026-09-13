@@ -373,3 +373,26 @@
 .improve-control-head{display:flex;align-items:center;justify-content:space-between}.improve-control-head button,.improve-mortgage-assumptions button{color:var(--positive);font-size:var(--type-button-size);font-weight:var(--type-button-weight)}.improve-assumptions,.improve-mortgage-assumptions{padding-top:var(--space-4);border-top:1px solid var(--border-color);color:var(--text-secondary);font-size:var(--type-small-size)}.improve-mortgage-assumptions{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4)}.improve-mortgage-assumptions button{white-space:nowrap}
 .improve-range-control input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border:0!important;outline:0;background:linear-gradient(to right,var(--positive) 0 var(--range-fill),var(--surface-subtle) var(--range-fill) 100%);box-shadow:none;border-radius:var(--radius-pill)}.improve-range-control input[type=range]::-webkit-slider-runnable-track{-webkit-appearance:none;height:6px;border:0;background:transparent;box-shadow:none}.improve-range-control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border:1px solid var(--border-color);border-radius:var(--radius-pill);background:var(--bg-primary);box-shadow:var(--theme-shadow-card)}.improve-range-control input[type=range]::-moz-range-track{height:6px;border:0;background:var(--surface-subtle);border-radius:var(--radius-pill)}.improve-range-control input[type=range]::-moz-range-progress{height:6px;border:0;background:var(--positive);border-radius:var(--radius-pill)}.improve-range-control input[type=range]::-moz-range-thumb{width:20px;height:20px;border:1px solid var(--border-color);border-radius:var(--radius-pill);background:var(--bg-primary);box-shadow:var(--theme-shadow-card)}.improve-range-control input[type=range]:focus-visible::-webkit-slider-thumb{outline:2px solid var(--positive);outline-offset:3px}.improve-range-control input[type=range]:focus-visible::-moz-range-thumb{outline:2px solid var(--positive);outline-offset:3px}
 .improve-chart-axis{position:relative!important;display:block!important;height:24px;margin-top:var(--space-2);border-top:1px solid var(--border-color)}.improve-chart-axis span{position:absolute;top:var(--space-1);transform:translateX(-50%);color:var(--text-muted);font-size:var(--type-label-size)}.improve-chart-axis span:first-child{transform:none}.improve-chart-axis span:last-child{transform:translateX(-100%)}.improve-chart-legend{display:flex;gap:var(--space-4)}
+
+/* Theme-owned shared surfaces. Keep controls and fixed navigation on the same
+   semantic palette as the page, including the first mobile paint. */
+html[data-theme="dark"] .bottom-nav{
+  background:var(--theme-page)!important;
+  border-color:var(--theme-border)!important;
+  color:var(--theme-text-primary)!important;
+}
+html[data-theme="dark"] .bottom-nav-link{color:var(--theme-text-secondary)!important}
+html[data-theme="dark"] .bottom-nav-link.active{
+  background:var(--theme-nav-active)!important;
+  color:var(--theme-nav-active-text)!important;
+}
+html[data-theme="dark"] select,
+html[data-theme="dark"] .product-select select{
+  background-color:var(--theme-input)!important;
+  color:var(--theme-text-primary)!important;
+  border-color:var(--theme-border-strong)!important;
+}
+html[data-theme="dark"] select option{
+  background:var(--theme-elevated);
+  color:var(--theme-text-primary);
+}

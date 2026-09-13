@@ -4,6 +4,8 @@ import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
 import './product-system.css';
 
+const themeInitScript = `(function(){try{var saved=localStorage.getItem('theme');var choice=saved==='light'||saved==='dark'||saved==='system'?saved:'system';var resolved=choice==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):choice;var root=document.documentElement;root.setAttribute('data-theme',resolved);root.style.colorScheme=resolved;}catch(e){}})();`;
+
 export const metadata: Metadata = {
   title: 'RE Portal',
   description: 'Manage your rental properties',
@@ -40,7 +42,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <AuthGate><MainLayout>{children}</MainLayout></AuthGate>
       </body>

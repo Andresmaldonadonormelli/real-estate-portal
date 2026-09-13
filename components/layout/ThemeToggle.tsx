@@ -43,4 +43,4 @@ export default function ThemeToggle({variant='button'}:{variant?:'button'|'menu'
   );
 }
 
-function applyTheme(choice:ThemeChoice){const resolved=choice==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):choice;document.documentElement.setAttribute('data-theme',resolved)}
+function applyTheme(choice:ThemeChoice){const resolved=choice==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):choice;document.documentElement.setAttribute('data-theme',resolved);document.documentElement.style.colorScheme=resolved}
