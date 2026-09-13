@@ -33,7 +33,7 @@ export default function PropertyUnits({units,propertyId,onUnitsUpdated,onLeaseSy
                   <h3>{unit.unit_number||`Unit ${index+1}`}</h3>
                   <span className={unit.occupied?'unit-status occupied':'unit-status vacant'}>{unit.occupied?'Occupied':'Vacant'}</span>
                 </div>
-                <p>{unit.tenant_name||'No tenant assigned'}</p>
+                <p><span className="unit-tenant-label">Tenant</span>{unit.tenant_name||'No tenant assigned'}</p>
               </div>
               <SecondaryButton className="unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit unit</SecondaryButton>
             </div>
