@@ -1,0 +1,4 @@
+import { apiError, adminDb, authenticatedUser } from '@/lib/plaid/server';
+import { syncPlaidItem } from '@/lib/plaid/sync';
+export const runtime='nodejs';
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){try{const user=await authenticatedUser(request);const {id}=await params;const {propertyId}=await request.json();const db=adminDb();const {data:account,error}=await db.from('plaid_accounts').update({property_id:propertyId||null}).eq('id',id).eq('user_id',user.id).select('item_id').single();if(error)throw error;const {data:item,error:itemError}=await db.from('plaid_items').select('*').eq('id',account.item_id).eq('user_id',user.id).single();if(itemError)throw itemError;await syncPlaidItem(db,item);return Response.json({ok:true});}catch(error){return apiError(error)}}

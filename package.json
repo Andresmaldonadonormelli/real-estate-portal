@@ -13,7 +13,10 @@
     "react-dom": "^18.3.1",
     "next": "^15.0.0",
     "@supabase/supabase-js": "^2.57.0",
+    "jose": "^6.1.0",
     "lucide-react": "^0.468.0"
+    ,"plaid": "^41.0.0"
+    ,"react-plaid-link": "^4.1.1"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
