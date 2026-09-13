@@ -34,7 +34,7 @@ export default function ActionsPage() {
       const [p, d, t] = await Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at', null).order('address')),
         supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at', null).not('expires_at','is',null),
-        supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at', null).or('status.eq.pending,needs_review.eq.true,category.eq.Needs Review'),
+        supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at', null).or('status.eq.pending,needs_review.eq.true,category.eq.Needs Review,is_new_import.eq.true'),
       ]);
       if (p.error || d.error || t.error) setError((p.error || d.error || t.error)!.message);
       else {
@@ -65,8 +65,9 @@ export default function ActionsPage() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const needsReview=txs.filter(t=>(t.status||'posted')==='posted'&&((t as Transaction & {needs_review?:boolean}).needs_review||t.category==='Needs Review'));
-    if(needsReview.length){a.push({id:'needs-review',kind:'review',title:`${needsReview.length} transaction${needsReview.length===1?'':'s'} need categorization`,detail:'Review before your accountant export',href:'/ledger?review=1',days:-500});}
+    const posted=txs.filter(t=>(t.status||'posted')==='posted');const newImports=posted.filter(t=>t.is_new_import);const needsReview=posted.filter(t=>(t as Transaction & {needs_review?:boolean}).needs_review||t.category==='Needs Review');
+    if(newImports.length){a.push({id:'new-imports',kind:'review',title:`${newImports.length} new bank transaction${newImports.length===1?'':'s'}`,detail:'Review newly imported activity',href:'/ledger?imports=1',days:-501});}
+    if(needsReview.length){a.push({id:'needs-review',kind:'review',title:`${needsReview.length} transaction${needsReview.length===1?' needs':'s need'} a category`,detail:'Categorize before your accountant export',href:'/ledger?review=1',days:-500});}
 
     docs.filter(d => d.expires_at).forEach(d => {
       const days = Math.ceil((new Date(`${d.expires_at}T12:00:00`).getTime() - today.getTime()) / 86400000);

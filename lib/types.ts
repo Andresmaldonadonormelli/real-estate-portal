@@ -56,6 +56,8 @@ export interface Transaction {
   source_institution?: string | null;
   source_account_mask?: string | null;
   source_connection_status?: string | null;
+  is_new_import?: boolean;
+  import_acknowledged_at?: string | null;
   status?: 'pending' | 'posted' | 'declined';
   confirmed_at?: string | null;
   archived_at?: string | null;

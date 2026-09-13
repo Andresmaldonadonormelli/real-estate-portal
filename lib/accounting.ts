@@ -1,7 +1,9 @@
 export const ACCOUNTING_CATEGORIES = [
   'Needs Review',
+  'Uncategorized Inflow',
   'Rent',
   'Other Income',
+  'Refund',
   'Management Fee',
   'Leasing Fee',
   'Repairs & Maintenance',
@@ -12,6 +14,11 @@ export const ACCOUNTING_CATEGORIES = [
   'Capital Improvements / CapEx',
   'Legal & Professional',
   'Owner Distribution',
+  'Owner Contribution',
+  'Transfer',
+  'Loan Proceeds',
+  'Security Deposit',
+  'Credit Card Payment',
   'Balance Forward',
   'Other Expense',
 ] as const;
@@ -31,6 +38,8 @@ export function categoryKey(category: string) {
   if (c.includes('capital') || c.includes('capex') || c.includes('renovation')) return 'capex';
   if (c.includes('legal') || c.includes('professional')) return 'legal';
   if (c.includes('owner distribution')) return 'distribution';
+  if (c.includes('owner contribution')) return 'contribution';
+  if (c === 'transfer' || c.includes('loan proceeds') || c.includes('security deposit') || c.includes('credit card payment') || c.includes('uncategorized inflow')) return 'non-operating';
   if (c.includes('other income')) return 'other-income';
   if (c.includes('needs review') || c === 'other' || c.includes('other expense')) return 'review';
   if (c.includes('refund')) return 'refund';
@@ -38,5 +47,5 @@ export function categoryKey(category: string) {
 }
 
 export function categoryNeedsReview(category: string) {
-  return categoryKey(category) === 'review';
+  return categoryKey(category) === 'review' || categoryKey(category) === 'non-operating';
 }
