@@ -66,12 +66,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
     }
   },[editing,recurringMortgage,isMortgage,propertyDefaultAvailable,propertyDefaultAllocated,propertyDefaultSplit.principal,propertyDefaultSplit.interest,propertyDefaultSplit.escrow,transaction]);
 
-  const reviewReason=isMortgage&&!mortgageSplitComplete
-    ? 'The mortgage payment is confirmed, but its principal, interest and escrow breakdown is incomplete. Complete the split below or mark it reviewed if you intentionally want to leave it unsplit.'
-    : form.category==='Needs Review'
-      ? 'Choose the correct accounting category before year-end reporting, or mark reviewed if this classification is intentional.'
-      : 'This transaction was flagged for an owner accounting check. Review the category and supporting details, then mark it reviewed.';
-
   async function toggleRecurringMortgage(){
     if(!selectedProperty)return;
     const next=!recurringEnabled;
@@ -142,11 +136,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
         </div>}
-        {editing&&(form.needs_review||transaction?.needs_review)&&<div style={{padding:'14px 15px',borderRadius:16,background:'rgba(196,127,0,.09)',display:'grid',gap:8}}>
-          <div><strong style={{display:'block',fontSize:14}}>Why this needs review</strong><small style={{display:'block',marginTop:5,color:'var(--text-secondary)',lineHeight:1.45}}>{reviewReason}</small></div>
-          {form.needs_review&&<button type="button" className="primary-action" onClick={()=>setForm({...form,needs_review:false})} style={{justifySelf:'start',border:0,borderRadius:999,padding:'8px 12px',background:'var(--text-primary)',color:'var(--bg-primary)',fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)',cursor:'pointer'}}>Mark reviewed</button>}
-          {!form.needs_review&&<small style={{color:'var(--text-secondary)'}}>Marked reviewed. Save changes to keep it cleared.</small>}
-        </div>}
+        {editing&&form.needs_review&&<div className="quick-add-category-guidance"><strong>Category needed</strong><span>Choose an accounting category to finish reviewing this imported transaction.</span></div>}
         <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
         {showMore&&<div className="quick-add-more-panel">
           <label><span className="quick-add-label-title">Vendor / payee <em>(optional)</em></span><input value={form.payee_source} onChange={e=>setForm({...form,payee_source:e.target.value})}/></label>
