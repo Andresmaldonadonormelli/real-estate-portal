@@ -241,7 +241,7 @@ export default function Dashboard() {
   const displayedCashFlow=inspectedCashFlow||currentCashFlow;
 
   return <div className="dashboard-page pulse-page">
-    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<button className="pulse-add-button" type="button" onClick={()=>setShowQuickAdd(true)}><Plus size={18}/><span className="pulse-add-desktop">Add transaction</span><span className="pulse-add-mobile">Add</span></button>}</header>
+    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<details className="pulse-add-menu"><summary className="pulse-add-button"><Plus size={18}/><span className="pulse-add-desktop">Add</span><span className="pulse-add-mobile">Add</span></summary><div><button type="button" onClick={()=>setShowQuickAdd(true)}>Record offline rent</button><button type="button" onClick={()=>setShowQuickAdd(true)}>Add transaction</button><a href="/properties">Add property</a><a href="/ledger">Upload document</a></div></details>}</header>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="pulse-dashboard-grid">
