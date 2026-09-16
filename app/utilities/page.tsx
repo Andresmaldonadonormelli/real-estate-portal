@@ -297,19 +297,8 @@ export default function UtilitiesPage() {
                     </div>
                     <div className="utility-card-copy">
                       <div className="utility-card-type">{x.utility_type}</div>
-                      <div className="utility-card-provider">
-                        <span>{x.provider}</span>
-                        <span>·</span>
-                        <span>{x.responsibility}</span>
-                        <span>·</span>
-                        <span>Autopay {x.autopay ? "on" : "off"}</span>
-                        {x.account_number && (
-                          <>
-                            <span>·</span>
-                            <span>{maskedAccount(x.account_number)}</span>
-                          </>
-                        )}
-                      </div>
+                      <div className="utility-card-provider">{x.provider}</div>
+                      <div className="utility-card-meta">{x.responsibility} · Autopay {x.autopay ? "on" : "off"}{x.account_number ? ` · ${maskedAccount(x.account_number)}` : ""}</div>
                     </div>
                     <ChevronRight className="utility-card-chevron" size={18} />
                   </div>
@@ -346,12 +335,6 @@ export default function UtilitiesPage() {
               {detail.billing_cycle && (
                 <DetailRow l="Billing cycle" v={detail.billing_cycle} />
               )}{" "}
-              {detail.password_reference && (
-                <DetailRow
-                  l="Password manager reference"
-                  v={detail.password_reference}
-                />
-              )}{" "}
               {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
             </div>
             <div className="utility-detail-actions">
@@ -364,12 +347,12 @@ export default function UtilitiesPage() {
                       "noopener,noreferrer",
                     )
                   }
-                  style={secondary}
+                  className="product-secondary-button"
                 >
                   Open provider
                 </button>
               )}
-              <button onClick={() => edit(detail)} style={primary}>
+              <button type="button" onClick={() => edit(detail)} className="product-page-action">
                 Edit utility
               </button>
             </div>
@@ -404,19 +387,16 @@ export default function UtilitiesPage() {
               </div>
             </Field>
             <div style={two}>
-              <Field label="Utility type">
-                <select
+              <ProductSelect label="Utility type"
                   value={form.utility_type}
                   onChange={(e) =>
                     setForm({ ...form, utility_type: e.target.value })
                   }
-                  style={input}
                 >
                   {types.map((t) => (
                     <option key={t}>{t}</option>
                   ))}
-                </select>
-              </Field>
+                </ProductSelect>
               <Field label="Provider">
                 <input
                   required
@@ -428,19 +408,16 @@ export default function UtilitiesPage() {
                 />
               </Field>
             </div>
-            <Field label="Responsibility">
-              <select
+            <ProductSelect label="Responsibility"
                 value={form.responsibility}
                 onChange={(e) =>
                   setForm({ ...form, responsibility: e.target.value })
                 }
-                style={input}
               >
                 <option>Owner</option>
                 <option>Tenant</option>
                 <option>Shared</option>
-              </select>
-            </Field>
+              </ProductSelect>
             <button
               type="button"
               className={`sheet-details-toggle ${showDetails ? "expanded" : ""}`}
@@ -511,16 +488,6 @@ export default function UtilitiesPage() {
                   />
                   Autopay enabled
                 </label>
-                <Field label="Password manager reference">
-                  <input
-                    placeholder="For example, Cleveland Water in 1Password"
-                    value={form.password_reference}
-                    onChange={(e) =>
-                      setForm({ ...form, password_reference: e.target.value })
-                    }
-                    style={input}
-                  />
-                </Field>
                 <Field label="Notes">
                   <textarea
                     rows={3}
@@ -533,7 +500,7 @@ export default function UtilitiesPage() {
                 </Field>
               </div>
             )}
-            <button className="mobile-sheet-submit" style={primary}>
+            <button className="mobile-sheet-submit product-page-action">
               Save utility
             </button>
             {editing && (
@@ -563,7 +530,7 @@ export default function UtilitiesPage() {
                   type="button"
                   disabled={deleting}
                   onClick={() => del(editing)}
-                  style={danger}
+                  className="product-destructive-outline"
                 >
                   {deleting ? "Archiving…" : "Archive utility"}
                 </button>

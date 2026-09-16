@@ -113,7 +113,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const linkedDocs=documents.filter(d=>linkedDocumentIds.includes(d.id));
   return <div className="quick-add-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}>
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
-      <div className="quick-add-head"><div><div className="eyebrow">LEDGER</div><h2 id="quick-add-title">{editing?'Edit transaction':'Add transaction'}</h2><p>{editing?'Update the accounting details or supporting documents.':'Get it in now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
+      <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?'Edit transaction':'Add transaction'}</h2><p>{editing?'Update the accounting details or supporting documents.':'Get it in now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
       {transaction?.source==='plaid'&&<div className="quick-add-source"><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported transaction'}</span></div>}
       {error&&<div className="quick-add-error">{error}</div>}
       <form onSubmit={submit} className="quick-add-form">
