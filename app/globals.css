@@ -4979,7 +4979,7 @@ button.ledger-month-head:focus:not(:focus-visible){
 .pulse-page-header p{margin-top:var(--space-1);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--text-secondary)}
 .pulse-add-button,.ledger-v230-add{
   min-height:var(--control-height-desktop);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);
-  padding:0 var(--space-4);border:0;border-radius:var(--radius-pill);background:var(--accent);color:var(--accent-contrast);
+  padding:0 var(--space-4);border:0;border-radius:var(--radius-control);background:var(--accent);color:var(--accent-contrast);
   font-size:var(--type-small-size);font-weight:var(--weight-semibold);transition:background var(--motion-fast),transform var(--motion-fast);
 }
 .pulse-add-button:hover,.ledger-v230-add:hover{background:var(--action-hover);transform:translateY(-1px)}
@@ -5060,7 +5060,7 @@ button.ledger-month-head:focus:not(:focus-visible){
 .ledger-v230-tools{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2)}
 .ledger-v230-tools>button,.ledger-v230-more-wrap>button{
   min-height:var(--control-height-desktop);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 var(--space-3);
-  border:1px solid var(--border-color);border-radius:var(--radius-pill);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--type-small-size);font-weight:var(--weight-medium);
+  border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--type-small-size);font-weight:var(--weight-medium);
 }
 .ledger-v230-tools button.active{background:var(--surface-subtle);border-color:var(--border-strong)}
 .ledger-v230-tools button em{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:var(--radius-pill);background:var(--warning-soft);color:var(--warning);font-size:11px;font-style:normal}
@@ -5399,3 +5399,4 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 @media (hover:hover) and (pointer:fine){.nav-link:hover,.property-nav-link:hover,.bottom-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover{background:var(--surface-hover)!important;color:var(--text-primary)!important}}
 @media (hover:none){.nav-link:hover,.property-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover,.bottom-nav-link:hover{background:transparent!important}.nav-link:active,.property-nav-link:active,.theme-toggle:active,.mobile-menu-item:active,.bottom-nav-link:active{background:var(--surface-hover)!important}}
 @media(min-width:768px){.main-content{padding-left:240px}}
+.pulse-add-menu{position:relative}.pulse-add-button{cursor:pointer}.pulse-add-options{position:absolute;right:0;top:calc(100% + var(--space-2));z-index:20;min-width:220px;padding:var(--space-2);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--bg-primary);box-shadow:var(--card-shadow)}.pulse-add-options button{display:flex;width:100%;align-items:center;gap:var(--space-3);min-height:42px;padding:0 var(--space-3);border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);font:inherit;text-align:left;cursor:pointer}.pulse-add-options button:hover{background:var(--surface-hover)}.recent-activity-copy{min-width:0}.recent-activity-meta{color:var(--text-muted)!important}.recent-activity-right{display:grid;justify-items:end;gap:2px;font-variant-numeric:tabular-nums}.recent-activity-right small{color:var(--text-muted);font-size:var(--type-label-size);line-height:var(--type-label-line)}

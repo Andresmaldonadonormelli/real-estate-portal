@@ -44,6 +44,9 @@ export default function Dashboard() {
   const [testResolvedUnitIds, setTestResolvedUnitIds] = useState<string[]>([]);
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [activeTransaction,setActiveTransaction]=useState<Transaction|null>(null);
+  const [addMenuOpen,setAddMenuOpen]=useState(false);
+  const addMenuRef=useRef<HTMLDivElement|null>(null);
   const [toast,setToast]=useState('');
   const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
   const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
@@ -142,6 +145,7 @@ export default function Dashboard() {
   },[ensureRecurring,initializeDashboardVisit]);
 
   useEffect(()=>{load();},[load]);
+  useEffect(()=>{if(!addMenuOpen)return;const close=(event:MouseEvent)=>{if(!addMenuRef.current?.contains(event.target as Node))setAddMenuOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setAddMenuOpen(false)};document.addEventListener('mousedown',close);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('mousedown',close);document.removeEventListener('keydown',escape)};},[addMenuOpen]);
 
   async function generateTestRentChecks(){
     setError('');
@@ -190,8 +194,6 @@ export default function Dashboard() {
 
   const actionItems=useMemo(()=>{
     const items:{id:string;kind:'rent'|'document'|'review';title:string;detail:string;actionLabel?:string;propertyId?:string;days?:number;test?:boolean}[]=[];
-    const grouped=new Map<string,number>(); pendingRents.forEach(t=>grouped.set(t.property_id,(grouped.get(t.property_id)||0)+1));
-    grouped.forEach((count,propertyId)=>{const prop=properties.find(p=>p.id===propertyId);items.push({id:`rent-${propertyId}`,kind:'rent',propertyId,title:`Confirm ${monthLabel} rent`,detail:`${count} payment${count===1?' is':'s are'} waiting. Confirm them before monthly reporting.`,actionLabel:'Confirm'});});
     const today=new Date(); today.setHours(0,0,0,0);
     documents.filter(d=>d.expires_at).forEach(doc=>{const due=new Date(`${doc.expires_at}T12:00:00`);const days=Math.ceil((due.getTime()-today.getTime())/86400000);const remind=Number(doc.reminder_days||60);if(days<=remind){const prop=properties.find(p=>p.id===doc.property_id);items.push({id:`doc-${doc.id}`,kind:'document',title:days<0?`${doc.category} expired`:days===0?`${doc.category} due today`:`${doc.category} due in ${days} days`,detail:`${prop?.address||'Property'} · ${doc.title}`,days});}});
     const posted=transactions.filter(tx=>(tx.status||'posted')==='posted');const newImports=posted.filter(tx=>tx.is_new_import);const needsCategory=posted.filter(tx=>!tx.is_new_import&&((tx as Transaction & {needs_review?:boolean}).needs_review||tx.category==='Needs Review'));
@@ -200,7 +202,6 @@ export default function Dashboard() {
     if(testActionsActive){
       const sampleProperty=properties[0];
       items.unshift(
-        {id:'test-rent',kind:'rent',propertyId:sampleProperty?.id,title:`Confirm ${monthLabel} rents`,detail:`${sampleProperty?.address||'Sample property'} · Review expected rent`,test:true},
         {id:'test-insurance',kind:'document',title:'Insurance renewal due in 30 days',detail:`${sampleProperty?.address||'Sample property'} · Policy renewal`,days:30,test:true},
         {id:'test-lease',kind:'document',title:'Lease expires in 60 days',detail:`${sampleProperty?.address||'Sample property'} · Unit 1 lease`,days:60,test:true}
       );
@@ -241,7 +242,7 @@ export default function Dashboard() {
   const displayedCashFlow=inspectedCashFlow||currentCashFlow;
 
   return <div className="dashboard-page pulse-page">
-    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<details className="pulse-add-menu"><summary className="pulse-add-button"><Plus size={18}/><span className="pulse-add-desktop">Add</span><span className="pulse-add-mobile">Add</span></summary><div><button type="button" onClick={()=>setShowQuickAdd(true)}>Record offline rent</button><button type="button" onClick={()=>setShowQuickAdd(true)}>Add transaction</button><a href="/properties">Add property</a><a href="/ledger">Upload document</a></div></details>}</header>
+    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span className="pulse-add-desktop">Add</span><span className="pulse-add-mobile">Add</span></button>{addMenuOpen&&<div className="pulse-add-options"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record offline rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}</header>
     {error&&<div style={errorBox}>{error}</div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <div className="pulse-dashboard-grid">
@@ -262,7 +263,7 @@ export default function Dashboard() {
         </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>No material changes since yesterday</strong><span>New portfolio changes will appear here.</span></div>}
       </section>
       <ActionCenter items={actionItems.map(item=>({...item,detail:`${item.detail}${item.test?' · Test preview':''}`,onSelect:()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.id==='new-bank-imports'?'/ledger?imports=1':item.kind==='review'?'/ledger?review=1':'/ledger')}}))} onViewAll={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}/>
-      <RecentActivity items={transactions.filter(t=>(t.status||'posted')==='posted').map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return {id:tx.id,title:property?.address||'Portfolio activity',detail:`${tx.description}${unit?.unit_number?` · Unit ${unit.unit_number}`:''} · ${new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`,amount:tx.amount,type:tx.type,href:'/ledger'}})}/>
+      <RecentActivity items={transactions.filter(t=>(t.status||'posted')==='posted').map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;const bank=tx.source==='plaid'?`${tx.source_institution||'Bank'}${tx.source_account_mask?` •••• ${tx.source_account_mask}`:''} · Imported`:tx.category;return {id:tx.id,title:tx.description||tx.payee_source||tx.category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as any).needs_review?'Category needed':bank,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:'/ledger'}})} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </main>
       <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
         <div className="portfolio-rail-head"><h2 id="portfolio-rail-title">Properties</h2><Link href="/properties">Manage</Link></div>
@@ -273,7 +274,7 @@ export default function Dashboard() {
       </aside>
       </div>
     </>}
-    {showQuickAdd&&<AddTransactionModal userId={user.id} properties={properties} units={units} onClose={()=>setShowQuickAdd(false)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction added')}}/>}
+    {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction deleted')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
       {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
