@@ -12,8 +12,9 @@ type TxType = 'income' | 'expense' | 'transfer';
 type Doc = {id:string;title:string|null;file_name:string;category:string};
 type EditableTx = Transaction & {needs_review?:boolean|null;receipt_path?:string|null};
 
-export default function AddTransactionModal({ userId, properties, units, transaction, onClose, onSaved, onArchived }:{
+export default function AddTransactionModal({ userId, properties, units, transaction, viewOnly=false, onClose, onSaved, onArchived }:{
   userId:string; properties:Property[]; units:Unit[]; transaction?:EditableTx|null;
+  viewOnly?:boolean;
   onClose:()=>void; onSaved:(message?:string)=>void|Promise<void>; onArchived?:(message?:string)=>void|Promise<void>;
 }) {
   const editing=Boolean(transaction?.id);
@@ -31,6 +32,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [docSearch,setDocSearch]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
+  const [showEditor,setShowEditor]=useState(!viewOnly);
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
   const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
@@ -104,23 +106,19 @@ export default function AddTransactionModal({ userId, properties, units, transac
     if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.('Transaction deleted');onClose();setSaving(false);
   }
 
-  async function excludeFromCashFlow(){
-    if(!transaction)return;setSaving(true);setError('');
-    const r=await supabase.from('transactions').update({status:'declined',needs_review:false,notes:'Excluded from cash flow by owner'}).eq('id',transaction.id);
-    if(r.error){setError(r.error.message);setSaving(false);return;}await onSaved('Transaction excluded from cash flow');onClose();setSaving(false);
-  }
-
   const linkedDocs=documents.filter(d=>linkedDocumentIds.includes(d.id));
   return <div className="quick-add-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}>
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
-      <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?'Edit transaction':'Add transaction'}</h2><p>{editing?'Update the accounting details or supporting documents.':'Get it in now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
-      {transaction?.source==='plaid'&&<div className="quick-add-source"><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported transaction'}</span></div>}
+      <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?(showEditor?'Edit transaction':'Transaction details'):'Add transaction'}</h2><p>{editing?(showEditor?'Update the accounting details or supporting documents.':'Review the transaction before making changes.'):'Post it now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
+      {transaction?.source==='plaid'&&<div className="quick-add-source"><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported bank transaction'}</span></div>}
       {error&&<div className="quick-add-error">{error}</div>}
-      <form onSubmit={submit} className="quick-add-form">
-        <div className="quick-add-two"><label>Amount<input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label><ProductSelect label="Property" required value={form.property_id} onChange={e=>{setForm({...form,property_id:e.target.value,unit_id:''});setLinkedDocumentIds([])}}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect></div>
+      {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div><span>Category</span><strong>{form.needs_review?'Category needed':form.category}</strong></div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
+        {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}
+        <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label>
+        <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
-        <div className="quick-add-two"><ProductSelect label="Category" value={form.category} onChange={e=>{const category=e.target.value;const key=categoryKey(category);const type:TxType=['rent','other-income','refund'].includes(key)?'income':['contribution','distribution','non-operating'].includes(key)?'transfer':category==='Needs Review'?form.type:'expense';setForm({...form,category,type,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
-        <div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>
+        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const key=categoryKey(category);const type:TxType=['rent','other-income','refund'].includes(key)?'income':['contribution','distribution','non-operating'].includes(key)?'transfer':category==='Needs Review'?form.type:'expense';setForm({...form,category,type,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        {editing&&<div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>}
         {isMortgage&&<div className="mortgage-split-box">
           <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{formatCurrency(mortgageAllocated)} / {formatCurrency(mortgageAmount)}</span></div></div>
           <div className="mortgage-split-fields">
@@ -137,7 +135,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
         </div>}
-        {editing&&form.needs_review&&<div className="quick-add-category-guidance"><strong>Category needed</strong><span>Choose an accounting category to finish reviewing this imported transaction.</span></div>}
         <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
         {showMore&&<div className="quick-add-more-panel">
           <label><span className="quick-add-label-title">Vendor / payee <em>(optional)</em></span><input value={form.payee_source} onChange={e=>setForm({...form,payee_source:e.target.value})}/></label>
@@ -150,8 +147,8 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Turn this on only when you want this transaction to return to the review queue.</small></span></label>
         </div>}
-        <div className="quick-add-footer">{editing?<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button>{transaction?.source==='plaid'&&transaction.status!=='declined'&&<button type="button" className="transaction-exclude-button" disabled={saving} onClick={excludeFromCashFlow}>Exclude from cash flow</button>}</div>:<span/>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Save changes':'Save transaction'}</button></div>
-      </form>
+        <div className="quick-add-footer">{editing&&<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Update':'Post'}</button></div>
+      </form>}
     </div>
   </div>;
 }

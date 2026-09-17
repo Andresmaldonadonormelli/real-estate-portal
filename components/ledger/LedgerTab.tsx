@@ -211,7 +211,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       })}
     </div>}
 
-    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async message=>{await loadData();setToast(message||'Transaction archived')}}/>}
+    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async message=>{await loadData();setToast(message||'Transaction archived')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {showImport&&<Modal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
       <p style={{fontSize:14,color:'var(--text-secondary)'}}>Import a Doorvest ledger export in bulk. Re-importing the same CSV is safe because duplicate rows are skipped.</p>

@@ -54,7 +54,7 @@ export default function FinancialHistoryChart({rows,mode='cashFlow',kind='cashFl
 
   return <div className={`financial-history-chart-wrap ${holdingOnly?'is-holding-costs':''}`}>
     <div className="financial-history-plot">
-      <div className="financial-history-y-axis" aria-hidden="true">{axisLabels.map((tick,index)=><span key={index} style={{top:`${tick.y/height*100}%`,fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}>{tick.value}</span>)}</div>
+      <div className="financial-history-y-axis" aria-hidden="true">{axisLabels.map((tick,index)=><span key={index} style={{top:`${tick.y/height*100}%`}}>{tick.value}</span>)}</div>
       <svg className="financial-history-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label}
         onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);inspect(event)}}
         onPointerMove={event=>{if(event.pointerType==='mouse'||event.currentTarget.hasPointerCapture(event.pointerId))inspect(event)}}

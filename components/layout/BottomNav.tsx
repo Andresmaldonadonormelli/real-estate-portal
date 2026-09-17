@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Gauge, Menu, Settings, WalletCards } from 'lucide-react';
+import { Building2, Gauge, Settings, WalletCards, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 
-export default function BottomNav({ onMenuClick }:{onMenuClick:()=>void}) {
+export default function BottomNav() {
   const pathname=usePathname();
   const [mounted,setMounted]=useState(false);
   const [newImports,setNewImports]=useState(0);
@@ -19,7 +19,7 @@ export default function BottomNav({ onMenuClick }:{onMenuClick:()=>void}) {
     {href:'/',label:'Dashboard',icon:Gauge},
     {href:'/properties',label:'Properties',icon:Building2},
     {href:'/ledger',label:'Ledger',icon:WalletCards},
-    {href:'/utilities',label:'Utilities',icon:Settings},
+    {href:'/utilities',label:'Utilities',icon:Zap},
   ];
 
   if(!mounted) return null;
@@ -27,7 +27,7 @@ export default function BottomNav({ onMenuClick }:{onMenuClick:()=>void}) {
   return createPortal(
     <nav className="bottom-nav">
       {items.map(({href,label,icon:Icon})=>{const active=pathname===href||pathname.startsWith(href+'/')||(href==='/ledger'&&pathname.startsWith('/actions'));return <Link key={href} href={href} className={`bottom-nav-link ${active?'active':''}`}><Icon size={20}/><span>{label}</span>{href==='/ledger'&&newImports>0&&<b className="bottom-nav-count">{newImports}</b>}</Link>})}
-      <button onClick={onMenuClick} className="bottom-nav-link"><Menu size={20}/><span>Menu</span></button>
+      <Link href="/account" className={`bottom-nav-link ${pathname.startsWith('/account')?'active':''}`}><Settings size={20}/><span>Settings</span></Link>
     </nav>,
     document.body
   );

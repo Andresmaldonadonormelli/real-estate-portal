@@ -29,7 +29,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {!isMobile && <SideNav />}
       <main className="main-content">{children}</main>
-      {isMobile && <BottomNav onMenuClick={() => setShowNav(true)} />}
+      {isMobile && <BottomNav />}
       {isMobile && showNav && (
         <div className="mobile-menu-backdrop" onClick={() => setShowNav(false)}>
           <div className="mobile-menu-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Menu">
