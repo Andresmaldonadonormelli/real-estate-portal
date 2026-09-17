@@ -35,6 +35,20 @@ export default function PropertyOverview({ property, units, transactions, expect
   const [inspected, setInspected] = useState<MonthlyFinancialPoint | null>(null);
   const [rentReviewOpen, setRentReviewOpen] = useState(false);
   const [confirmingRent, setConfirmingRent] = useState(false);
+  const collapseStorageKey = `property-overview-collapsed:${property.id}`;
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try { setCollapsedSections(JSON.parse(localStorage.getItem(collapseStorageKey) || '{}')); } catch { setCollapsedSections({}); }
+  }, [collapseStorageKey]);
+
+  function toggleSection(id:string) {
+    setCollapsedSections(current => {
+      const next = {...current, [id]: !current[id]};
+      localStorage.setItem(collapseStorageKey, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const history = useMemo(() => buildMonthlyFinancialHistory(transactions, period, property.id), [transactions, period, property.id]);
   const current = history[history.length - 1];
@@ -133,14 +147,18 @@ export default function PropertyOverview({ property, units, transactions, expect
         <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div>{!fullyVacant&&<SegmentedControl value={mode} onChange={setMode} label="Chart metric" className="property-chart-modes" options={[{value:'cashFlow',label:'Cash flow'},{value:'noi',label:'NOI'}]}/>}</div>
       </section>
       <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`}/>
-      <FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/>
-      <PropertyExpenseTrendsChart transactions={transactions}/>
-      <OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal}/>
-      <KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period}/>
-      <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false}/>
+      <CollapsibleSection id="financials" title="Financial breakdown" collapsed={Boolean(collapsedSections.financials)} onToggle={toggleSection}><FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/></CollapsibleSection>
+      <CollapsibleSection id="trends" title="Expense trends" collapsed={Boolean(collapsedSections.trends)} onToggle={toggleSection}><PropertyExpenseTrendsChart transactions={transactions}/></CollapsibleSection>
+      <CollapsibleSection id="expenses" title="Operating expenses" collapsed={Boolean(collapsedSections.expenses)} onToggle={toggleSection}><OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal}/></CollapsibleSection>
+      <CollapsibleSection id="statistics" title="Key statistics" collapsed={Boolean(collapsedSections.statistics)} onToggle={toggleSection}><KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period}/></CollapsibleSection>
+      <CollapsibleSection id="transactions" title="Recent transactions" collapsed={Boolean(collapsedSections.transactions)} onToggle={toggleSection}><RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false}/></CollapsibleSection>
     </main>
     <PropertyPulse title={pulseHeadline} explanation={pulseExplanation} updatedAt={pulseUpdatedAt} collectedRent={collectedRent} expectedRent={expectedRent} rentProgress={rentProgress} expectedByToday={expectedByToday} pendingRent={pendingRent} onConfirm={() => setRentReviewOpen(true)} signals={pulseSignals}/>
   </div>{rentReviewOpen && <RentConfirmationDialog count={pendingRent} confirming={confirmingRent} onClose={() => setRentReviewOpen(false)} onConfirm={() => void confirmPropertyRents()}/>}</div>;
+}
+
+function CollapsibleSection({id,title,collapsed,onToggle,children}:{id:string;title:string;collapsed:boolean;onToggle:(id:string)=>void;children:React.ReactNode}){
+  return <section className="property-collapsible"><button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={()=>onToggle(id)}><span>{title}</span><ChevronDown size={18}/></button>{!collapsed&&<div className="property-collapsible-body">{children}</div>}</section>;
 }
 
 function PropertyPulse({ title, explanation, updatedAt, collectedRent, expectedRent, rentProgress, expectedByToday, pendingRent, onConfirm, signals }: { title: string; explanation: string; updatedAt: string; collectedRent: number; expectedRent: number; rentProgress: number; expectedByToday: number; pendingRent: number; onConfirm: () => void; signals: { key: string; label: string; value: string; tone: string; action: () => void }[] }) {

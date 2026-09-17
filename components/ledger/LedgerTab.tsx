@@ -11,7 +11,7 @@ import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculat
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X } from 'lucide-react';
+import { Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X, Landmark } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
@@ -224,7 +224,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   </div>;
 }
 
-function bankSource(tx:Transaction){if(tx.source!=='plaid')return '';return ` · ${tx.source_institution||'Bank'}${tx.source_account_mask?` •••• ${tx.source_account_mask}`:''} · ${tx.source_connection_status==='unlinked'?'Unlinked':'Imported'}`;}
+function bankSource(tx:Transaction){if(tx.source!=='plaid')return null;return <span className="ledger-bank-source"><Landmark size={12} aria-hidden="true"/>Imported from {tx.source_institution||'bank'}</span>;}
 function TxRow({tx,property,unit,attachmentCount,onEdit}:{tx:Transaction;property:string;unit:string;attachmentCount:number;onEdit:()=>void}){const pending=tx.status==='pending';const needsReview=Boolean((tx as Transaction & {needs_review?:boolean}).needs_review);return <button type="button" className={`ledger-feed-row ledger-month-transaction ${pending?'is-pending':''}`} onClick={onEdit}><span className="ledger-feed-main"><span className="ledger-feed-primary"><strong className={tx.is_new_import?'ledger-transaction-new':''}>{tx.description}</strong>{pending&&<span className="ledger-pending-text">(Pending)</span>}</span><span className="ledger-feed-secondary">{property}{unit?` · ${unit}`:''}</span><span className="ledger-feed-secondary">{needsReview?<em className="ledger-category-needed">Category needed</em>:tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}{bankSource(tx)}{attachmentCount>0&&<span className="ledger-paperclip"><Paperclip size={12}/>{attachmentCount}</span>}</span></span><span className="ledger-feed-right"><strong className={pending?'':tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{formatCurrency(tx.amount)}</strong><small>{formatDateShort(tx.transaction_date)}</small></span><ChevronRight size={17} className="ledger-feed-chevron"/></button>}
 
 function Metric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="ledger-summary-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}

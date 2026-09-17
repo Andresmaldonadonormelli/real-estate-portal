@@ -47,7 +47,7 @@ export default function PropertyUnits({units,propertyId,onUnitsUpdated,onLeaseSy
             <div className="unit-directory-details">
             <div className={`unit-lease-summary ${lease.tone}`}>
               <CalendarDays size={17}/>
-              <strong>{hasLeaseDates?`Lease · ${longDate(unit.lease_start_date)} → ${longDate(unit.lease_end_date)}`:unit.occupied?'Lease · Dates not set':'No active lease'}</strong>
+              <strong>{hasLeaseDates?`Lease expires ${longDate(unit.lease_end_date)}`:unit.occupied?'Lease · Dates not set':'No active lease'}</strong>
               {unit.occupied&&lease.short&&lease.short!=='Not set'&&lease.short!=='Vacant'?<small className={`lease-state-badge ${lease.tone}`}>{lease.short}</small>:null}
             </div>
 
