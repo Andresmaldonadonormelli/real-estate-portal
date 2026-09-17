@@ -137,7 +137,7 @@ export default function PropertyOverview({ property, units, transactions, expect
       <PropertyExpenseTrendsChart transactions={transactions}/>
       <OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal}/>
       <KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period}/>
-      <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`}/>
+      <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false}/>
     </main>
     <PropertyPulse title={pulseHeadline} explanation={pulseExplanation} updatedAt={pulseUpdatedAt} collectedRent={collectedRent} expectedRent={expectedRent} rentProgress={rentProgress} expectedByToday={expectedByToday} pendingRent={pendingRent} onConfirm={() => setRentReviewOpen(true)} signals={pulseSignals}/>
   </div>{rentReviewOpen && <RentConfirmationDialog count={pendingRent} confirming={confirmingRent} onClose={() => setRentReviewOpen(false)} onConfirm={() => void confirmPropertyRents()}/>}</div>;
@@ -153,7 +153,7 @@ function FinancialBreakdown({ propertyId, totals, noi, mortgage, cashFlow }: { p
 }
 
 function OperatingExpenses({ propertyId, items, total }: { propertyId: string; items: ReturnType<typeof buildBreakdown>; total: number }) {
-  return <section className="property-open-panel"><div className="property-panel-head"><div><h2>Operating expenses</h2></div><Link href={`/ledger?property=${propertyId}`} className="property-text-action">View ledger</Link></div><div className="origin-breakdown">{items.length ? items.map((item, index) => <BreakdownRow key={item.category} item={item} index={index} total={total} propertyId={propertyId}/>) : <Empty text="No operating expenses recorded."/>}</div></section>;
+  return <section className="property-open-panel"><div className="property-panel-head"><div><h2>Operating expenses</h2></div></div><div className="origin-breakdown">{items.length ? items.map((item, index) => <BreakdownRow key={item.category} item={item} index={index} total={total} propertyId={propertyId}/>) : <Empty text="No operating expenses recorded."/>}</div></section>;
 }
 
 function KeyStatistics({ property, expectedRent, occupied, unitCount, noi, expenseRatio, hasIncome, mortgage, period }: { property: Property; expectedRent: number; occupied: number; unitCount: number; noi: number; expenseRatio: number; hasIncome: boolean; mortgage: number; period: HistoryPeriod }) {

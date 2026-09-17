@@ -106,13 +106,28 @@ export default function AddTransactionModal({ userId, properties, units, transac
     if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.('Transaction deleted');onClose();setSaving(false);
   }
 
+  async function resolveCategory(category:string){
+    if(!transaction)return;
+    const key=categoryKey(category);
+    const type:TxType=['rent','other-income','refund'].includes(key)?'income':['contribution','distribution','non-operating'].includes(key)?'transfer':'expense';
+    setSaving(true);setError('');
+    const needsReview=categoryNeedsReview(category);
+    const r=await supabase.from('transactions').update({category,type,needs_review:needsReview}).eq('id',transaction.id);
+    if(r.error){setError(r.error.message);}
+    else {
+      setForm(current=>({...current,category,type,needs_review:needsReview}));
+      await onSaved('Category updated');
+    }
+    setSaving(false);
+  }
+
   const linkedDocs=documents.filter(d=>linkedDocumentIds.includes(d.id));
   return <div className="quick-add-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}>
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
       <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?(showEditor?'Edit transaction':'Transaction details'):'Add transaction'}</h2><p>{editing?(showEditor?'Update the accounting details or supporting documents.':'Review the transaction before making changes.'):'Post it now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
-      {transaction?.source==='plaid'&&<div className="quick-add-source"><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported bank transaction'}</span></div>}
+      {transaction?.source==='plaid'&&<div className="quick-add-source" style={{margin:'0 var(--space-4)',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--surface-subtle)'}}><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported bank transaction'}</span></div>}
       {error&&<div className="quick-add-error">{error}</div>}
-      {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div><span>Category</span><strong>{form.needs_review?'Category needed':form.category}</strong></div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
+      {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>void resolveCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
         {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}
         <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label>
         <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
