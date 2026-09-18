@@ -1,0 +1,6 @@
+/* Actual property rows are quiet outlined cards. Touch devices never inherit hover state. */
+.compact-properties-list{display:grid!important;gap:var(--space-3)!important}
+.compact-property-row{border:1px solid var(--border-color)!important;border-radius:var(--radius-card)!important;background:transparent!important;box-shadow:none!important;transition:border-color var(--motion-fast),background var(--motion-fast)}
+@media(hover:hover) and (pointer:fine){.compact-property-row:hover{border-color:var(--border-strong)!important;background:var(--bg-secondary)!important}}
+.compact-property-row:focus-visible{outline:2px solid var(--focus-ring)!important;outline-offset:2px;background:transparent!important}
+@media(hover:none){.compact-property-row,.compact-property-row:hover,.compact-property-row:active,.compact-property-row:focus{background:transparent!important;border-color:var(--border-color)!important}}

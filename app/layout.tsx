@@ -3,6 +3,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
 import './portal.css';
+import '../components/layout/app-shell.css';
 import './product-system.css';
 
 const themeInitScript = `(function(){try{var saved=localStorage.getItem('theme');var choice=saved==='light'||saved==='dark'||saved==='system'?saved:'system';var resolved=choice==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):choice;var root=document.documentElement;root.setAttribute('data-theme',resolved);root.style.colorScheme=resolved;}catch(e){}})();`;

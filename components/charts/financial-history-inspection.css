@@ -1,0 +1,10 @@
+/* Financial history: reserve the top gutter for inspection and keep the plot readable. */
+.financial-history-grid{stroke:var(--border-color);stroke-width:1;stroke-dasharray:2 4}
+.financial-history-y-label{fill:var(--text-secondary);font-size:12px;font-weight:var(--weight-medium)}
+.financial-history-tooltip{top:0!important;min-width:200px!important;padding:var(--space-2) var(--space-3)!important;gap:var(--space-1) var(--space-4)!important;border-color:var(--border-strong)!important;background:var(--surface-elevated)!important;font-size:var(--type-small-size)!important;line-height:1.3}
+.financial-history-tooltip>b{display:flex;gap:var(--space-1)}
+.financial-history-tooltip>b i{color:var(--text-secondary)!important;font-weight:var(--weight-regular)}
+.financial-history-tooltip span strong{text-align:right;font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums}
+.financial-history-tooltip span:first-of-type strong{color:var(--positive)}
+.financial-history-tooltip span:last-of-type strong{color:var(--negative)}
+.financial-tooltip-short{display:none}

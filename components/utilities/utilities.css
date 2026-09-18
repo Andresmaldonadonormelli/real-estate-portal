@@ -1,0 +1,8 @@
+/* Utilities are one of the few places where object cards help scanning. */
+.utilities-page{width:min(1240px,100%);padding:var(--space-8)!important}
+.utilities-page-head{margin-bottom:var(--space-6)}
+.utilities-toolbar{margin-bottom:var(--space-4)}
+.utilities-security-note{max-width:720px;padding:var(--space-3) 0;border:0;border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);background:transparent}
+.utility-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4)}
+.utility-directory-card{background:var(--bg-secondary)}
+.utility-property-group .eyebrow,.utility-property-heading .eyebrow{display:none}

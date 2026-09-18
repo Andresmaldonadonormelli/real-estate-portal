@@ -1,0 +1,22 @@
+/* Theme-owned shared surfaces. Keep controls and fixed navigation on the same
+   semantic palette as the page, including the first mobile paint. */
+html[data-theme="dark"] .bottom-nav{
+  background:var(--theme-page)!important;
+  border-color:var(--theme-border)!important;
+  color:var(--theme-text-primary)!important;
+}
+html[data-theme="dark"] .bottom-nav-link{color:var(--theme-text-secondary)!important}
+html[data-theme="dark"] .bottom-nav-link.active{
+  background:var(--theme-nav-active)!important;
+  color:var(--theme-nav-active-text)!important;
+}
+html[data-theme="dark"] select,
+html[data-theme="dark"] .product-select select{
+  background-color:var(--theme-input)!important;
+  color:var(--theme-text-primary)!important;
+  border-color:var(--theme-border-strong)!important;
+}
+html[data-theme="dark"] select option{
+  background:var(--theme-elevated);
+  color:var(--theme-text-primary);
+}
