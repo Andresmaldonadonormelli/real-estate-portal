@@ -18,7 +18,7 @@
 .quick-add-form label>span{color:var(--text-secondary);font-weight:400}
 .quick-add-form input:not([type="checkbox"]),.quick-add-form select,.quick-add-form textarea{width:100%;padding:10px 11px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);font-size:16px}
 .quick-add-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.quick-add-submit{border:0;border-radius:999px;padding:12px 16px;font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight);margin-top:2px}
+.quick-add-submit{border:0;border-radius:var(--radius-control);padding:12px 16px;font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight);margin-top:2px}
 @media(max-width:767px){
   .quick-add-overlay{place-items:end center}}
 @media(max-width:430px){.quick-add-two{grid-template-columns:1fr}}
@@ -31,7 +31,7 @@
 
 .quick-add-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 
-.transaction-archive-button{padding:10px 0;border:0;background:transparent;color:var(--negative);font-weight:650;cursor:pointer;}
+.transaction-archive-button{min-height:40px;padding:0 var(--space-3);border:1px solid var(--negative);border-radius:var(--radius-control);background:transparent;color:var(--negative);font:var(--font-button);cursor:pointer;}
 
 .app-toast{position:fixed;right:22px;top:20px;z-index:2000;min-width:260px;max-width:min(420px,calc(100vw - 32px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 13px;border:1px solid var(--border-color);border-radius:14px;background:color-mix(in srgb,var(--bg-secondary) 94%,transparent);color:var(--text-primary);box-shadow:0 14px 38px rgba(0,0,0,.16);backdrop-filter:blur(18px);font-size:13px;font-weight:620;animation:toast-in .18s ease-out}
 .app-toast-icon{width:27px;height:27px;border-radius:999px;background:color-mix(in srgb,var(--positive) 13%,transparent);color:var(--positive);display:grid;place-items:center}
@@ -183,13 +183,28 @@
   min-height:40px!important;
   padding:0!important;
   flex:0 0 40px!important;
-  border-radius:50%!important;
+  border-radius:var(--radius-control)!important;
   border:1px solid var(--border-color)!important;
   background:var(--bg-card)!important;
   color:var(--text-primary)!important;
   display:grid!important;
   place-items:center!important;
 }
+
+.quick-add-form{display:grid;gap:var(--space-4);padding:var(--space-5)}
+.transaction-type-choice,.transaction-property-choice>div,.unit-chips{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.transaction-type-choice button,.transaction-property-choice button,.unit-chips button{min-height:40px;padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:transparent;color:var(--text-primary);font:var(--font-button);cursor:pointer}
+.transaction-type-choice button.active,.transaction-property-choice button.active,.unit-chips button.active{background:var(--theme-action);border-color:var(--theme-action);color:var(--theme-action-text)}
+.transaction-property-choice,.unit-chip-field,.transaction-amount-field{display:grid;gap:var(--space-2)}
+.transaction-property-choice>span,.unit-chip-field>span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.transaction-amount-field{position:relative}
+.transaction-amount-field>span{position:absolute;left:var(--space-3);bottom:20px;transform:translateY(50%);color:var(--text-secondary);pointer-events:none}
+.transaction-amount-field input{padding-left:calc(var(--space-3) + 1em + var(--space-2))}
+.transaction-detail-sheet{display:grid;gap:0;padding:var(--space-5)}
+.transaction-detail-sheet>div:not(.transaction-detail-actions){display:grid;grid-template-columns:minmax(130px,.65fr) 1fr;align-items:baseline;gap:var(--space-6);padding:var(--space-4) 0;border-bottom:1px solid var(--border-color)}
+.transaction-detail-sheet>div>span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.transaction-detail-sheet>div>strong{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.transaction-detail-actions{display:flex;align-items:center;gap:var(--space-3);padding-top:var(--space-5)}
 
 
 /* Sheet layering and motion are global, above the portaled bottom nav. */

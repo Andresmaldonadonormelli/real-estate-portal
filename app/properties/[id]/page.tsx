@@ -11,6 +11,7 @@ import PropertyImprove from '@/components/property/PropertyImprove';
 import PropertyUnits from '@/components/property/PropertyUnits';
 import PropertyDocuments from '@/components/property/PropertyDocuments';
 import PropertyEditModal from '@/components/property/PropertyEditModal';
+import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import { SegmentedControl } from '@/components/common/ProductControls';
 import { formatDate, type PropertyTransaction as Tx } from '@/lib/propertyFinancials';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
@@ -101,6 +102,7 @@ export default function PropertyWorkspacePage(){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [editingProperty,setEditingProperty]=useState(false);
+  const [activeTransaction,setActiveTransaction]=useState<Tx|null>(null);
 
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');
@@ -159,11 +161,12 @@ export default function PropertyWorkspacePage(){
 
     <SegmentedControl value={tab} onChange={setTab} label="Property sections" className="property-subnav" options={[{value:'overview',label:'Overview'},{value:'improve',label:'Improve'},{value:'units',label:'Units'},{value:'documents',label:'Documents'}]}/>
 
-    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} expectedRent={expectedRent} onNavigate={setTab}/>} 
+    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} expectedRent={expectedRent} onNavigate={setTab} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>} 
     {tab==='improve' && <PropertyImprove property={property} units={units} transactions={transactions}/>} 
     {tab==='units' && <PropertyUnits units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>} 
     {tab==='documents' && <PropertyDocuments documents={documents} propertyId={property.id}/>} 
     {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);}}/>}
+    {activeTransaction&&<AddTransactionModal userId={(activeTransaction as any).user_id||''} properties={[property]} units={units} transaction={activeTransaction as any} viewOnly onClose={()=>setActiveTransaction(null)} onSaved={()=>setActiveTransaction(null)} onArchived={()=>setActiveTransaction(null)}/>} 
   </div>;
 }
 

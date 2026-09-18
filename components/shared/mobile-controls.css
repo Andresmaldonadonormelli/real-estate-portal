@@ -7,7 +7,7 @@
   .pulse-chart-controls .pulse-periods button{flex:0 0 auto!important}
   .pulse-chart-controls .pulse-property-select{grid-row:2;width:100%!important;max-width:none}
   .ledger-v230-action-placeholder{width:48px;height:var(--control-height-mobile)}
-  .ledger-v230-review{position:relative;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:50%!important;justify-content:center;white-space:nowrap}
+  .ledger-v230-review{position:relative;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:var(--radius-control)!important;justify-content:center;white-space:nowrap}
   .ledger-v230-tools>.ledger-v230-review>span,.ledger-v230-review>em{display:none!important}
   .ledger-v230-filter-backdrop{display:block;position:fixed;inset:0;z-index:1090;border:0;background:var(--theme-overlay)}
   .ledger-v230-filter-panel{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:1100;display:grid!important;grid-template-columns:1fr!important;gap:var(--space-3)!important;max-height:calc(100dvh - 96px - env(safe-area-inset-bottom));margin:0!important;padding:var(--space-4)!important;border:1px solid var(--border-color)!important;border-bottom:0!important;border-radius:var(--radius-card) var(--radius-card) 0 0!important;background:var(--surface-elevated)!important;box-shadow:var(--shadow-overlay);overflow-y:auto}
