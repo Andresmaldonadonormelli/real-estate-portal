@@ -1,0 +1,241 @@
+.nav-link { display: flex; align-items: center; gap: 12px; color: var(--text-primary); text-decoration: none; transition: background-color .18s ease, color .18s ease; }
+
+.nav-link.active { background: var(--nav-active-bg); color: var(--nav-active-text) !important; font-weight: 650; }
+
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border-color); background: var(--bg-secondary); z-index: 50; }
+
+.bottom-nav-link { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); padding: 7px var(--space-2); font-size: var(--type-label-size); line-height: var(--type-label-line); color: var(--text-secondary); text-decoration: none; flex: 1; background: none; border: 0; }
+
+.bottom-nav-link.active { color: var(--nav-active-text); background: var(--nav-active-bg); border-radius: 10px; margin: 5px 3px; }
+
+.skeleton-block {
+  display: block;
+  width: 100%;
+  border-radius: 9px;
+  background: var(--skeleton-bg);
+  animation: skeleton-pulse 1.35s ease-in-out infinite;
+}
+
+.skeleton-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.skeleton-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.skeleton-card-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.auth-loading-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+.auth-loading-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; }
+}
+
+@media (max-width: 767px) {
+  .skeleton-grid-3{ grid-template-columns: 1fr 1fr; }
+  .skeleton-card-row { align-items: flex-start; }
+}
+
+@media (min-width: 768px) {
+  .main-content { padding-left: 260px; }
+}
+
+
+.theme-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: flex-end;
+}
+
+
+.mobile-menu-sheet {
+  width: 100%;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-radius: 18px 18px 0 0;
+  padding: 18px 18px 82px;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.14);
+}
+
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+
+.mobile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.mobile-menu-sign-out{width:100%;border:0;background:transparent;font:inherit;cursor:pointer}
+
+
+@media (max-width: 767px) {
+  .bottom-nav { height:62px; }
+  .bottom-nav-link.active { margin:7px 5px; border-radius:10px; }
+}
+
+.nav-link.active,.bottom-nav-link.active{background:var(--nav-active-bg)!important;color:var(--nav-active-text)!important;}
+
+
+/* Desktop sidebar */
+.side-nav{position:fixed;left:0;top:0;bottom:0;z-index:40;display:flex;flex-direction:column;padding:18px 0;}
+
+.side-nav-scroll{flex:1;overflow:auto;padding-bottom:14px;}
+
+.side-nav-footer{border-top:1px solid var(--border-color);}
+
+.side-nav-section{margin:2px 0 8px;}
+
+.nav-count{margin-left:auto;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:grid;place-items:center;background:var(--accent-soft);color:var(--text-primary);font-size:11px;font-weight:700;}
+
+
+/* Safe-area mobile nav */
+.bottom-nav{height:auto!important;min-height:64px;padding-bottom:max(10px,env(safe-area-inset-bottom));}
+
+.main-content{padding-bottom:calc(82px + env(safe-area-inset-bottom));}
+
+
+/* Dark mode: force semantic text variables back through all primary workspaces. */
+[data-theme="dark"] .ledger-page,
+[data-theme="dark"] .ledger-page h1,
+[data-theme="dark"] .ledger-page h2,
+[data-theme="dark"] .ledger-page strong,
+[data-theme="dark"] .ledger-page td,
+[data-theme="dark"] .ledger-page th,
+[data-theme="dark"] .ledger-page label,
+[data-theme="dark"] .property-workspace,
+[data-theme="dark"] .property-workspace h1,
+[data-theme="dark"] .property-workspace h2,
+[data-theme="dark"] .property-workspace h3,
+[data-theme="dark"] .property-workspace strong,
+[data-theme="dark"] .side-nav,
+[data-theme="dark"] .side-nav a,
+[data-theme="dark"] .side-nav button{
+  color:var(--text-primary);
+}
+
+
+/* 1. Keep the mobile nav attached to the viewport at all scroll depths.
+   BottomNav is also portaled directly to <body> so iOS cannot treat a
+   transformed/scrolling app ancestor as the fixed-position container. */
+@media(max-width:767px){
+  .bottom-nav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    top:auto!important;
+    width:100%!important;
+    max-width:100vw!important;
+    margin:0!important;
+    z-index:1000!important;
+    transform:none!important;
+    translate:none!important;
+    padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+    background:var(--bg-secondary)!important;
+  }
+
+  .main-content{
+    padding-bottom:calc(88px + env(safe-area-inset-bottom))!important;
+  }
+
+  /* 2. Month labels should read as chart labels, not annotations. */
+  .interactive-cashflow .chart-label,
+  .origin-x-label{
+    font-size:15px!important;
+    font-weight:500!important;
+  }
+
+  .interactive-cashflow .chart-label.selected,
+  .origin-x-label.selected{
+    font-size:15px!important;
+    font-weight:700!important;
+  }
+
+  /* 3. Performance chart scrolls horizontally inside its card.
+     The page remains fixed width and vertical page scrolling still works. */
+  .performance-chart-shell{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+
+  .performance-chart-shell .origin-chart-wrap{
+    display:block!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+  }
+
+  .performance-chart-shell .origin-chart-wrap::-webkit-scrollbar{
+    display:none;
+  }
+
+  .performance-chart-shell .origin-chart{
+    flex:none!important;
+  }
+
+  .interactive-performance-chart{
+    touch-action:pan-x pan-y!important;
+    cursor:default!important;
+  }
+}

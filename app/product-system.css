@@ -1,4 +1,13 @@
 /* Ordered application stylesheet manifest. Each rule lives with its owning workspace. */
+/* Final legacy migration. These load before current refinements so current product rules keep priority. */
+@import "../components/layout/theme-foundations.css";
+@import "../components/layout/app-foundations.css";
+@import "../components/shared/workspace-common.css";
+@import "../components/dashboard/dashboard-foundations.css";
+@import "../components/property/property-foundations.css";
+@import "../components/ledger/ledger-foundations.css";
+@import "../components/account/account-foundations.css";
+@import "../components/charts/chart-foundations.css";
 /* Migrated workspace foundations load before the current component refinements. */
 @import "../components/dashboard/dashboard-workspace.css";
 @import "../components/shared/workspace-overlays.css";

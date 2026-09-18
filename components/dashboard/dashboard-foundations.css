@@ -1,0 +1,57 @@
+/* Shape is owned by each component. Only explicit CTA and pill classes use pill geometry. */
+
+@media (max-width: 767px) {
+  .dashboard-stats-top .card:last-child { grid-column:auto; }
+  .recent-activity-copy { display:grid; gap:1px; }
+  .recent-activity-row { gap:10px; }
+  .recent-activity-copy strong { font-size:13px; }
+  .recent-ledger-button { width:100%; }
+}
+
+.actions-group-label { font-size: var(--type-label-size); line-height: var(--type-label-line); letter-spacing: .08em; font-weight: var(--weight-bold); color: var(--text-secondary); margin: var(--space-6) 0 var(--space-2); }
+
+@media(max-width:767px){
+  .pulse-page,.ledger-v230-page{padding:var(--space-5) 14px calc(92px + env(safe-area-inset-bottom))!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pulse-add-button,.ledger-v230-review>i,.ledger-v230-review>i>b{transition:none}
+}
+
+.daily-insight{position:relative;min-height:142px;padding:var(--space-5);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--bg-secondary);box-shadow:var(--card-shadow)}
+
+.daily-insight-icon{width:34px;height:34px;display:grid;place-items:center;margin-bottom:var(--space-4);border-radius:10px;background:var(--surface-subtle);color:var(--text-secondary)}
+
+.daily-insight[data-tone="positive"] .daily-insight-icon{background:var(--positive-soft);color:var(--positive)}
+
+.daily-insight[data-tone="warning"] .daily-insight-icon{background:var(--warning-soft);color:var(--warning)}
+
+.daily-insight-dismiss{position:absolute;top:var(--space-3);right:var(--space-3);width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:var(--text-muted)}
+
+.daily-insight-dismiss:hover{background:var(--surface-hover);color:var(--text-primary)}
+
+.daily-insight>span{display:block;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+
+.daily-insight>strong{display:block;max-width:90%;margin-top:3px;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--weight-semibold);letter-spacing:-.015em}
+
+.daily-insight>p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+
+@media(max-width:767px){
+  .daily-insight{flex:0 0 min(82vw,330px);min-height:138px;scroll-snap-align:start}
+}
+
+.pulse-cash-summary,.property-overview-summary{display:grid;justify-items:start;min-height:84px;margin-top:var(--space-4);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+.pulse-cash-summary>strong,.property-overview-value-row>strong{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-bold);letter-spacing:-.035em}
+
+.pulse-cash-summary>div,.property-overview-summary>div:last-child{display:flex;gap:var(--space-3);margin-top:var(--space-1)}
+
+.pulse-cash-summary b,.property-overview-summary b{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-medium)}
+
+.portfolio-sparkline{display:block;width:64px;height:20px}
+.portfolio-sparkline polyline{fill:none;stroke:var(--positive);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+@media(max-width:767px){
+  .pulse-cash-summary,.property-overview-summary{min-height:78px;margin-top:var(--space-3)}
+  .pulse-cash-summary>strong,.property-overview-value-row>strong{font-size:var(--type-page-title-size)}
+}

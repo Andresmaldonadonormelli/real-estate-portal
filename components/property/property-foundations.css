@@ -1,0 +1,11 @@
+/* Property header action should be identical on every property, regardless
+   of how many metadata rows the header contains. */
+@media(max-width:720px){
+  .property-workspace-header{width:100%!important;justify-items:stretch!important;}
+  .property-header-actions{width:100%!important;max-width:none!important;justify-self:stretch!important;}
+  .property-header-actions .property-secondary-action{
+    width:100%!important;
+    max-width:none!important;
+    flex:0 0 100%!important;
+  }
+}

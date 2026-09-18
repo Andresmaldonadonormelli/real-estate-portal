@@ -1,0 +1,330 @@
+/* Loading skeletons */
+:root {
+  --skeleton-bg: #ecece7;
+  --skeleton-edge: #f5f5f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --skeleton-bg: #232320;
+    --skeleton-edge: #2b2b27;
+  }
+}
+
+[data-theme="light"] {
+  --skeleton-bg: #ecece7;
+  --skeleton-edge: #f5f5f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a18;
+    --accent: #8adfbe;
+    --accent-dark: #65cfa7;
+    --accent-contrast: #092319;
+    --accent-soft: rgba(138, 223, 190, 0.16);
+    --nav-active-bg: #8adfbe;
+    --nav-active-text: #092319;
+    --danger: #ef918a;
+    --card-shadow: none;
+  }
+}
+
+:root,
+[data-theme="light"] {
+  --control-bg: #ffffff;
+  --control-border: rgba(0,0,0,.10);
+  --danger-soft: #f8e9e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --control-bg: #141412;
+    --control-border: rgba(255,255,255,.12);
+    --surface-hover: #20211e;
+    --danger-soft: rgba(239,145,138,.12);
+  }
+}
+
+/* Explicit user theme must always beat OS preference. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #1a1a18;
+    --text-primary: #f0ede8;
+    --text-secondary: #a9a8a2;
+    --text-muted: #72716b;
+    --border-color: rgba(255,255,255,.1);
+    --accent: #8adfbe;
+    --accent-dark: #65cfa7;
+    --accent-contrast: #092319;
+    --accent-soft: rgba(138,223,190,.16);
+    --nav-active-bg: #8adfbe;
+    --nav-active-text: #092319;
+    --danger: #ef918a;
+    --card-shadow: none;
+    --control-bg: #141412;
+    --control-border: rgba(255,255,255,.12);
+    --surface-hover: #20211e;
+    --danger-soft: rgba(239,145,138,.12);
+  }
+}
+
+[data-theme="light"] {
+  --bg-primary:#f7f6f2;
+  --bg-secondary:#ffffff;
+  --text-primary:#1a1a18;
+  --text-secondary:#72716b;
+  --text-muted:#a9a8a2;
+  --border-color:rgba(0,0,0,.08);
+  --accent:#2f765b;
+  --accent-dark:#245e49;
+  --accent-contrast:#ffffff;
+  --accent-soft:#e4f2ec;
+  --nav-active-bg:#dff1e9;
+  --nav-active-text:#245e49;
+  --danger:#b94f4a;
+  --card-shadow:0 8px 24px rgba(30,35,31,.055),0 1px 2px rgba(30,35,31,.04);
+  --control-bg:#ffffff;
+  --control-border:rgba(0,0,0,.10);
+  --surface-hover:#f2f5f1;
+  --danger-soft:#f8e9e7;
+}
+
+[data-theme="dark"] {
+  --control-border:rgba(255,255,255,.12);
+  --danger-soft:rgba(239,145,138,.12);
+}
+
+html,body,.main-content { background:var(--bg-primary)!important; color:var(--text-primary); }
+
+
+/* Legacy interactive cash-flow component. Semantic colors now come from design-tokens.css. */
+[data-theme="dark"] {
+  --control-bg:#0a0b0a;
+}
+
+:root,
+[data-theme="light"] {
+  --brand:#25c98a;
+  --brand-hover:#1cb77b;
+  --brand-soft:rgba(37,201,138,.12);
+  --brand-contrast:#06271a;
+  --category-distribution:#64748b;
+  --category-neutral:#7d8480;
+}
+
+[data-theme="dark"] {
+  --brand:#2ed89a;
+  --brand-hover:#25c78b;
+  --brand-soft:rgba(46,216,154,.13);
+  --brand-contrast:#061f16;
+  --category-distribution:#99a2ad;
+  --category-neutral:#8b928e;
+}
+
+:root,
+[data-theme="light"]{
+  --accent-soft:#f0f0ed;
+  --link:#353633;
+}
+
+[data-theme="dark"]{
+  --accent-soft:rgba(255,255,255,.075);
+  --link:#e6e6e1;
+}
+
+:root,[data-theme="light"]{
+  --bg-primary:#f2f4f5;
+  --bg-secondary:#ffffff;
+  --surface-hover:#eef0f2;
+  --border-color:#dfe2e5;
+  --text-primary:#17191b;
+  --text-secondary:#6f7479;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea{
+  color:var(--text-primary)!important;
+  background:var(--input-bg)!important;
+  border-color:var(--border-color)!important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder{color:var(--text-muted)!important;}
+
+:root,
+[data-theme="light"] {
+  --bg-primary: var(--theme-page);
+  --bg-secondary: var(--theme-card);
+  --card-bg: var(--theme-card);
+  --surface: var(--theme-surface);
+  --surface-subtle: var(--theme-surface-subtle);
+  --surface-hover: var(--theme-surface-hover);
+  --surface-elevated: var(--theme-elevated);
+  --input-bg: var(--theme-input);
+  --text-primary: var(--theme-text-primary);
+  --text-secondary: var(--theme-text-secondary);
+  --text-muted: var(--theme-text-muted);
+  --border-color: var(--theme-border);
+  --border-strong: var(--theme-border-strong);
+  --overlay-color: var(--theme-overlay);
+  --card-shadow: var(--theme-shadow-card);
+
+  --positive: var(--theme-income);
+  --positive-soft: var(--theme-income-soft);
+  --positive-border: var(--theme-income-border);
+  --negative: var(--theme-expense);
+  --negative-soft: var(--theme-expense-soft);
+  --negative-border: var(--theme-expense-border);
+  --danger: var(--theme-expense);
+  --warning: var(--theme-warning);
+  --warning-soft: var(--theme-warning-soft);
+  --warning-border: var(--theme-warning-border);
+
+  --category-rent: var(--theme-income);
+  --category-maintenance: var(--theme-maintenance);
+  --category-management: var(--theme-management);
+  --category-mortgage: var(--theme-mortgage);
+  --category-utilities: var(--theme-utilities);
+  --category-insurance: var(--theme-insurance);
+  --category-taxes: var(--theme-taxes);
+  --category-capex: var(--theme-capex);
+  --category-legal: var(--theme-legal);
+  --category-review: var(--theme-review);
+
+  --accent: var(--theme-action);
+  --accent-dark: var(--theme-action);
+  --accent-contrast: var(--theme-action-text);
+  --action-hover: var(--theme-action-hover);
+  --focus-ring: var(--theme-focus);
+  --nav-active-bg: var(--theme-nav-active);
+  --nav-active-text: var(--theme-nav-active-text);
+}
+
+[data-theme="dark"] {
+  --bg-primary: var(--theme-page)!important;
+  --bg-secondary: var(--theme-card)!important;
+  --card-bg: var(--theme-card)!important;
+  --surface: var(--theme-surface)!important;
+  --surface-subtle: var(--theme-surface-subtle)!important;
+  --surface-hover: var(--theme-surface-hover)!important;
+  --surface-elevated: var(--theme-elevated)!important;
+  --input-bg: var(--theme-input)!important;
+  --text-primary: var(--theme-text-primary)!important;
+  --text-secondary: var(--theme-text-secondary)!important;
+  --text-muted: var(--theme-text-muted)!important;
+  --border-color: var(--theme-border)!important;
+  --border-strong: var(--theme-border-strong)!important;
+  --overlay-color: var(--theme-overlay)!important;
+  --card-shadow: var(--theme-shadow-card)!important;
+
+  --positive: var(--theme-income)!important;
+  --positive-soft: var(--theme-income-soft)!important;
+  --positive-border: var(--theme-income-border)!important;
+  --negative: var(--theme-expense)!important;
+  --negative-soft: var(--theme-expense-soft)!important;
+  --negative-border: var(--theme-expense-border)!important;
+  --danger: var(--theme-expense)!important;
+  --warning: var(--theme-warning)!important;
+  --warning-soft: var(--theme-warning-soft)!important;
+  --warning-border: var(--theme-warning-border)!important;
+
+  --category-rent: var(--theme-income)!important;
+  --category-maintenance: var(--theme-maintenance)!important;
+  --category-management: var(--theme-management)!important;
+  --category-mortgage: var(--theme-mortgage)!important;
+  --category-utilities: var(--theme-utilities)!important;
+  --category-insurance: var(--theme-insurance)!important;
+  --category-taxes: var(--theme-taxes)!important;
+  --category-capex: var(--theme-capex)!important;
+  --category-legal: var(--theme-legal)!important;
+  --category-review: var(--theme-review)!important;
+
+  --accent: var(--theme-action)!important;
+  --accent-dark: var(--theme-action)!important;
+  --accent-contrast: var(--theme-action-text)!important;
+  --action-hover: var(--theme-action-hover)!important;
+  --focus-ring: var(--theme-focus)!important;
+  --nav-active-bg: var(--theme-nav-active)!important;
+  --nav-active-text: var(--theme-nav-active-text)!important;
+}
+
+
+/* Needs Review is a workflow state{
+  min-height:auto!important;
+  padding:9px 14px!important;
+  border-radius:999px!important;
+  font-size:inherit!important;
+  line-height:normal!important;
+  font-weight:650!important;
+  letter-spacing:normal!important;
+}
+
+/* Cool monochrome loading skeletons. */
+:root,
+[data-theme="light"]{
+  --skeleton-bg:#e8eaec!important;
+  --skeleton-edge:#f2f3f4!important;
+}
+
+[data-theme="dark"]{
+  --skeleton-bg:#1a1d1b!important;
+  --skeleton-edge:#252927!important;
+}
+
+
+@media(max-width:767px){
+  html,
+  body{
+    max-width:100vw;
+    overflow-x:hidden;
+  }
+}
+
+\n\n/* v2.2.31 canonical metric + property navigation rules */
+:root{
+  --metric-label-size:13px;
+  --metric-value-size:22px;
+  --metric-context-size:12px;
+}
+
+
+@media(max-width:760px){
+  :root{--metric-value-size:20px;}
+}
+
+:root{
+  --kpi-label-size:13px;
+  --kpi-label-line:16px;
+  --kpi-value-size:clamp(19px,1.55vw,22px);
+  --kpi-value-line:27px;
+  --kpi-context-size:13px;
+  --kpi-context-line:17px;
+  --kpi-label-slot:32px;
+  --kpi-label-value-gap:5px;
+  --kpi-value-context-gap:5px;
+}
+
+@media(max-width:760px){
+  :root{
+    --kpi-label-slot:16px;
+  }
+}
+
+
+@media(max-width:760px){
+  /* Quieter KPI hierarchy: labels support the values instead of competing with them. */
+  :root{
+    --kpi-label-size:13px;
+    --kpi-label-line:16px;
+    --kpi-value-size:18px;
+    --kpi-value-line:22px;
+    --kpi-context-size:13px;
+    --kpi-context-line:16px;
+    --kpi-label-value-gap:5px;
+    --kpi-value-context-gap:3px;
+  }
+}

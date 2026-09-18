@@ -1,0 +1,371 @@
+.primary-action { background: var(--accent); color: var(--accent-contrast) !important; font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight); }
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: .55; background: var(--skeleton-bg); }
+  50% { opacity: 1; background: var(--skeleton-edge); }
+}
+
+.appearance-menu{padding:10px 12px;margin-bottom:8px}
+.appearance-options{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:var(--radius-control);background:var(--surface-subtle)}
+.appearance-options button{min-height:36px;border:0;border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-semibold)}
+.appearance-options button.active{background:var(--bg-secondary);color:var(--text-primary)}
+
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+
+button:not(:disabled), a { transition: opacity .16s ease, transform .16s ease, background-color .16s ease, border-color .16s ease; }
+
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover { transform: translateY(-1px); }
+  .icon-button:hover { background: var(--surface-hover); }
+  a:hover { opacity: .88; }
+}
+
+.primary-action { border-radius: 999px !important; }
+
+.pill-link { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; text-decoration:none; }
+
+
+/* Form controls are soft rectangles. Buttons remain pills. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-radius: 10px !important;
+}
+.muted-small{font-size:12px;color:var(--text-secondary)}
+.eyebrow{font-size:10px;letter-spacing:.08em;font-weight:750;color:var(--text-secondary);margin-bottom:5px}
+.text-action{border:0;background:transparent;color:var(--accent);font-weight:650;padding:10px 0 0;cursor:pointer}
+.segmented{display:flex;padding:3px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary)}
+.segmented button{border:0;background:transparent;color:var(--text-secondary);padding:6px 9px;border-radius:7px;font-size:12px;cursor:pointer}
+.segmented button.active{background:var(--bg-secondary);color:var(--text-primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.secondary-pill{border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);padding:8px 12px;border-radius:999px;cursor:pointer}
+
+.recent-category-icon { width:40px; height:40px; border-radius:10px; }
+
+@media (max-width:767px) {
+  .recent-category-icon { width:38px; height:38px; }
+}
+
+@media(max-width:767px){
+  .account-page{padding:var(--space-6) var(--space-4) calc(92px + env(safe-area-inset-bottom))}.account-settings-row{align-items:flex-start}.account-settings-row .pill-link{flex:0 0 auto}
+}
+.review-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:10px!important;padding:12px;border:1px solid var(--border-color);border-radius:11px;background:var(--bg-secondary);}
+.review-check input{width:18px;height:18px;margin-top:2px;accent-color:var(--brand);}
+.review-check span{display:grid;gap:2px}
+.review-check small{font-size:11px;color:var(--text-secondary);font-weight:400}
+.icon-close{width:38px;height:38px;border-radius:999px;border:1px solid var(--border-color);display:grid;place-items:center;color:var(--text-primary);background:var(--bg-primary)}
+.insight-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}
+
+a{color:var(--link);}
+
+.primary-action,.quick-add-submit,.actions-page-cta{background:var(--accent)!important;color:var(--accent-contrast)!important;}
+
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none!important;box-shadow:none!important;}
+
+button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--text-primary) 38%,transparent)!important;outline-offset:2px!important;}
+.upload-doc-button input{display:none}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+.recent-category-icon{align-self:center!important;margin:0!important;}
+
+
+/* Statements inherit semantic money colors. */
+.amount-positive{color:var(--positive)!important;}
+
+.amount-negative{color:var(--negative)!important;}
+
+.type-section-title{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);}
+
+.type-card-title{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);}
+
+.type-body{font-size:var(--type-body-size);line-height:var(--type-body-line);}
+
+.type-small{font-size:var(--type-small-size);line-height:var(--type-small-line);}
+
+.type-label{font-size:var(--type-label-size);line-height:var(--type-label-line);}
+
+.sheet-details-toggle{
+  justify-self:start;
+  border:0!important;
+  background:transparent!important;
+  padding:4px 0!important;
+  border-radius:0!important;
+  color:var(--text-secondary)!important;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  font:inherit;
+}
+
+.sheet-details-panel{
+  display:grid;
+  gap:12px;
+  padding-top:2px;
+}
+
+
+/* Mobile */
+@media(max-width:767px){
+  /* Dashboard is the spacing reference: all main utility/list pages use 14px sides. */
+  .mobile-page-shell{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+
+  /* Mobile bottom sheet pattern */
+  .mobile-sheet-overlay{
+    place-items:end stretch;
+    padding:0;
+  }
+  .mobile-sheet{
+    max-width:none!important;
+    width:100%!important;
+    height:min(88dvh,760px);
+    max-height:calc(100dvh - env(safe-area-inset-top) - 10px);
+    border-radius:28px 28px 0 0!important;
+    border-bottom:0!important;
+  }
+  .mobile-sheet-head{
+    padding:24px 18px 14px;
+  }
+  .mobile-sheet-handle{
+    display:block;
+    position:absolute;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;
+    height:5px;
+    border-radius:99px;
+    background:var(--border-color);
+  }
+  .mobile-sheet-body{
+    padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+  }
+  .mobile-sheet-form{
+    padding-bottom:8px;
+  }
+  .mobile-sheet-submit{
+    width:100%;
+    min-height:48px;
+    box-shadow:0 -10px 24px var(--bg-card);
+  }
+
+  /* Shared transaction Add/Edit becomes the same mobile sheet behavior. */
+  .quick-add-overlay{
+    align-items:flex-end!important;
+    padding:0!important;
+  }
+  .quick-add-modal{
+    width:100%!important;
+    max-width:none!important;
+    height:min(88dvh,760px)!important;
+    max-height:calc(100dvh - env(safe-area-inset-top) - 10px)!important;
+    border-radius:28px 28px 0 0!important;
+    border-bottom:0!important;
+    padding:0!important;
+  }
+  .quick-add-head{
+    position:relative!important;
+    padding:24px 18px 14px!important;
+    border-bottom:1px solid var(--border-color)!important;
+    background:var(--bg-card)!important;
+  }
+  .quick-add-head:before{
+    content:"";
+    position:absolute;
+    top:8px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;
+    height:5px;
+    border-radius:99px;
+    background:var(--border-color);
+  }
+  .quick-add-head p{display:none!important}
+  .quick-add-form{
+    padding:16px 18px calc(18px + env(safe-area-inset-bottom))!important;
+    display:block!important;
+  }
+  .quick-add-form>*{margin-bottom:14px!important}
+  .quick-add-two{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+  }
+  .quick-add-more-panel{
+    display:grid!important;
+    gap:14px!important;
+  }
+
+  /* Mobile statements: month/count first, then a clean 3-column summary below. */
+  .statement-row{
+    padding:16px!important;
+    display:block!important;
+  }
+  .statement-month{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
+  }
+  .statement-month>div{
+    font-weight:700;
+  }
+  .statement-month>span{
+    margin:0;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .statement-metrics{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .statement-metric{text-align:left}
+  .statement-metric:nth-child(2){text-align:center}
+  .statement-metric:nth-child(3){text-align:right}
+  .statement-metric>div:first-child{
+    font-size:10px!important;
+    letter-spacing:.45px;
+  }
+  .statement-metric>div:last-child{
+    white-space:nowrap;
+  }
+}
+
+@keyframes detailsReveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+
+@keyframes sheetBackdropIn{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.52)}}
+
+@keyframes sheetRiseIn{from{opacity:.96;transform:translateY(34px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* Final optical correction requested for Recent Transactions glyphs. */
+
+@media(max-width:767px){
+  /* Sheets use the viewport, not the document. The body is already locked in the components. */
+  .mobile-sheet-overlay,
+  .quick-add-overlay{
+    position:fixed!important;
+    inset:0!important;
+    overflow:hidden!important;
+    touch-action:none;
+  }
+  .mobile-sheet,
+  .quick-add-modal{
+    height:min(90dvh,820px)!important;
+    max-height:calc(100dvh - max(10px,env(safe-area-inset-top)))!important;
+    overflow:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overscroll-behavior:contain!important;
+  }
+  .mobile-sheet-head,
+  .quick-add-head{
+    flex:0 0 auto!important;
+    border-bottom:0!important;
+  }
+  .mobile-sheet-body,
+  .quick-add-form{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+  }
+  .mobile-sheet-body{padding-bottom:calc(28px + env(safe-area-inset-bottom))!important}
+  .quick-add-footer{
+    position:sticky!important;
+    background:var(--bg-card)!important;
+  }
+  .mobile-sheet-submit{
+    position:sticky!important;
+    bottom:0!important;
+    z-index:5!important;
+  }
+
+  /* Robinhood-like period behavior: selected range redraws to one fitted viewport. */
+  .performance-chart-shell .origin-chart-wrap{
+    width:100%!important;
+    overflow:hidden!important;
+    padding-bottom:0!important;
+    touch-action:manipulation!important;
+  }
+  .performance-chart-shell .origin-chart{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:auto!important;
+    display:block!important;
+  }
+  .performance-chart-shell .origin-x-label,
+  .performance-chart-shell .origin-y-label{
+    font-size:16px!important;
+  }
+  .performance-chart-shell .performance-label-secondary{display:none}
+  .performance-selected-summary{font-size:14px!important;min-height:48px}
+  .desktop-hint{display:none}.mobile-hint{display:inline}
+
+  /* Typography floor for meaningful mobile data. */
+  .cashflow-chart text,
+  .cashflow-chart .cashflow-month,
+  .chart-legend,
+  .statement-month>span,
+  .statement-metric>div:first-child,
+  .property-list-row span,
+  .property-doc-summary span,
+  .property-meta,
+  .origin-period{
+    font-size:14px!important;
+  }
+  .statement-month>div{font-size:18px!important}
+  .statement-metric>div:last-child{font-size:16px!important}
+}
+
+
+/* Period selection should read as state{
+  background:#2b2d2b !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+.workspace-form{display:grid;gap:18px}
+.workspace-form label{display:grid;gap:7px;font-size:13px;font-weight:600;color:var(--text-secondary)}
+.workspace-form input:not([type="checkbox"]),.workspace-form select{width:100%;min-width:0;height:48px;border:1px solid var(--border-color);border-radius:13px;background:var(--input-bg,var(--bg-primary));color:var(--text-primary);padding:0 14px;font-size:16px;outline:none}
+.workspace-form input:focus,.workspace-form select:focus{border-color:var(--text-secondary);box-shadow:0 0 0 2px color-mix(in srgb,var(--text-primary) 8%,transparent)}
+.workspace-form-grid{display:grid;gap:14px}
+.workspace-form-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.workspace-form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.workspace-checkbox{display:flex!important;align-items:center;gap:10px!important;grid-template-columns:auto 1fr!important;color:var(--text-primary)!important;font-size:14px!important}
+.workspace-checkbox input{width:18px;height:18px}
+.workspace-file-field{padding:16px;border-radius:14px;background:var(--surface-subtle,var(--bg-secondary))}
+.workspace-file-field input{height:auto!important;border:0!important;padding:6px 0!important;background:transparent!important}
+.workspace-file-field small{font-size:12px;font-weight:400;color:var(--text-secondary)}
+.workspace-primary-button{border:0;border-radius:999px;background:var(--accent);color:var(--accent-contrast);padding:12px 18px;font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight);cursor:pointer}
+.workspace-primary-button:disabled{opacity:.55;cursor:default}
+.workspace-form-error{padding:11px 13px;margin-bottom:16px;border-radius:12px;background:color-mix(in srgb,var(--negative) 10%,transparent);color:var(--negative);font-size:13px}
+
+@media(max-width:760px){
+  .workspace-form-grid.two,.workspace-form-grid.three{grid-template-columns:1fr}
+}
+.lease-state-badge{text-transform:none!important;letter-spacing:0!important;font-weight:var(--weight-medium)!important;opacity:.76}
+
+/* The desktop quick-add modal sizes itself to content instead of leaving a large empty panel. */
+@media(min-width:768px){
+  .quick-add-modal{min-height:0!important;height:auto!important}
+  .quick-add-form{min-height:0!important}
+}

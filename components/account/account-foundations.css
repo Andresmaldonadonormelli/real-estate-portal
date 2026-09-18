@@ -1,0 +1,26 @@
+.danger-zone {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 32%, var(--border-color));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.archive-list{overflow:hidden}
+.archive-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;border-top:1px solid var(--border-color)}
+.archive-row:first-child{border-top:0}
+
+
+.account-page{width:min(900px,100%);margin:0 auto;padding:var(--space-8) var(--space-6) var(--space-10)}
+
+.account-settings-list{border-top:1px solid var(--border-color)}
+
+.account-settings-row{display:flex;align-items:center;justify-content:space-between;gap:var(--space-5);padding:var(--space-5) 0;border-bottom:1px solid var(--border-color)}
+
+.account-settings-row>div{display:grid;gap:var(--space-1);min-width:0}
+.account-settings-row span{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.account-settings-row strong{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--weight-semibold);overflow-wrap:anywhere}
+
+.account-sign-out{margin-top:var(--space-6);min-height:var(--control-height-desktop);padding:0 var(--space-4);border:1px solid var(--negative);border-radius:var(--radius-pill);color:var(--negative);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
