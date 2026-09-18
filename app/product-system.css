@@ -10,10 +10,8 @@
 @import "../components/charts/chart-foundations.css";
 /* Migrated workspace foundations load before the current component refinements. */
 @import "../components/dashboard/dashboard-workspace.css";
-@import "../components/shared/workspace-overlays.css";
 @import "../components/property/property-workspace-foundations.css";
 @import "../components/utilities/utilities-workspace.css";
-@import "../components/ledger/ledger-workspace.css";
 @import "../components/ui/ui.css";
 @import "../components/shared/product-controls.css";
 @import "../components/property/property-directories.css";
@@ -21,7 +19,6 @@
 @import "../components/dashboard/dashboard.css";
 @import "../components/property/property-workspace.css";
 @import "../components/property/improve-units.css";
-@import "../components/ledger/ledger.css";
 @import "../components/property/improve.css";
 @import "../components/account/account.css";
 @import "../components/utilities/utilities.css";
@@ -33,5 +30,6 @@
 @import "../components/layout/theme-surfaces.css";
 @import "../components/charts/financial-history-inspection.css";
 @import "../components/property/property-preview.css";
-@import "../components/ledger/ledger-controls.css";
 @import "../components/shared/mobile-controls.css";
+@import "../components/transactions/transaction-modal.css";
+@import "../components/ledger/ledger-workspace-clean.css";
