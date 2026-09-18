@@ -18,3 +18,4 @@ Private owner portal built with Next.js, Supabase, and Vercel.
 Before deploying this version, run `SUPABASE_V2_UPDATE.sql` in the Supabase SQL Editor.
 
 V2.1.2: Lucide navigation icons, Doorvest-inspired mint active states, reliable rent-check test preview.
+<!-- Vercel deployment trigger -->
