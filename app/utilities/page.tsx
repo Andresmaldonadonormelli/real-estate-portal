@@ -19,6 +19,7 @@ import type { Property, UtilityAccount } from "@/lib/types";
 import { withTimeout } from "@/lib/async";
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from "@/lib/supabaseData";
 import { PageAction, PageHeader, ProductSelect } from "@/components/common/ProductControls";
+import { Button } from "@/components/ui/Button";
 
 const types = [
   "Electric",
@@ -339,7 +340,7 @@ export default function UtilitiesPage() {
             </div>
             <div className="utility-detail-actions">
               {detail.login_url && (
-                <button
+                <Button
                   onClick={() =>
                     window.open(
                       detail.login_url!,
@@ -347,14 +348,14 @@ export default function UtilitiesPage() {
                       "noopener,noreferrer",
                     )
                   }
-                  className="product-secondary-button"
+                  variant="secondary"
                 >
                   Open provider
-                </button>
+                </Button>
               )}
-              <button type="button" onClick={() => edit(detail)} className="product-page-action">
+              <Button onClick={() => edit(detail)}>
                 Edit utility
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -500,9 +501,9 @@ export default function UtilitiesPage() {
                 </Field>
               </div>
             )}
-            <button className="mobile-sheet-submit product-page-action">
+            <Button type="submit" className="mobile-sheet-submit">
               Save utility
-            </button>
+            </Button>
             {editing && (
               <div className="danger-zone">
                 <div>

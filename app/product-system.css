@@ -1,4 +1,5 @@
 /* Ordered application stylesheet manifest. Each rule lives with its owning workspace. */
+@import "../components/ui/ui.css";
 @import "../components/shared/product-controls.css";
 @import "../components/property/property-directories.css";
 @import "../components/property/property-interactions.css";

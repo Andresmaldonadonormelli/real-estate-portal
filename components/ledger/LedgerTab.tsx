@@ -17,6 +17,8 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { cachedSupabaseRequest, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 import { SegmentedControl } from '@/components/common/ProductControls';
+import { Button } from '@/components/ui/Button';
+import { Modal as UiModal } from '@/components/ui/Modal';
 
 type ViewMode = 'months' | 'table';
 type TxType = 'income' | 'expense' | 'transfer';
@@ -213,14 +215,14 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
 
     {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async message=>{await loadData();setToast(message||'Transaction archived')}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
-    {showImport&&<Modal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
+    {showImport&&<UiModal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
       <p style={{fontSize:14,color:'var(--text-secondary)'}}>Import a Doorvest ledger export in bulk. Re-importing the same CSV is safe because duplicate rows are skipped.</p>
       <Field label="Import into property"><select required value={importPropertyId} onChange={e=>remapPreview(e.target.value)} style={inputStyle}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></Field>
       <Field label="CSV file"><input type="file" accept=".csv,text/csv" onChange={e=>chooseCsv(e.target.files?.[0]||null)} style={inputStyle}/></Field>
       {importFileName&&<div style={{fontSize:13,color:'var(--text-secondary)'}}>{importFileName}</div>}
       {previewRows.length>0&&<ImportPreview rows={previewRows}/>} 
-      <button disabled={!previewRows.length||importing} onClick={importCsv} style={primaryButton}>{importing?'Importing…':`Import ${previewRows.length || ''} transactions`}</button>
-    </div></Modal>}
+      <Button disabled={!previewRows.length||importing} onClick={importCsv}>{importing?'Importing…':`Import ${previewRows.length || ''} transactions`}</Button>
+    </div></UiModal>}
   </div>;
 }
 
@@ -229,7 +231,6 @@ function TxRow({tx,property,unit,attachmentCount,onEdit}:{tx:Transaction;propert
 
 function Metric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="ledger-summary-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}
-function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'grid',placeItems:'center',padding:18,zIndex:1000}}><div className="card" style={{width:'100%',maxWidth:620,maxHeight:'90vh',overflow:'auto',padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}><h2 style={{fontSize:21}}>{title}</h2><button type="button" onClick={onClose} style={secondaryButton}>✕</button></div>{children}</div></div>}
 function ImportPreview({rows}:{rows:PreviewRow[]}){const income=rows.filter(r=>r.type==='income').reduce((s,r)=>s+r.amount,0);const expenses=rows.filter(r=>r.type==='expense').reduce((s,r)=>s+Math.abs(r.amount),0);const unmatched=rows.filter(r=>r.unitLabel&&!r.unitId).length;return <div className="card" style={{padding:14}}><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}><Metric label="Rows" value={String(rows.length)}/><Metric label="Income" value={formatCurrency(income)} tone="positive"/><Metric label="Expenses" value={formatCurrency(expenses)} tone="negative"/></div>{unmatched>0&&<div style={{marginTop:12,fontSize:'var(--type-small-size)',color:'var(--danger)'}}>{unmatched} row(s) reference a unit name that does not match an existing unit. They will import at the property level.</div>}<div style={{marginTop:12,maxHeight:190,overflow:'auto',fontSize:'var(--type-label-size)',color:'var(--text-secondary)'}}>{rows.slice(0,12).map((r,i)=><div key={i} style={{padding:'6px 0',borderTop:'1px solid var(--border-color)'}}>{r.date} · {r.unitLabel||'Property'} · {r.description} · {formatCurrency(r.amount)}</div>)}{rows.length>12&&<div style={{paddingTop:8}}>+ {rows.length-12} more rows</div>}</div></div>}
 
 async function buildPreview(rows:CsvRow[],propertyId:string,units:Unit[]):Promise<PreviewRow[]>{
@@ -260,10 +261,6 @@ function parseDoorvestCsv(text:string):CsvRow[]{const records=parseCsv(text);con
 function parseCsv(text:string):string[][]{const rows:string[][]=[];let row:string[]=[];let field='';let quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(quoted){if(ch==='"'&&text[i+1]==='"'){field+='"';i++;}else if(ch==='"')quoted=false;else field+=ch;}else{if(ch==='"')quoted=true;else if(ch===','){row.push(field);field='';}else if(ch==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}else field+=ch;}}if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row);}return rows;}
 
 const inputStyle:React.CSSProperties={width:'100%',padding:'10px 11px',border:'1px solid var(--border-color)',borderRadius:10,background:'var(--bg-primary)',color:'var(--text-primary)',fontSize:16};
-const sharedButtonType:React.CSSProperties={fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)'};
-const primaryButton:React.CSSProperties={...sharedButtonType,padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',cursor:'pointer'};
-const secondaryButton:React.CSSProperties={...sharedButtonType,padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
-const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const smallButton:React.CSSProperties={padding:'5px 8px',border:'1px solid var(--border-color)',borderRadius:999,background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontSize:12};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
 const errorBox:React.CSSProperties={padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8,marginBottom:16,fontSize:13};

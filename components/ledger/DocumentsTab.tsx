@@ -8,6 +8,8 @@ import DocumentFeed from '@/components/documents/DocumentFeed';
 import type { Property, PropertyDocument, Unit } from '@/lib/types';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 import { ProductSelect } from '@/components/common/ProductControls';
+import { Button } from '@/components/ui/Button';
+import { Modal as UiModal } from '@/components/ui/Modal';
 
 const categories = ['Lease','Invoice / Receipt','Lead Certificate','Insurance','Rental Registration / Agent','Inspection','Management Agreement','Closing / Property','Tax','Other'];
 
@@ -127,7 +129,7 @@ export default function DocumentsTab({ selectedPropertyId, onSelectedPropertyCha
       <DocumentFeed items={filtered.map(doc=>documentFeedItem(doc,propertyName(doc.property_id),unitName(doc.unit_id)))} onOpen={id=>{const doc=filtered.find(item=>item.id===id);if(doc)void openDocument(doc)}} onDetails={id=>setSelectedDoc(filtered.find(item=>item.id===id)||null)}/>
     }
 
-    {selectedDoc && <Modal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
+    {selectedDoc && <UiModal title="Document details" onClose={()=>setSelectedDoc(null)}><div style={{display:'grid',gap:14}}>
       <div className="document-details-grid">
         <DetailRow label="Title" value={selectedDoc.title}/>
         <DetailRow label="Category" value={selectedDoc.category}/>
@@ -137,20 +139,20 @@ export default function DocumentsTab({ selectedPropertyId, onSelectedPropertyCha
         {selectedDoc.document_date&&<DetailRow label="Document date" value={selectedDoc.document_date}/>} {selectedDoc.expires_at&&<DetailRow label="Expires / renews" value={selectedDoc.expires_at}/>} 
         {selectedDoc.notes&&<DetailRow label="Notes" value={selectedDoc.notes}/>} 
       </div>
-      <div className="document-reminder-editor"><Field label="Expiration / renewal date"><input type="date" value={selectedDoc.expires_at||''} onChange={e=>setSelectedDoc({...selectedDoc,expires_at:e.target.value||null})} style={inputStyle}/></Field><Field label="Reminder"><select value={String(selectedDoc.reminder_days||60)} onChange={e=>setSelectedDoc({...selectedDoc,reminder_days:Number(e.target.value)})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field><button type="button" disabled={saving} onClick={()=>saveDocumentTiming(selectedDoc)} style={secondaryButton}>{saving?'Saving…':'Save reminder'}</button></div>
-      <button type="button" onClick={()=>openDocument(selectedDoc)} style={secondaryButton}>Open document</button>
-      <div className="danger-zone"><div><div style={{fontWeight:'var(--weight-semibold)',fontSize:'var(--type-small-size)'}}>Danger zone</div><div style={{fontSize:'var(--type-label-size)',lineHeight:'var(--type-label-line)',color:'var(--text-secondary)',marginTop:'var(--space-1)'}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><button type="button" onClick={()=>deleteDocument(selectedDoc)} style={dangerButton}>Archive document</button></div>
-    </div></Modal>}
+      <div className="document-reminder-editor"><Field label="Expiration / renewal date"><input type="date" value={selectedDoc.expires_at||''} onChange={e=>setSelectedDoc({...selectedDoc,expires_at:e.target.value||null})} style={inputStyle}/></Field><Field label="Reminder"><select value={String(selectedDoc.reminder_days||60)} onChange={e=>setSelectedDoc({...selectedDoc,reminder_days:Number(e.target.value)})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field><Button variant="secondary" disabled={saving} onClick={()=>saveDocumentTiming(selectedDoc)}>{saving?'Saving…':'Save reminder'}</Button></div>
+      <Button variant="secondary" onClick={()=>openDocument(selectedDoc)}>Open document</Button>
+      <div className="danger-zone"><div><div style={{fontWeight:'var(--weight-semibold)',fontSize:'var(--type-small-size)'}}>Danger zone</div><div style={{fontSize:'var(--type-label-size)',lineHeight:'var(--type-label-line)',color:'var(--text-secondary)',marginTop:'var(--space-1)'}}>Archive is kept here so documents cannot be removed accidentally. Archived documents can be restored later.</div></div><Button variant="destructive" onClick={()=>deleteDocument(selectedDoc)}>Archive document</Button></div>
+    </div></UiModal>}
 
-    {showUpload && <Modal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
+    {showUpload && <UiModal title="Upload document" onClose={()=>setShowUpload(false)}><form onSubmit={uploadDocument} style={{display:'grid',gap:12}}>
       <Field label="Property"><select required value={form.property_id} onChange={e=>setForm({...form,property_id:e.target.value,unit_id:''})} style={inputStyle}>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</select></Field>
       <Field label="Unit (optional)"><select value={form.unit_id} onChange={e=>setForm({...form,unit_id:e.target.value})} style={inputStyle}><option value="">Whole property</option>{units.filter(u=>u.property_id===form.property_id).map(u=><option key={u.id} value={u.id}>{u.unit_number}</option>)}</select></Field>
       <div style={twoCol}><Field label="Category"><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inputStyle}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field><Field label="Document date"><input type="date" value={form.document_date} onChange={e=>setForm({...form,document_date:e.target.value})} style={inputStyle}/></Field></div><div style={twoCol}><Field label="Expiration / renewal date (optional)"><input type="date" value={form.expires_at} onChange={e=>setForm({...form,expires_at:e.target.value})} style={inputStyle}/></Field><Field label="Remind me"><select value={form.reminder_days} onChange={e=>setForm({...form,reminder_days:e.target.value})} style={inputStyle}><option value="90">90 days before</option><option value="60">60 days before</option><option value="30">30 days before</option><option value="7">7 days before</option></select></Field></div>
       <Field label="Title"><input placeholder="e.g. 2026 Lease - Unit 1" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inputStyle}/></Field>
       <Field label="File"><input required type="file" onChange={e=>setFile(e.target.files?.[0] || null)} style={inputStyle}/></Field>
       <Field label="Notes"><textarea rows={3} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} style={inputStyle}/></Field>
-      <button disabled={saving} style={primaryButton}>{saving?'Uploading…':'Upload document'}</button>
-    </form></Modal>}
+      <Button type="submit" disabled={saving}>{saving?'Uploading…':'Upload document'}</Button>
+    </form></UiModal>}
   </div>;
 }
 
@@ -165,11 +167,6 @@ function documentFeedItem(doc:PropertyDocument,property:string,unit:string){
 
 function DetailRow({label,value}:{label:string;value:string}){return <div style={{display:'grid',gridTemplateColumns:'110px minmax(0,1fr)',gap:'var(--space-3)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><span style={{color:'var(--text-secondary)'}}>{label}</span><span style={{overflowWrap:'anywhere'}}>{value}</span></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:'var(--space-2)',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}>{label}{children}</label>}
-function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div className="document-modal-overlay"><div className="card document-modal"><div className="document-modal-head"><h2>{title}</h2><button type="button" onClick={onClose} className="product-secondary-button" aria-label="Close">✕</button></div>{children}</div></div>}
 const inputStyle:React.CSSProperties={width:'100%',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--input-bg)',color:'var(--text-primary)',fontSize:'var(--type-body-size)'};
-const sharedButtonType:React.CSSProperties={fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)'};
-const primaryButton:React.CSSProperties={...sharedButtonType,padding:'10px 14px',border:0,borderRadius:999,background:'var(--accent)',color:'var(--accent-contrast)',cursor:'pointer'};
-const secondaryButton:React.CSSProperties={...sharedButtonType,padding:'9px 12px',border:'1px solid var(--border-color)',borderRadius:999,background:'var(--bg-primary)',color:'var(--text-primary)',cursor:'pointer'};
-const dangerButton:React.CSSProperties={...secondaryButton,color:'var(--danger)'};
 const twoCol:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12};
 const errorBox:React.CSSProperties={padding:'var(--space-3)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:'var(--radius-control)',marginBottom:'var(--space-4)',fontSize:'var(--type-small-size)'};
