@@ -1,4 +1,10 @@
 /* Ordered application stylesheet manifest. Each rule lives with its owning workspace. */
+/* Migrated workspace foundations load before the current component refinements. */
+@import "../components/dashboard/dashboard-workspace.css";
+@import "../components/shared/workspace-overlays.css";
+@import "../components/property/property-workspace-foundations.css";
+@import "../components/utilities/utilities-workspace.css";
+@import "../components/ledger/ledger-workspace.css";
 @import "../components/ui/ui.css";
 @import "../components/shared/product-controls.css";
 @import "../components/property/property-directories.css";
