@@ -338,11 +338,7 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
 }
 
 
-/* Period selection should read as state{
-  background:#2b2d2b !important;
-  color:#fff !important;
-  -webkit-text-fill-color:#fff !important;
-}
+/* Legacy period-selection color override removed (non-token, unused). */
 .workspace-form{display:grid;gap:18px}
 .workspace-form label{display:grid;gap:7px;font-size:13px;font-weight:600;color:var(--text-secondary)}
 .workspace-form input:not([type="checkbox"]),.workspace-form select{width:100%;min-width:0;height:48px;border:1px solid var(--border-color);border-radius:13px;background:var(--input-bg,var(--bg-primary));color:var(--text-primary);padding:0 14px;font-size:16px;outline:none}
@@ -369,3 +365,26 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
   .quick-add-modal{min-height:0!important;height:auto!important}
   .quick-add-form{min-height:0!important}
 }
+
+/* Property Edit / Add-Edit Unit modal shell (owner). */
+.workspace-modal-overlay{position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.48);display:grid;place-items:center;padding:24px}
+.workspace-modal{width:min(720px,100%);max-height:min(88vh,820px);overflow:auto;background:var(--card-bg,var(--bg-primary));color:var(--text-primary);border-radius:24px;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.22)}
+.workspace-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:22px}
+.workspace-modal-head h2{font-size:26px;line-height:1.15;margin-top:5px}
+.workspace-modal-close{width:42px;height:42px;border-radius:999px;border:1px solid var(--border-color);background:transparent;color:var(--text-primary);font-size:28px;line-height:1;cursor:pointer}
+.workspace-modal-footer{position:sticky;bottom:-26px;margin:6px -26px -26px;padding:16px 26px 22px;background:var(--card-bg,var(--bg-primary));display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-subtle,var(--border-color))}
+@media(max-width:760px){
+  .workspace-modal-overlay{padding:0;align-items:flex-end}
+  .workspace-modal{width:100%;max-height:92%;border-radius:24px 24px 0 0;padding:22px 20px}
+  .workspace-modal-footer{bottom:-22px;margin:6px -20px -22px;padding:14px 20px calc(18px + env(safe-area-inset-bottom))}
+}
+
+/* Sheet close button used by the utilities/properties sheets. */
+.sheet-close-button{width:40px;height:40px;min-width:40px;min-height:40px;padding:0;flex:0 0 40px;border-radius:var(--radius-control);border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);display:grid;place-items:center;cursor:pointer}
+
+/* Toast notification (owner). Uses the existing @keyframes toast-in above. */
+.app-toast{position:fixed;right:22px;top:20px;z-index:2000;min-width:260px;max-width:min(420px,calc(100vw - 32px));display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 13px;border:1px solid var(--border-color);border-radius:14px;background:color-mix(in srgb,var(--bg-secondary) 94%,transparent);color:var(--text-primary);box-shadow:0 14px 38px rgba(0,0,0,.16);backdrop-filter:blur(18px);font-size:13px;font-weight:620;animation:toast-in .18s ease-out}
+.app-toast-icon{width:27px;height:27px;border-radius:999px;background:color-mix(in srgb,var(--positive) 13%,transparent);color:var(--positive);display:grid;place-items:center}
+.app-toast button{width:30px;height:30px;border:0;border-radius:999px;background:transparent;color:var(--text-secondary);display:grid;place-items:center;cursor:pointer}
+.app-toast button:hover{background:var(--surface-hover)}
+@media(max-width:767px){.app-toast{right:14px;left:14px;top:12px;min-width:0}}

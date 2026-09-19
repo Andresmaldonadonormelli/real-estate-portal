@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import MainLayout from '@/components/layout/MainLayout';
 import AuthGate from '@/components/auth/AuthGate';
 import './globals.css';
-import './portal.css';
 import '../components/layout/app-shell.css';
 import './product-system.css';
 

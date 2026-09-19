@@ -5,7 +5,6 @@
 @import "../components/shared/workspace-common.css";
 @import "../components/dashboard/dashboard-foundations.css";
 @import "../components/property/property-foundations.css";
-@import "../components/ledger/ledger-foundations.css";
 @import "../components/account/account-foundations.css";
 @import "../components/charts/chart-foundations.css";
 /* Migrated workspace foundations load before the current component refinements. */
