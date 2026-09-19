@@ -18,8 +18,12 @@ export DEBIAN_FRONTEND=noninteractive
 echo "==> Installing system packages (Docker, fuse-overlayfs)"
 if ! command -v dockerd >/dev/null 2>&1 || ! command -v fuse-overlayfs >/dev/null 2>&1; then
   sudo apt-get update
-  sudo apt-get install -y docker.io fuse3 fuse-overlayfs
-  # fuse3 ships a conffile prompt that blocks non-interactive installs.
+  # fuse3 ships an /etc/fuse.conf conffile prompt that otherwise aborts a
+  # non-interactive install; force-conf* keeps apt from blocking on it.
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    -o Dpkg::Options::="--force-confdef" \
+    -o Dpkg::Options::="--force-confnew" \
+    docker.io fuse3 fuse-overlayfs
   sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a --force-confnew || true
 fi
 configure_docker
