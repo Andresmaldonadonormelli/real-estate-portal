@@ -41,14 +41,9 @@ if [ ! -f .env.local ]; then
   cp .cursor/env.local.example .env.local
 fi
 
-echo "==> Pre-pulling and initializing the Supabase stack (baked into the snapshot)"
-start_dockerd
-fix_container_networking
-# Clear any stale project state inherited from the base image, bring the stack
-# up once so all images are cached on disk, then tear it down (dropping the data
-# volume) so each fresh agent boots a clean, seeded database.
-reset_supabase
-supabase start
-supabase stop --no-backup || true
-
+# NOTE: We intentionally do NOT start Supabase or pre-pull its Docker images
+# here. Baking the multi-GB Supabase image set into the environment build
+# snapshot exceeds the snapshot finalization limit and fails the build. The
+# images are pulled on demand by the first `supabase start` in .cursor/start.sh
+# (egress is open), which keeps install fast and the build snapshot small.
 echo "==> Install complete"
