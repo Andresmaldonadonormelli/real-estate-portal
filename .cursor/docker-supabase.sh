@@ -3,7 +3,7 @@
 # local Supabase stack. Sourced by both install.sh and start.sh.
 set -euo pipefail
 
-DOCKERD_LOG=/tmp/dockerd.log
+DOCKERD_LOG=/var/log/cursor-dockerd.log
 
 configure_docker() {
   # fuse-overlayfs is the only storage driver that mounts correctly inside the
@@ -23,20 +23,36 @@ fix_container_networking() {
   sudo iptables-legacy -P FORWARD ACCEPT 2>/dev/null || true
 }
 
+open_docker_socket() {
+  # Let the non-root environment user (and the Supabase CLI it runs) reach the
+  # daemon without sudo. usermod is durable but only applies to new logins, so
+  # we also relax the live socket for the current session.
+  sudo usermod -aG docker "$(id -un)" 2>/dev/null || true
+  sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
+}
+
 start_dockerd() {
   if sudo docker info >/dev/null 2>&1; then
     echo "dockerd already running"
+    open_docker_socket
     return 0
   fi
   echo "starting dockerd..."
-  sudo bash -c "nohup dockerd >>'$DOCKERD_LOG' 2>&1 &"
-  for _ in $(seq 1 30); do
+  # Pre-create the log with open perms and background via `sudo -b` so the
+  # redirect target is always writable regardless of who owns /tmp or /var/log.
+  sudo mkdir -p "$(dirname "$DOCKERD_LOG")"
+  sudo touch "$DOCKERD_LOG"
+  sudo chmod 666 "$DOCKERD_LOG"
+  sudo -b sh -c "exec dockerd >>'$DOCKERD_LOG' 2>&1"
+  for _ in $(seq 1 60); do
     if sudo docker info >/dev/null 2>&1; then
       echo "dockerd is ready"
+      open_docker_socket
       return 0
     fi
     sleep 1
   done
   echo "ERROR: dockerd did not become ready; see $DOCKERD_LOG" >&2
+  sudo tail -n 30 "$DOCKERD_LOG" >&2 || true
   return 1
 }
