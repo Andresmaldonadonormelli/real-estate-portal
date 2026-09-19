@@ -94,7 +94,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     if(filters.type && tx.type!==filters.type) return false;
     if(filters.category && tx.category!==filters.category) return false;
     if(reviewFilter && (tx.status!=='posted'||!Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)||Boolean(tx.is_new_import))) return false;
-    if(newImportFilter && (tx.status!=='posted'||!Boolean(tx.is_new_import))) return false;
+    if(newImportFilter && (tx.status!=='posted'||tx.source!=='plaid'||!Boolean(tx.is_new_import))) return false;
     const a=Math.abs(tx.amount);
     if(filters.min && a<Number(filters.min)) return false;
     if(filters.max && a>Number(filters.max)) return false;
@@ -103,7 +103,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
 
   const total=useMemo(()=>calculateMonthlyTotals(filtered),[filtered]);
   const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&!tx.is_new_import&&Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)).length,[transactions,selectedPropertyId]);
-  const newImportCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&Boolean(tx.is_new_import)).length,[transactions,selectedPropertyId]);
+  const newImportCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&tx.source==='plaid'&&Boolean(tx.is_new_import)).length,[transactions,selectedPropertyId]);
   const activeFilterCount=[filters.type,filters.category,filters.min,filters.max].filter(Boolean).length;
   const groups=useMemo(()=>Object.entries(groupTransactionsByMonth(filtered)).sort(([a],[b])=>b.localeCompare(a)).map(([key,txs])=>({key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),transactions:[...txs].sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))})),[filtered]);
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';

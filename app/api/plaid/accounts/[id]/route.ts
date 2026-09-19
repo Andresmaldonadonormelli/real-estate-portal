@@ -1,5 +1,47 @@
 import { apiError, adminDb, authenticatedUser } from '@/lib/plaid/server';
+import { backfillPlaidAccount } from '@/lib/plaid/sync';
 export const runtime='nodejs';
-export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){try{const user=await authenticatedUser(request);const {id}=await params;const body=await request.json();const db=adminDb();const update:any={};if('propertyId'in body){update.property_id=body.propertyId||null;update.import_enabled=Boolean(body.propertyId);update.stopped_at=body.propertyId?null:new Date().toISOString();}const {error}=await db.from('plaid_accounts').update(update).eq('id',id).eq('user_id',user.id);if(error)throw error;return Response.json({ok:true});}catch(error){return apiError(error)}}
 
-export async function DELETE(request:Request,{params}:{params:Promise<{id:string}>}){try{const user=await authenticatedUser(request);const {id}=await params;const db=adminDb();const {data:account,error}=await db.from('plaid_accounts').select('id,item_id,mask').eq('id',id).eq('user_id',user.id).is('archived_at',null).single();if(error)throw error;const now=new Date().toISOString();const {data:links}=await db.from('plaid_transactions').select('ledger_transaction_id').eq('account_id',account.id);const ledgerIds=(links||[]).map(row=>row.ledger_transaction_id).filter(Boolean);if(ledgerIds.length)await db.from('transactions').update({source_connection_status:'unlinked'}).in('id',ledgerIds);const {data:item}=await db.from('plaid_items').select('institution_name').eq('id',account.item_id).maybeSingle();if(item?.institution_name&&account.mask)await db.from('transactions').update({source_connection_status:'unlinked'}).eq('user_id',user.id).eq('source','plaid').eq('source_institution',item.institution_name).eq('source_account_mask',account.mask);const result=await db.from('plaid_accounts').update({archived_at:now,import_enabled:false,stopped_at:now,property_id:null}).eq('id',id).eq('user_id',user.id);if(result.error)throw result.error;return Response.json({ok:true});}catch(error){return apiError(error)}}
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){
+  try{
+    const user=await authenticatedUser(request);
+    const {id}=await params;
+    const body=await request.json();
+    const db=adminDb();
+    const update:Record<string,unknown>={};
+    const assigningProperty='propertyId'in body && Boolean(body.propertyId);
+    if('propertyId'in body){
+      update.property_id=body.propertyId||null;
+      update.import_enabled=Boolean(body.propertyId);
+      update.stopped_at=body.propertyId?null:new Date().toISOString();
+    }
+    const {data:account,error}=await db.from('plaid_accounts').update(update).eq('id',id).eq('user_id',user.id).select('id,item_id,property_id,import_enabled').single();
+    if(error)throw error;
+
+    if(assigningProperty&&account?.import_enabled&&account.property_id){
+      const {data:item,error:itemError}=await db.from('plaid_items').select('id,user_id,access_token_encrypted,cursor,institution_name').eq('id',account.item_id).eq('user_id',user.id).is('disconnected_at',null).single();
+      if(itemError)throw itemError;
+      await backfillPlaidAccount(db,item,account.id);
+    }
+    return Response.json({ok:true});
+  }catch(error){return apiError(error)}
+}
+
+export async function DELETE(request:Request,{params}:{params:Promise<{id:string}>}){
+  try{
+    const user=await authenticatedUser(request);
+    const {id}=await params;
+    const db=adminDb();
+    const {data:account,error}=await db.from('plaid_accounts').select('id,item_id,mask').eq('id',id).eq('user_id',user.id).is('archived_at',null).single();
+    if(error)throw error;
+    const now=new Date().toISOString();
+    const {data:links}=await db.from('plaid_transactions').select('ledger_transaction_id').eq('account_id',account.id);
+    const ledgerIds=(links||[]).map(row=>row.ledger_transaction_id).filter(Boolean);
+    if(ledgerIds.length)await db.from('transactions').update({source_connection_status:'unlinked'}).in('id',ledgerIds);
+    const {data:item}=await db.from('plaid_items').select('institution_name').eq('id',account.item_id).maybeSingle();
+    if(item?.institution_name&&account.mask)await db.from('transactions').update({source_connection_status:'unlinked'}).eq('user_id',user.id).eq('source','plaid').eq('source_institution',item.institution_name).eq('source_account_mask',account.mask);
+    const result=await db.from('plaid_accounts').update({archived_at:now,import_enabled:false,stopped_at:now,property_id:null}).eq('id',id).eq('user_id',user.id);
+    if(result.error)throw result.error;
+    return Response.json({ok:true});
+  }catch(error){return apiError(error)}
+}

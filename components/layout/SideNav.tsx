@@ -17,7 +17,7 @@ export default function SideNav() {
   useEffect(()=>{ let alive=true; (async()=>{
     const [p,t]=await Promise.all([
       cachedSupabaseRequest('nav:properties',async()=>await supabase.from('properties').select('id,address').is('archived_at',null).order('address')),
-      cachedSupabaseRequest('nav:new-import-count',async()=>await supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('is_new_import',true).eq('status','posted'))
+      cachedSupabaseRequest('nav:new-import-count',async()=>await supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('source','plaid').eq('is_new_import',true).eq('status','posted'))
     ]);
     if(!alive)return;
     if(!p.error)setProperties((p.data||[]) as PropertyLink[]);
