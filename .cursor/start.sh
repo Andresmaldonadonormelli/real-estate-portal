@@ -18,7 +18,9 @@ if [ ! -f .env.local ]; then
 fi
 
 echo "==> Starting local Supabase"
-# Idempotent: if the stack is already up this is effectively a no-op.
+# Clear any stale project containers a base snapshot may have captured, then
+# start fresh so the database is always up and seeded deterministically.
+reset_supabase
 supabase start
 
 echo "==> Environment ready. Supabase API on http://127.0.0.1:54321, app will run on http://localhost:3000"

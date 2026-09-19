@@ -31,6 +31,18 @@ open_docker_socket() {
   sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
 }
 
+reset_supabase() {
+  # Clear any leftover local Supabase state before starting. A base snapshot may
+  # have captured running/half-started project containers; without this,
+  # `supabase start` reports "already running" and fails on unhealthy containers.
+  supabase stop --no-backup >/dev/null 2>&1 || true
+  local stale
+  stale="$(sudo docker ps -aq --filter 'name=supabase_' 2>/dev/null || true)"
+  if [ -n "$stale" ]; then
+    sudo docker rm -f $stale >/dev/null 2>&1 || true
+  fi
+}
+
 start_dockerd() {
   if sudo docker info >/dev/null 2>&1; then
     echo "dockerd already running"

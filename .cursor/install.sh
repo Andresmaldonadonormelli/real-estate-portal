@@ -44,8 +44,10 @@ fi
 echo "==> Pre-pulling and initializing the Supabase stack (baked into the snapshot)"
 start_dockerd
 fix_container_networking
-# Bring the stack up once so all images are cached on disk, then tear it down
-# (dropping the data volume) so each fresh agent boots a clean, seeded database.
+# Clear any stale project state inherited from the base image, bring the stack
+# up once so all images are cached on disk, then tear it down (dropping the data
+# volume) so each fresh agent boots a clean, seeded database.
+reset_supabase
 supabase start
 supabase stop --no-backup || true
 
