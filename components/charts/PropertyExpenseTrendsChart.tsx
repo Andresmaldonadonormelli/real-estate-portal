@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { categoryKey } from '@/lib/accounting';
+import { isOperatingExpenseCategory } from '@/lib/propertyFinancials';
 
 type Tx={transaction_date:string;type:string;category:string;amount:number;status?:string|null};
 
@@ -10,24 +11,17 @@ const CATEGORY_COLOR:Record<string,string>={
   maintenance:'var(--category-maintenance)',
   management:'var(--category-management)',
   leasing:'var(--category-management)',
-  mortgage:'var(--category-mortgage)',
-  'mortgage-interest':'var(--category-mortgage)',
-  'mortgage-principal':'var(--category-mortgage)',
   utilities:'var(--category-utilities)',
   insurance:'var(--category-insurance)',
   taxes:'var(--category-taxes)',
-  capex:'var(--category-capex)',
   legal:'var(--category-legal)',
   review:'var(--category-review)',
-  distribution:'var(--category-distribution)',
-  contribution:'var(--category-distribution)',
-  'non-operating':'var(--category-neutral)',
   refund:'var(--category-utilities)',
   'other-income':'var(--category-rent)',
   rent:'var(--category-rent)',
   neutral:'var(--category-neutral)',
 };
-const FALLBACK_SERIES=['var(--category-maintenance)','var(--category-management)','var(--category-mortgage)','var(--category-utilities)'];
+const FALLBACK_SERIES=['var(--category-maintenance)','var(--category-management)','var(--category-utilities)','var(--category-insurance)'];
 
 const wholeCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
 function axisMaximum(value:number){
@@ -64,7 +58,7 @@ export default function PropertyExpenseTrendsChart({transactions}:{transactions:
 
   const windowStart=windowMonths[0].key;
   const windowExpense=useMemo(
-    ()=>transactions.filter(t=>t.type==='expense'&&t.status!=='declined'&&t.transaction_date.slice(0,7)>=windowStart&&t.transaction_date.slice(0,7)<=windowMonths[11].key),
+    ()=>transactions.filter(t=>t.type==='expense'&&t.status!=='declined'&&isOperatingExpenseCategory(t.category)&&t.transaction_date.slice(0,7)>=windowStart&&t.transaction_date.slice(0,7)<=windowMonths[11].key),
     [transactions,windowStart,windowMonths]
   );
 
@@ -118,10 +112,10 @@ export default function PropertyExpenseTrendsChart({transactions}:{transactions:
   function finishPointer(){setPressedKey('')}
 
   return <section className="property-expense-trends">
-    <div className="property-section-head"><h2>Expense trends</h2></div>
-    <p className="expense-share-copy">{allTotal?Math.round(topTotal/allTotal*100):0}% of expenses are represented by the top three categories · {rangeLabel}</p>
+    <div className="property-section-head"><h2>Operating expense trends</h2></div>
+    <p className="expense-share-copy">{allTotal?Math.round(topTotal/allTotal*100):0}% of operating expenses are represented by the top three categories · {rangeLabel}</p>
     {allTotal?<>
-      <div className="expense-chart-legend" aria-label="Expense category legend">{legendItems.map(item=><span key={item.key}><i style={{background:item.color}} aria-hidden="true"/>{item.label}</span>)}</div>
+      <div className="expense-chart-legend" aria-label="Operating expense category legend">{legendItems.map(item=><span key={item.key}><i style={{background:item.color}} aria-hidden="true"/>{item.label}</span>)}</div>
       <div className="expense-chart" onMouseLeave={()=>setHoveredKey('')}>
         <div className="expense-axis" aria-hidden="true">{ticks.map(tick=><span key={tick}>{compactCurrency(tick)}</span>)}</div>
         <div ref={plotRef} className="expense-plot" onPointerDown={event=>{if(event.pointerType==='mouse')return;event.currentTarget.setPointerCapture(event.pointerId);inspectPointer(event)}} onPointerMove={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))inspectPointer(event)}} onPointerUp={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);finishPointer()}} onPointerCancel={finishPointer}>
@@ -136,7 +130,7 @@ export default function PropertyExpenseTrendsChart({transactions}:{transactions:
               const activeRow=active?.key===row.key;
               const stackHeight=axisMax&&row.total?Math.max(6,(row.total/axisMax)*100):0;
               const visibleSegments=row.segments.filter(segment=>segment.value>0);
-              return <button key={row.key} type="button" onMouseEnter={()=>setHoveredKey(row.key)} onFocus={()=>setHoveredKey(row.key)} onBlur={()=>setHoveredKey('')} className={`${activeRow?'active':''} ${inspectionKey&&!activeRow?'is-dimmed':''}`} aria-label={`${row.fullLabel}, ${wholeCurrency(row.total)} total expenses`}>
+              return <button key={row.key} type="button" onMouseEnter={()=>setHoveredKey(row.key)} onFocus={()=>setHoveredKey(row.key)} onBlur={()=>setHoveredKey('')} className={`${activeRow?'active':''} ${inspectionKey&&!activeRow?'is-dimmed':''}`} aria-label={`${row.fullLabel}, ${wholeCurrency(row.total)} total operating expenses`}>
                 <span className={`expense-pillar ${activeRow?'is-active':''}`}>
                   {row.total>0&&<span className="expense-pillar-stack" style={{height:`${stackHeight}%`}}>
                     {visibleSegments.map((segment,index)=>{

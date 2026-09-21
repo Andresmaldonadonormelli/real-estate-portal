@@ -18,7 +18,9 @@
 .financial-history-active-dot.is-negative{background:var(--negative)}.financial-history-active-dot.is-positive{background:var(--positive)}
 .pulse-periods,.property-chart-periods{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
 .pulse-periods::-webkit-scrollbar,.property-chart-periods::-webkit-scrollbar{display:none}.pulse-periods button,.property-chart-periods button{flex:0 0 auto}
-.expense-plot{min-width:0!important;border-bottom:0!important;overflow:visible}.expense-chart-grid{gap:var(--space-1)}
+.expense-plot{min-width:0!important;overflow:visible}.expense-chart-grid{gap:var(--space-1)}
+.expense-pillar-stack i.is-top-segment{border-radius:4px 4px 0 0!important}
+.expense-pillar,.expense-pillar-stack,.expense-pillar-stack i:not(.is-top-segment){border-radius:0!important}
 .expense-inspection[data-edge="left"]{transform:translateX(0)}.expense-inspection[data-edge="right"]{transform:translateX(-100%)}
 
 @media(max-width:767px){

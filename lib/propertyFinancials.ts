@@ -21,6 +21,11 @@ export type PropertyTransaction = {
 
 const OPERATING_EXCLUSIONS = ['mortgage-interest', 'mortgage-principal', 'mortgage', 'capex', 'distribution'];
 
+export function isOperatingExpenseCategory(category: string) {
+  const key = categoryKey(category || '');
+  return !OPERATING_EXCLUSIONS.includes(key) && key !== 'review';
+}
+
 export const formatKpiCurrency = (value: number) => new Intl.NumberFormat('en-US', {
   style: 'currency', currency: 'USD', maximumFractionDigits: 0,
 }).format(Math.round(value));
@@ -45,7 +50,7 @@ export function buildBreakdown(rows: PropertyTransaction[]) {
   for (const transaction of rows) {
     if (transaction.type !== 'expense') continue;
     const key = categoryKey(transaction.category || '');
-    if (OPERATING_EXCLUSIONS.includes(key) || key === 'review') continue;
+    if (!isOperatingExpenseCategory(transaction.category || '')) continue;
     const category = transaction.category || 'Other Expense';
     const current = map.get(category) || { category, key, amount: 0, transactions: [] };
     current.amount += Math.abs(Number(transaction.amount || 0));
