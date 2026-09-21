@@ -13,7 +13,7 @@ export default function BottomNav() {
   const [newImports,setNewImports]=useState(0);
 
   useEffect(()=>setMounted(true),[]);
-  useEffect(()=>{supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('is_new_import',true).eq('status','posted').then(({count,error})=>{if(!error)setNewImports(count||0)})},[pathname]);
+  useEffect(()=>{supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('source','plaid').eq('is_new_import',true).eq('status','posted').then(({count,error})=>{if(!error)setNewImports(count||0)})},[pathname]);
 
   const items=[
     {href:'/',label:'Dashboard',icon:Gauge},
