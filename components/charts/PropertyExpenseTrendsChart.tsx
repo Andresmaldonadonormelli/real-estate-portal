@@ -60,9 +60,10 @@ export default function PropertyExpenseTrendsChart({transactions}:{transactions:
   const topCategories=useMemo(()=>[...totals.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name),[totals]);
   const topTotal=topCategories.reduce((sum,category)=>sum+(totals.get(category)||0),0);
   const allTotal=[...totals.values()].reduce((sum,value)=>sum+value,0);
+  const otherTotal=Math.max(0,allTotal-topTotal);
   const legendItems=[
     ...topCategories.map((category,index)=>({key:category,label:category,color:colorForCategory(category,index)})),
-    {key:'__other',label:'Other',color:'var(--category-neutral)'},
+    ...(otherTotal>0?[{key:'__other',label:'Other',color:'var(--category-neutral)'}]:[]),
   ];
 
   const rows=useMemo(()=>Array.from({length:12},(_,month)=>{
