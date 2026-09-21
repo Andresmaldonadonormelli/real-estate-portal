@@ -31,6 +31,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 @media (hover: hover) and (pointer: fine) {
   button:not(:disabled):hover { transform: translateY(-1px); }
+  .product-secondary-button:hover:not(:disabled),
+  .ui-button--secondary:hover:not(:disabled),
+  .ui-button--quiet:hover:not(:disabled),
+  .ledger-v230-tools>button:hover,
+  .ledger-v230-more-wrap>button:hover,
+  .ledger-v230-review:hover,
+  .document-feed-detail:hover { transform: none; }
   .icon-button:hover { background: var(--surface-hover); }
   a:hover { opacity: .88; }
 }

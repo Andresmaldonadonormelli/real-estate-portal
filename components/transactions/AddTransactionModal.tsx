@@ -6,16 +6,19 @@ import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import { formatCurrency } from '@/lib/formatters';
+import { estimatePayoutSplit } from '@/lib/managementPayout';
 import { ProductSelect } from '@/components/common/ProductControls';
 
 type TxType = 'income' | 'expense' | 'transfer';
 type Doc = {id:string;title:string|null;file_name:string;category:string};
 type EditableTx = Transaction & {needs_review?:boolean|null;receipt_path?:string|null};
 
-export default function AddTransactionModal({ userId, properties, units, transaction, viewOnly=false, onClose, onSaved, onArchived }:{
+export default function AddTransactionModal({ userId, properties, units, transaction, viewOnly=false, onClose, onSaved, onArchived, onArchiveFailed }:{
   userId:string; properties:Property[]; units:Unit[]; transaction?:EditableTx|null;
   viewOnly?:boolean;
-  onClose:()=>void; onSaved:(message?:string)=>void|Promise<void>; onArchived?:(message?:string)=>void|Promise<void>;
+  onClose:()=>void; onSaved:(message?:string)=>void|Promise<void>;
+  onArchived?:(message?:string,id?:string,phase?:'optimistic'|'complete')=>void|Promise<void>;
+  onArchiveFailed?:(tx:EditableTx,error:string)=>void|Promise<void>;
 }) {
   const editing=Boolean(transaction?.id);
   const [form,setForm]=useState({
@@ -36,14 +39,12 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
   const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
-  const recurringMortgage=Boolean(editing&&transaction?.source==='recurring'&&['Mortgage Payment','Mortgage Payment (Unsplit)'].includes(transaction?.category||''));
   const isMortgage=['Mortgage Payment','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(form.category);
   const [mortgageSplit,setMortgageSplit]=useState({principal:String(Number((transaction as any)?.mortgage_principal_amount||0)||''),interest:String(Number((transaction as any)?.mortgage_interest_amount||0)||''),escrow:String(Number((transaction as any)?.mortgage_escrow_amount||0)||'')});
   const mortgageAllocated=['principal','interest','escrow'].reduce((sum,key)=>sum+Math.max(0,Number((mortgageSplit as any)[key]||0)),0);
   const mortgageAmount=Math.abs(Number(form.amount||0));
   const mortgageSplitDifference=Math.abs(mortgageAllocated-mortgageAmount);
   const mortgageSplitComplete=isMortgage&&mortgageAllocated>0&&mortgageSplitDifference<=0.020001;
-  const [recurringEnabled,setRecurringEnabled]=useState(()=>selectedProperty?(selectedProperty as any).mortgage_recurring_enabled!==false:true);
   const propertyDefaultSplit=useMemo(()=>({
     principal:Math.max(0,Number((selectedProperty as any)?.mortgage_principal_amount||0)),
     interest:Math.max(0,Number((selectedProperty as any)?.mortgage_interest_amount||0)),
@@ -51,30 +52,14 @@ export default function AddTransactionModal({ userId, properties, units, transac
   }),[selectedProperty]);
   const propertyDefaultAllocated=propertyDefaultSplit.principal+propertyDefaultSplit.interest+propertyDefaultSplit.escrow;
   const propertyDefaultAvailable=propertyDefaultAllocated>0;
+  const notesText=String(transaction?.notes||'');
+  const alreadyPayoutSplit=/split from (net|Chase\/net) payout|split from net deposit/i.test(notesText);
+  const showPayoutSplit=Boolean(editing&&transaction?.source==='plaid'&&transaction.type==='income'&&Number(selectedProperty?.management_fee_percent||0)>0&&!alreadyPayoutSplit);
   function applyMortgageDefault(){
     if(!propertyDefaultAvailable)return;
     setMortgageSplit({principal:String(propertyDefaultSplit.principal||''),interest:String(propertyDefaultSplit.interest||''),escrow:String(propertyDefaultSplit.escrow||'')});
     const exact=Number(propertyDefaultAllocated.toFixed(2));
     if(exact>0)setForm(prev=>({...prev,amount:exact.toFixed(2),needs_review:false}));
-  }
-
-  useEffect(()=>{if(selectedProperty)setRecurringEnabled((selectedProperty as any).mortgage_recurring_enabled!==false)},[selectedProperty?.id]);
-  useEffect(()=>{
-    if(!isMortgage||!propertyDefaultAvailable)return;
-    const txHasSplit=Number((transaction as any)?.mortgage_principal_amount||0)+Number((transaction as any)?.mortgage_interest_amount||0)+Number((transaction as any)?.mortgage_escrow_amount||0)>0;
-    if(editing&&recurringMortgage&&!txHasSplit){
-      setMortgageSplit({principal:String(propertyDefaultSplit.principal||''),interest:String(propertyDefaultSplit.interest||''),escrow:String(propertyDefaultSplit.escrow||'')});
-      const exact=Number(propertyDefaultAllocated.toFixed(2));
-      if(exact>0)setForm(prev=>({...prev,amount:exact.toFixed(2),needs_review:false}));
-    }
-  },[editing,recurringMortgage,isMortgage,propertyDefaultAvailable,propertyDefaultAllocated,propertyDefaultSplit.principal,propertyDefaultSplit.interest,propertyDefaultSplit.escrow,transaction]);
-
-  async function toggleRecurringMortgage(){
-    if(!selectedProperty)return;
-    const next=!recurringEnabled;
-    setRecurringEnabled(next);
-    const r=await supabase.from('properties').update({mortgage_recurring_enabled:next}).eq('id',selectedProperty.id);
-    if(r.error){setRecurringEnabled(!next);setError(r.error.message);}
   }
 
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
@@ -101,9 +86,66 @@ export default function AddTransactionModal({ userId, properties, units, transac
   }
 
   async function archive(){
-    if(!transaction||!confirm('Delete this transaction?'))return;setSaving(true);setError('');
-    const r=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',transaction.id);
-    if(r.error){setError(r.error.message);setSaving(false);return;}await onArchived?.('Transaction deleted');onClose();setSaving(false);
+    if(!transaction||!confirm('Delete this transaction?'))return;
+    setSaving(true);setError('');
+    const archivedId=transaction.id;
+    const snapshot=transaction;
+    await onArchived?.('Transaction deleted',archivedId,'optimistic');
+    onClose();
+    const r=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',archivedId);
+    if(r.error){
+      await onArchiveFailed?.(snapshot,r.error.message||'Could not delete transaction.');
+      setSaving(false);
+      return;
+    }
+    await onArchived?.('Transaction deleted',archivedId,'complete');
+    setSaving(false);
+  }
+
+  async function applyEstimatedPayoutSplit(confirm=false){
+    if(!transaction||!selectedProperty)return;
+    const feePercent=Number(selectedProperty.management_fee_percent||0);
+    if(feePercent<=0){setError('Add a management fee percent on the property to estimate this split.');return;}
+    const feeKey=`management-fee-split:${transaction.id}`;
+    const existingFee=await supabase.from('transactions').select('id').eq('user_id',userId).eq('import_key',feeKey).is('archived_at',null).maybeSingle();
+    if(existingFee.data?.id){setError('A management-fee split already exists for this deposit.');return;}
+    const net=Math.abs(Number(transaction.amount||0));
+    const split=estimatePayoutSplit(net,feePercent);
+    if(split.fee<=0){setError('Could not estimate a management fee from this deposit.');return;}
+    setSaving(true);setError('');
+    const rentUpdate=await supabase.from('transactions').update({
+      type:'income',
+      category:'Rent',
+      amount:split.gross,
+      description:transaction.description||'Property management payout',
+      notes:confirm?`Confirmed split from net deposit ${formatCurrency(split.net)}.`:`Estimated split from net deposit ${formatCurrency(split.net)}. Needs review.`,
+      needs_review:!confirm,
+      is_new_import:false,
+      import_acknowledged_at:new Date().toISOString(),
+    }).eq('id',transaction.id);
+    if(rentUpdate.error){setError(rentUpdate.error.message);setSaving(false);return;}
+    const feeUpsert=await supabase.from('transactions').upsert({
+      user_id:userId,
+      property_id:transaction.property_id,
+      unit_id:transaction.unit_id||null,
+      transaction_date:transaction.transaction_date,
+      type:'expense',
+      category:'Management Fee',
+      description:`Management fee (${feePercent}%)`,
+      payee_source:'Property manager',
+      amount:-split.fee,
+      notes:confirm?`Confirmed fee split from Chase/net payout ${formatCurrency(split.net)}.`:`Estimated fee split from Chase/net payout ${formatCurrency(split.net)}. Needs review.`,
+      source:transaction.source||'plaid',
+      import_key:feeKey,
+      status:'posted',
+      confirmed_at:new Date().toISOString(),
+      needs_review:!confirm,
+      is_new_import:false,
+    },{onConflict:'user_id,import_key',ignoreDuplicates:true});
+    if(feeUpsert.error){setError(feeUpsert.error.message);setSaving(false);return;}
+    setForm(current=>({...current,category:'Rent',type:'income',amount:String(split.gross),needs_review:!confirm}));
+    await onSaved(confirm?'Payout split confirmed':'Estimated payout split applied');
+    setSaving(false);
   }
 
   async function resolveCategory(category:string){
@@ -126,6 +168,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
       <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?(showEditor?'Edit transaction':'Transaction details'):'Add transaction'}</h2><p>{editing?(showEditor?'Update the accounting details or supporting documents.':'Review the transaction before making changes.'):'Post it now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
       {transaction?.source==='plaid'&&<div className="quick-add-source" style={{margin:'0 var(--space-4)',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--surface-subtle)'}}><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported bank transaction'}</span></div>}
+      {showPayoutSplit&&(()=>{const split=estimatePayoutSplit(Math.abs(Number(transaction!.amount||0)),Number(selectedProperty?.management_fee_percent||0));return <div className="quick-add-source" style={{margin:'var(--space-3) var(--space-4) 0',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--surface-subtle)'}}><strong>Property-management payout</strong><span>Chase deposit {formatCurrency(split.net)} · Estimated rent {formatCurrency(split.gross)} · Fee {formatCurrency(split.fee)} ({Number(selectedProperty?.management_fee_percent||0)}%)</span><span>Estimated · Needs review until confirmed so the net deposit is not double-counted as gross rent.</span><div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-2)',marginTop:'var(--space-2)'}}><button type="button" className="product-secondary-button" disabled={saving} onClick={()=>void applyEstimatedPayoutSplit(false)}>Apply estimated split</button><button type="button" className="quick-add-submit" disabled={saving} onClick={()=>void applyEstimatedPayoutSplit(true)}>Confirm split</button></div></div>})()}
       {error&&<div className="quick-add-error">{error}</div>}
       {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>void resolveCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
         {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}
@@ -142,13 +185,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
             <label>Escrow<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.escrow} onChange={e=>setMortgageSplit({...mortgageSplit,escrow:e.target.value})}/></label>
           </div>
           <small className={mortgageSplitComplete?'mortgage-split-ok':'mortgage-split-note'}>{mortgageSplitComplete?'Fully allocated. This payment will be marked reviewed when saved.':mortgageAllocated>mortgageAmount?'Allocated amount is higher than the payment.':'Any unallocated amount can remain in Needs Review until you have the statement.'}</small>
-        </div>}
-        {recurringMortgage&&<div style={{padding:'14px 15px',borderRadius:16,background:'var(--surface-subtle, rgba(127,127,127,.08))',display:'grid',gap:8}}>
-          <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}>
-            <div><strong style={{display:'block',fontSize:14}}>Recurring mortgage payment</strong><small style={{display:'block',marginTop:4,color:'var(--text-secondary)'}}>Monthly · day {Number((selectedProperty as any)?.mortgage_due_day||1)}{Number((selectedProperty as any)?.monthly_mortgage_payment||0)>0?` · ${formatCurrency(Number((selectedProperty as any).monthly_mortgage_payment))}`:''}</small></div>
-            <button type="button" onClick={toggleRecurringMortgage} style={{border:0,borderRadius:999,padding:'7px 11px',background:'var(--surface-strong, rgba(127,127,127,.14))',color:'var(--text-primary)',fontWeight:650,cursor:'pointer'}}>{recurringEnabled?'Pause':'Resume'}</button>
-          </div>
-          <small style={{color:'var(--text-secondary)'}}>{recurringEnabled?'Future monthly mortgage entries will continue to post automatically.':'Future monthly mortgage entries are paused. This transaction is unchanged.'}</small>
         </div>}
         <button type="button" className={`quick-add-more ${showMore?'expanded':''}`} onClick={()=>setShowMore(v=>!v)}><span>{showMore?'Hide additional details':'Add details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
         {showMore&&<div className="quick-add-more-panel">

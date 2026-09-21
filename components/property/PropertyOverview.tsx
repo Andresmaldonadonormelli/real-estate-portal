@@ -10,10 +10,9 @@ import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import PropertyExpenseTrendsChart from '@/components/charts/PropertyExpenseTrendsChart';
 import ActionCenter, { type ActionCenterItem } from '@/components/dashboard/ActionCenter';
 import RecentActivity from '@/components/dashboard/RecentActivity';
-import { ChartLegend, SegmentedControl } from '@/components/common/ProductControls';
+import { ChartLegend } from '@/components/common/ProductControls';
 import {
   buildMonthlyFinancialHistory,
-  type HistoryMode,
   type HistoryPeriod,
   type MonthlyFinancialPoint,
 } from '@/lib/financialHistory';
@@ -31,7 +30,6 @@ type Props = {
 
 export default function PropertyOverview({ property, units, transactions, expectedRent, onNavigate, onOpenTransaction }: Props) {
   const [period, setPeriod] = useState<HistoryPeriod>('1Y');
-  const [mode, setMode] = useState<HistoryMode>('cashFlow');
   const [inspected, setInspected] = useState<MonthlyFinancialPoint | null>(null);
   const collapseStorageKey = `property-overview-collapsed:${property.id}`;
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -50,17 +48,9 @@ export default function PropertyOverview({ property, units, transactions, expect
 
   const history = useMemo(() => buildMonthlyFinancialHistory(transactions, period, property.id), [transactions, period, property.id]);
   const current = history[history.length - 1];
-  const periodDisplayed = history.reduce((sum, row) => ({
-    ...row,
-    income: sum.income + row.income,
-    cashExpenses: sum.cashExpenses + row.cashExpenses,
-    operatingExpenses: sum.operatingExpenses + row.operatingExpenses,
-    cashFlow: sum.cashFlow + row.cashFlow,
-    noi: sum.noi + row.noi,
-  }), { ...(current || { key: '', label: '', fullLabel: '', periodLabel: '' }), income: 0, cashExpenses: 0, operatingExpenses: 0, cashFlow: 0, noi: 0 });
   const displayed = inspected || current;
-  const currentValue = mode === 'cashFlow' ? (displayed?.cashFlow || 0) : (displayed?.noi || 0);
-  const currentExpenses = mode === 'cashFlow' ? (displayed?.cashExpenses || 0) : (displayed?.operatingExpenses || 0);
+  const currentValue = displayed?.cashFlow || 0;
+  const currentExpenses = displayed?.cashExpenses || 0;
   const currentMonth = new Date().toISOString().slice(0, 7);
   const collectedRent = transactions.filter(tx => tx.transaction_date.startsWith(currentMonth) && tx.type === 'income' && tx.category === 'Rent' && (tx.status || 'posted') === 'posted').reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0);
   const periodTransactions = transactions.filter(tx => tx.status !== 'declined' && history.some(month => tx.transaction_date.startsWith(month.key)));
@@ -134,8 +124,8 @@ export default function PropertyOverview({ property, units, transactions, expect
       <section className="property-overview-chart-open">
         <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{fullyVacant?(inspected?`${inspected.fullLabel} holding costs`:'Holding costs this month'):(inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month')}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={fullyVacant||currentValue<0?'amount-negative':'amount-positive'}><AnimatedValue value={fullyVacant?currentExpenses:currentValue} animate={!inspected} tone={fullyVacant?'negative':undefined}/></span></div>{!fullyVacant&&<div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div>}</div></div></div>
         {fullyVacant?<div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense"/>Holding costs</span></div>:<ChartLegend negative={currentValue<0}/>} 
-        <FinancialHistoryChart rows={history} mode={mode} kind={fullyVacant?'holdingCosts':'cashFlow'} label={fullyVacant?`Monthly holding costs for ${property.address}`:`Monthly ${mode === 'cashFlow' ? 'cash flow' : 'net operating income'} and expenses for ${property.address}`} onInspect={setInspected}/>
-        <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div>{!fullyVacant&&<SegmentedControl value={mode} onChange={setMode} label="Chart metric" className="property-chart-modes" options={[{value:'cashFlow',label:'Cash flow'},{value:'noi',label:'NOI'}]}/>}</div>
+        <FinancialHistoryChart rows={history} mode="cashFlow" kind={fullyVacant?'holdingCosts':'cashFlow'} label={fullyVacant?`Monthly holding costs for ${property.address}`:`Monthly net cash flow for ${property.address}`} onInspect={setInspected}/>
+        <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div></div>
       </section>
       <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`}/>
       <CollapsibleSection id="financials" title="Financial breakdown" collapsed={Boolean(collapsedSections.financials)} onToggle={toggleSection}><FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/></CollapsibleSection>
@@ -149,7 +139,13 @@ export default function PropertyOverview({ property, units, transactions, expect
 }
 
 function CollapsibleSection({id,title,collapsed,onToggle,children}:{id:string;title:string;collapsed:boolean;onToggle:(id:string)=>void;children:React.ReactNode}){
-  return <section className="property-collapsible"><button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={()=>onToggle(id)}><span>{title}</span><ChevronDown size={18}/></button>{!collapsed&&<div className="property-collapsible-body">{children}</div>}</section>;
+  return <section className="property-collapsible" data-section={id}>
+    <button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={()=>onToggle(id)}>
+      <span>{title}</span>
+      <ChevronDown size={18} aria-hidden="true"/>
+    </button>
+    <div className="property-collapsible-body" hidden={collapsed}>{children}</div>
+  </section>;
 }
 
 function PropertyPulse({ title, explanation, updatedAt, collectedRent, expectedRent, rentProgress, expectedByToday, signals }: { title: string; explanation: string; updatedAt: string; collectedRent: number; expectedRent: number; rentProgress: number; expectedByToday: number; signals: { key: string; label: string; value: string; tone: string; action: () => void }[] }) {

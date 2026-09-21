@@ -111,8 +111,10 @@
   --theme-legal: #7659c7;
   --theme-review: #b88700;
 
+  /* Secondary / tertiary control hover surface */
+  --theme-control-hover: #F6F8FA;
+
   /* Compatibility aliases resolve through the active theme. */
-  /* Expense series map to distinct categorical tokens (not similar greens). */
   --expense-series-1: var(--theme-maintenance);
   --expense-series-2: var(--theme-management);
   --expense-series-3: var(--theme-mortgage);
@@ -167,6 +169,7 @@
   --theme-capex: #ed74c8;
   --theme-legal: #a382ff;
   --theme-review: #f4c84a;
+  --theme-control-hover: #1F2124;
 }
 
 @media (max-width: 767px) {

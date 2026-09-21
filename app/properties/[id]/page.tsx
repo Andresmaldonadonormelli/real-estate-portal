@@ -14,7 +14,7 @@ import PropertyEditModal from '@/components/property/PropertyEditModal';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import { SegmentedControl } from '@/components/common/ProductControls';
 import { formatDate, type PropertyTransaction as Tx } from '@/lib/propertyFinancials';
-import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
+import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 type Tab = 'overview' | 'improve' | 'units' | 'documents';
 
@@ -166,7 +166,7 @@ export default function PropertyWorkspacePage(){
     {tab==='units' && <PropertyUnits units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>} 
     {tab==='documents' && <PropertyDocuments documents={documents} propertyId={property.id}/>} 
     {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);}}/>}
-    {activeTransaction&&<AddTransactionModal userId={(activeTransaction as any).user_id||''} properties={[property]} units={units} transaction={activeTransaction as any} viewOnly onClose={()=>setActiveTransaction(null)} onSaved={()=>setActiveTransaction(null)} onArchived={()=>setActiveTransaction(null)}/>} 
+    {activeTransaction&&<AddTransactionModal userId={(activeTransaction as any).user_id||''} properties={[property]} units={units} transaction={activeTransaction as any} viewOnly onClose={()=>setActiveTransaction(null)} onSaved={async()=>{invalidateSupabaseCache(`property:${propertyId}`);const t=await supabase.from('transactions').select(TRANSACTION_FIELDS).eq('property_id',propertyId).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false});if(!t.error)setTransactions((t.data||[]) as Tx[]);setActiveTransaction(null)}} onArchived={async(_message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'){setTransactions(rows=>rows.filter(row=>row.id!==archivedId));setActiveTransaction(null)}if(phase==='complete')invalidateSupabaseCache(`property:${propertyId}`)}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx as Tx,...rows]);invalidateSupabaseCache(`property:${propertyId}`);console.error(error)}}/>} 
   </div>;
 }
 
