@@ -185,7 +185,23 @@ function AnimatedValue({ value, animate, tone }: { value: number; animate: boole
 
 function BreakdownRow({ item, index, total, propertyId }: { item: ReturnType<typeof buildBreakdown>[number]; index: number; total: number; propertyId: string }) {
   const [open, setOpen] = useState(false);
-  const color = `var(--expense-series-${index % 4 + 1})`;
+  const key = categoryKey(item.category);
+  const colorMap: Record<string, string> = {
+    maintenance: 'var(--category-maintenance)',
+    management: 'var(--category-management)',
+    leasing: 'var(--category-management)',
+    mortgage: 'var(--category-mortgage)',
+    'mortgage-interest': 'var(--category-mortgage)',
+    'mortgage-principal': 'var(--category-mortgage)',
+    utilities: 'var(--category-utilities)',
+    insurance: 'var(--category-insurance)',
+    taxes: 'var(--category-taxes)',
+    capex: 'var(--category-capex)',
+    legal: 'var(--category-legal)',
+    review: 'var(--category-review)',
+  };
+  const fallback = ['var(--category-maintenance)', 'var(--category-management)', 'var(--category-mortgage)', 'var(--category-utilities)'];
+  const color = colorMap[key] || fallback[index % fallback.length];
   const pct = total ? Math.round(item.amount / total * 100) : 0;
   return <div className={`origin-breakdown-row expandable ${open ? 'open' : ''}`}><button type="button" className="origin-breakdown-toggle" onClick={() => setOpen(value => !value)}><div className="origin-breakdown-label"><span className="origin-dot" style={{ background: color }}/><strong>{item.category}</strong><span>{formatKpiCurrency(item.amount)}</span><ChevronDown size={15}/></div><div className="origin-breakdown-track"><i style={{ width: `${pct}%`, background: color }}/></div><div className="origin-breakdown-percent">{pct}%</div></button>{open && <div className="origin-breakdown-details">{item.transactions.slice(0, 8).map(transaction => { const title = transaction.payee_source || transaction.description || item.category; const detail = transaction.payee_source && transaction.description && transaction.payee_source !== transaction.description ? transaction.description : transaction.category; return <Link href={`/ledger?property=${propertyId}`} key={transaction.id}><span><strong>{title}</strong><small>{formatDate(transaction.transaction_date)} · {detail}</small></span><b>{formatKpiCurrency(Math.abs(transaction.amount))}</b></Link>; })}{item.transactions.length > 8 && <Link className="origin-more-link" href={`/ledger?property=${propertyId}`}>+ {item.transactions.length - 8} more transactions</Link>}</div>}</div>;
 }

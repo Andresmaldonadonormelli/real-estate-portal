@@ -112,10 +112,11 @@
   --theme-review: #b88700;
 
   /* Compatibility aliases resolve through the active theme. */
-  --expense-series-1: var(--theme-expense-series-1);
-  --expense-series-2: var(--theme-expense-series-2);
-  --expense-series-3: var(--theme-expense-series-3);
-  --expense-series-4: var(--theme-expense-series-4);
+  /* Expense series map to distinct categorical tokens (not similar greens). */
+  --expense-series-1: var(--theme-maintenance);
+  --expense-series-2: var(--theme-management);
+  --expense-series-3: var(--theme-mortgage);
+  --expense-series-4: var(--theme-utilities);
 }
 
 [data-theme="dark"] {
