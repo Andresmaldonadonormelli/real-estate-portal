@@ -26,9 +26,22 @@
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
-  --type-button-size: var(--type-small-size);
-  --type-button-line: var(--type-small-line);
-  --type-button-weight: var(--weight-semibold);
+
+  /* Shared control / CTA type token (Inter). Desktop 16px, mobile 15px. */
+  --type-control-size: 16px;
+  --type-control-line: 1.5;
+  --type-control-weight: var(--weight-medium);
+  --type-control-weight-strong: var(--weight-semibold);
+  --type-button-size: var(--type-control-size);
+  --type-button-line: var(--type-control-line);
+  --type-button-weight: var(--type-control-weight);
+
+  /* Typography shorthands consumed by controls and content. */
+  --font-button: var(--type-button-weight) var(--type-button-size)/var(--type-button-line) var(--font-family-primary);
+  --font-button-strong: var(--type-control-weight-strong) var(--type-button-size)/var(--type-button-line) var(--font-family-primary);
+  --font-body: var(--weight-regular) var(--type-body-size)/var(--type-body-line) var(--font-family-primary);
+  --font-small: var(--weight-regular) var(--type-small-size)/var(--type-small-line) var(--font-family-primary);
+  --font-label: var(--weight-regular) var(--type-label-size)/var(--type-label-line) var(--font-family-primary);
 
   /* Compatibility aliases still consumed by legacy screens. */
   --type-body-lg-size: var(--type-body-size);
@@ -177,5 +190,6 @@
     --type-display-size: 44px;
     --type-page-title-size: 32px;
     --type-section-title-size: 22px;
+    --type-control-size: 15px;
   }
 }
