@@ -1,4 +1,4 @@
-.primary-action { background: var(--accent); color: var(--accent-contrast) !important; font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight); }
+.primary-action { background: var(--accent); color: var(--accent-contrast) !important; font: var(--font-button-strong); }
 
 @keyframes skeleton-pulse {
   0%, 100% { opacity: .55; background: var(--skeleton-bg); }
@@ -7,8 +7,8 @@
 
 .appearance-menu{padding:10px 12px;margin-bottom:8px}
 .appearance-options{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:var(--radius-control);background:var(--surface-subtle)}
-.appearance-options button{min-height:36px;border:0;border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-semibold)}
-.appearance-options button.active{background:var(--bg-secondary);color:var(--text-primary)}
+.appearance-options button{min-height:36px;border:0;border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--text-secondary);font:var(--font-button)}
+.appearance-options button.active{background:var(--bg-secondary);color:var(--text-primary);font:var(--font-button-strong)}
 
 
 .icon-button {
@@ -31,6 +31,18 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 
 @media (hover: hover) and (pointer: fine) {
   button:not(:disabled):hover { transform: translateY(-1px); }
+  .product-secondary-button:hover:not(:disabled),
+  .ui-button--secondary:hover:not(:disabled),
+  .ui-button--quiet:hover:not(:disabled),
+  .ui-button--primary:hover:not(:disabled),
+  .product-segmented button:hover,
+  .product-page-action:hover,
+  .property-subnav button:hover,
+  .property-chart-modes button:hover,
+  .ledger-v230-tools>button:hover,
+  .ledger-v230-more-wrap>button:hover,
+  .ledger-v230-review:hover,
+  .document-feed-detail:hover { transform: none; }
   .icon-button:hover { background: var(--surface-hover); }
   a:hover { opacity: .88; }
 }
@@ -50,9 +62,9 @@ textarea {
 .eyebrow{font-size:10px;letter-spacing:.08em;font-weight:750;color:var(--text-secondary);margin-bottom:5px}
 .text-action{border:0;background:transparent;color:var(--accent);font-weight:650;padding:10px 0 0;cursor:pointer}
 .segmented{display:flex;padding:3px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary)}
-.segmented button{border:0;background:transparent;color:var(--text-secondary);padding:6px 9px;border-radius:7px;font-size:12px;cursor:pointer}
-.segmented button.active{background:var(--bg-secondary);color:var(--text-primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.secondary-pill{border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);padding:8px 12px;border-radius:999px;cursor:pointer}
+.segmented button{border:0;background:transparent;color:var(--text-secondary);padding:6px 9px;border-radius:7px;font:var(--font-button);cursor:pointer}
+.segmented button.active{background:var(--bg-secondary);color:var(--text-primary);font:var(--font-button-strong);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.secondary-pill{border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);padding:8px 12px;border-radius:999px;font:var(--font-button);cursor:pointer}
 
 .recent-category-icon { width:40px; height:40px; border-radius:10px; }
 
@@ -351,7 +363,7 @@ button:focus-visible,a:focus-visible{outline:2px solid color-mix(in srgb,var(--t
 .workspace-file-field{padding:16px;border-radius:14px;background:var(--surface-subtle,var(--bg-secondary))}
 .workspace-file-field input{height:auto!important;border:0!important;padding:6px 0!important;background:transparent!important}
 .workspace-file-field small{font-size:12px;font-weight:400;color:var(--text-secondary)}
-.workspace-primary-button{border:0;border-radius:999px;background:var(--accent);color:var(--accent-contrast);padding:12px 18px;font-size:var(--type-button-size);line-height:var(--type-button-line);font-weight:var(--type-button-weight);cursor:pointer}
+.workspace-primary-button{border:0;border-radius:999px;background:var(--accent);color:var(--accent-contrast);padding:12px 18px;font:var(--font-button-strong);cursor:pointer}
 .workspace-primary-button:disabled{opacity:.55;cursor:default}
 .workspace-form-error{padding:11px 13px;margin-bottom:16px;border-radius:12px;background:color-mix(in srgb,var(--negative) 10%,transparent);color:var(--negative);font-size:13px}
 

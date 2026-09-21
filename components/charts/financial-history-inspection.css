@@ -11,7 +11,8 @@
 
 /* Chart frame and inspection state. */
 .financial-history-chart-wrap{position:relative;margin-top:var(--space-2);touch-action:pan-y}
-.financial-history-chart{display:block;width:100%;height:auto;overflow:visible;cursor:crosshair;user-select:none}
+.financial-history-chart{display:block;width:100%;height:360px;overflow:visible;cursor:crosshair;user-select:none}
+@media(max-width:767px){.financial-history-chart{height:320px}}
 .financial-history-zero{stroke:var(--border-strong);stroke-width:1;stroke-dasharray:2 7}
 .financial-history-main-line{stroke:var(--positive);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .financial-history-expense-line{stroke:var(--negative);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:7 8}

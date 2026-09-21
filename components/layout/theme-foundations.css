@@ -195,6 +195,8 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --category-legal: var(--theme-legal);
   --category-review: var(--theme-review);
 
+  --control-hover: var(--theme-control-hover);
+
   --accent: var(--theme-action);
   --accent-dark: var(--theme-action);
   --accent-contrast: var(--theme-action-text);
@@ -242,6 +244,8 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --category-capex: var(--theme-capex)!important;
   --category-legal: var(--theme-legal)!important;
   --category-review: var(--theme-review)!important;
+
+  --control-hover: var(--theme-control-hover)!important;
 
   --accent: var(--theme-action)!important;
   --accent-dark: var(--theme-action)!important;

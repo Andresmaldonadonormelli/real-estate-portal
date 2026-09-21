@@ -17,7 +17,7 @@ import { PageAction, PageHeader } from '@/components/common/ProductControls';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
-  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: true,
+  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
 };
 
 const emptyUnit = {
@@ -99,7 +99,7 @@ export default function PropertiesPage() {
       monthly_mortgage_payment: String(property.monthly_mortgage_payment ?? ''),
       mortgage_start_date: (property as Property & {mortgage_start_date?:string|null}).mortgage_start_date ?? '',
       management_fee_percent: String(property.management_fee_percent ?? 0),
-      mortgage_recurring_enabled: property.mortgage_recurring_enabled !== false,
+      mortgage_recurring_enabled: false,
     });
     setShowPropertyDetails(false);
     setShowPropertyForm(true);
@@ -119,7 +119,7 @@ export default function PropertiesPage() {
       monthly_mortgage_payment: Number(propertyForm.monthly_mortgage_payment || 0),
       mortgage_start_date: propertyForm.mortgage_start_date || null,
       management_fee_percent: Number(propertyForm.management_fee_percent || 0),
-      mortgage_recurring_enabled: propertyForm.mortgage_recurring_enabled !== false,
+      mortgage_recurring_enabled: false,
     };
 
     let propertyId = editingProperty?.id || '';
@@ -284,10 +284,10 @@ export default function PropertiesPage() {
               <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
               <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
               <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div>
-              <label style={{display:'flex',gap:'var(--space-2)',alignItems:'center',fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)'}}><input type="checkbox" checked={propertyForm.mortgage_recurring_enabled} onChange={e=>setPropertyForm({...propertyForm,mortgage_recurring_enabled:e.target.checked})}/>Automatically post monthly mortgage</label>
+              <p style={{margin:0,fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)',color:'var(--text-secondary)'}}>Mortgage payments come from linked bank imports. Keep mortgage details for amortization and Improve projections.</p>
               <Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
               <Field label="Property image"><input type="file" accept="image/*" onChange={e => setPropertyImage(e.target.files?.[0] || null)} style={inputStyle} /></Field>
-              <div style={{ fontSize: 'var(--type-label-size)', lineHeight:'var(--type-label-line)', color: 'var(--text-secondary)' }}>Monthly mortgage posts automatically. Management fee is created when you confirm rent received.</div>
+              <div style={{ fontSize: 'var(--type-label-size)', lineHeight:'var(--type-label-line)', color: 'var(--text-secondary)' }}>Management fee tracking stays available for payout splits and rent confirmation.</div>
             </div>}
             <button className="mobile-sheet-submit" disabled={saving} style={primaryButton}>{saving ? 'Saving…' : 'Save property'}</button>
             {editingProperty && <div className="danger-zone">

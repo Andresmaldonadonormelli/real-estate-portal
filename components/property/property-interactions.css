@@ -18,12 +18,14 @@
 .financial-history-active-dot.is-negative{background:var(--negative)}.financial-history-active-dot.is-positive{background:var(--positive)}
 .pulse-periods,.property-chart-periods{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
 .pulse-periods::-webkit-scrollbar,.property-chart-periods::-webkit-scrollbar{display:none}.pulse-periods button,.property-chart-periods button{flex:0 0 auto}
-.expense-plot{min-width:0!important;border-bottom:0!important;overflow:visible}.expense-chart-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-2)}
+.expense-plot{min-width:0!important;overflow:visible}.expense-chart-grid{gap:var(--space-1)}
+.expense-pillar-stack i.is-top-segment{border-radius:4px 4px 0 0!important}
+.expense-pillar,.expense-pillar-stack,.expense-pillar-stack i:not(.is-top-segment){border-radius:0!important}
 .expense-inspection[data-edge="left"]{transform:translateX(0)}.expense-inspection[data-edge="right"]{transform:translateX(-100%)}
 
 @media(max-width:767px){
   .property-chart-modes{width:190px!important;max-width:100%;justify-self:end}
   .property-preview-thumb{width:64px!important;height:64px!important}
   .pulse-action-center button.action-row{grid-template-columns:auto minmax(0,1fr)!important;gap:var(--space-3);min-height:96px;padding:var(--space-4)!important}.pulse-action-center .pulse-row-action{grid-column:2;justify-self:start;margin-top:var(--space-1)!important}
-  .expense-chart{grid-template-columns:40px minmax(0,1fr);overflow:visible!important}.expense-plot{min-width:0!important}.expense-chart-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-1)!important}.expense-bars{gap:2px!important}.expense-bars i{width:28%!important}.expense-inspection{display:grid!important;min-width:180px}.expense-mobile-inspection{display:none!important}
+  .expense-chart{grid-template-columns:40px minmax(0,1fr);overflow:visible!important}.expense-plot{min-width:0!important}.expense-chart-grid{gap:2px!important}.expense-inspection{display:grid!important;min-width:180px;max-width:min(240px,78vw)}.expense-mobile-inspection{display:none!important}
 }

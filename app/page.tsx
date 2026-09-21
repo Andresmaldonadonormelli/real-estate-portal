@@ -95,22 +95,7 @@ export default function Dashboard() {
       if(resolved||pending) continue;
       inserts.push({user_id:user.id,property_id:unit.property_id,unit_id:unit.id,transaction_date:first,type:'income',category:'Rent',description:`${unit.unit_number} rent`,payee_source:unit.tenant_name||null,amount:Number(unit.current_rent),notes:'Recurring rent awaiting confirmation',source:'recurring',status:'pending',import_key:`recurring-rent:${unit.id}:${month}`});
     }
-    for(const property of props){
-      const payment=Number(property.monthly_mortgage_payment||0); if(payment<=0) continue;
-      const mortgageStart=(property as Property & {mortgage_start_date?:string|null}).mortgage_start_date;
-      if(property.mortgage_recurring_enabled===false) continue;
-      const dueDay=Math.min(28,Math.max(1,Number((property as any).mortgage_due_day||1))); const mortgageDate=`${month}-${String(dueDay).padStart(2,'0')}`;
-      if(mortgageStart && mortgageDate < mortgageStart) continue;
-      const exists=txRows.some(tx=>tx.property_id===property.id&&['Mortgage','Mortgage Payment','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(tx.category)&&tx.transaction_date.startsWith(month)&&['posted','declined'].includes(tx.status||'posted'));
-      if(!exists){
-        const principal=Math.max(0,Number((property as any).mortgage_principal_amount||0));
-        const interest=Math.max(0,Number((property as any).mortgage_interest_amount||0));
-        const escrow=Math.max(0,Number((property as any).mortgage_escrow_amount||0));
-        const allocated=principal+interest+escrow;
-        const splitComplete=allocated>0&&Math.abs(allocated-payment)<=0.020001;
-        inserts.push({user_id:user.id,property_id:property.id,unit_id:null,transaction_date:mortgageDate,type:'expense',category:'Mortgage Payment',description:'Monthly mortgage payment',amount:-Math.abs(payment),notes:'Recurring monthly mortgage',source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),needs_review:!splitComplete,mortgage_principal_amount:principal||null,mortgage_interest_amount:interest||null,mortgage_escrow_amount:escrow||null,import_key:`recurring-mortgage:${property.id}:${month}`});
-      }
-    }
+    // Mortgage payments come from linked bank imports (Chase), not synthetic recurring posts.
     if(!inserts.length) return;
     try {
       const ins = await withTimeout(Promise.resolve(supabase.from('transactions').upsert(inserts,{onConflict:'user_id,import_key',ignoreDuplicates:true})), 8000, 'Recurring entries took too long.');
@@ -171,7 +156,14 @@ export default function Dashboard() {
     const property=properties.find(p=>p.id===tx.property_id); const feePercent=Number(property?.management_fee_percent||0);
     const up=await supabase.from('transactions').update({status:'posted',confirmed_at:new Date().toISOString(),notes:'Recurring rent confirmed received'}).eq('id',tx.id).eq('status','pending');
     if(up.error){setError(up.error.message);setConfirming(null);return;}
-    if(feePercent>0){ const fee=Math.round(Math.abs(Number(tx.amount))*feePercent)/100; const fr=await supabase.from('transactions').upsert({user_id:user.id,property_id:tx.property_id,unit_id:tx.unit_id||null,transaction_date:tx.transaction_date,type:'expense',category:'Management Fee',description:`Management fee (${feePercent}%)`,payee_source:'Property manager',amount:-fee,notes:`Automatically created when rent was confirmed. Rate: ${feePercent}%`,source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`management-fee:${tx.id}`},{onConflict:'user_id,import_key',ignoreDuplicates:true}); if(fr.error)setError(fr.error.message); }
+    // Only auto-create a management fee for gross recurring rent suggestions.
+    // Chase/Plaid deposits are net payouts and must be split explicitly so income is not double-counted.
+    const alreadySplit=transactions.some(row=>row.import_key===`management-fee-split:${tx.id}`||row.import_key===`management-fee:${tx.id}`);
+    if(feePercent>0&&tx.source==='recurring'&&!alreadySplit){
+      const fee=Math.round(Math.abs(Number(tx.amount))*feePercent)/100;
+      const fr=await supabase.from('transactions').upsert({user_id:user.id,property_id:tx.property_id,unit_id:tx.unit_id||null,transaction_date:tx.transaction_date,type:'expense',category:'Management Fee',description:`Management fee (${feePercent}%)`,payee_source:'Property manager',amount:-fee,notes:`Automatically created when rent was confirmed. Rate: ${feePercent}%`,source:'recurring',status:'posted',confirmed_at:new Date().toISOString(),import_key:`management-fee:${tx.id}`},{onConflict:'user_id,import_key',ignoreDuplicates:true});
+      if(fr.error)setError(fr.error.message);
+    }
     invalidateSupabaseCache();await load(); setConfirming(null);
   }
   async function declineRent(tx:Transaction){
@@ -274,7 +266,7 @@ export default function Dashboard() {
       </aside>
       </div>
     </>}
-    {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction deleted')}}/>}
+    {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
       {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}

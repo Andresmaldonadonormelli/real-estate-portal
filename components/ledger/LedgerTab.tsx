@@ -15,7 +15,7 @@ import { Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHo
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
-import { cachedSupabaseRequest, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
+import { cachedSupabaseRequest, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 import { SegmentedControl } from '@/components/common/ProductControls';
 import { Button } from '@/components/ui/Button';
 import { Modal as UiModal } from '@/components/ui/Modal';
@@ -40,7 +40,15 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>('months');
+  useEffect(()=>{
+    if(typeof window==='undefined')return;
+    const media=window.matchMedia('(min-width:768px)');
+    const sync=()=>setViewMode(media.matches?'table':'months');
+    sync();
+    media.addEventListener('change',sync);
+    return()=>media.removeEventListener('change',sync);
+  },[]);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -126,7 +134,20 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     const result=editing?await supabase.from('transactions').update(payload).eq('id',editing.id):await supabase.from('transactions').insert(payload);
     if(result.error)setError(result.error.message);else{setShowForm(false);await loadData();} setSaving(false);
   }
-  async function deleteTx(tx:Transaction){if(!confirm(`Delete “${tx.description}”?`))return;const result=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',tx.id);if(result.error)setError(result.error.message);else{setNotice('Transaction deleted.');await loadData();}}
+  async function deleteTx(tx:Transaction){
+    if(!confirm(`Delete “${tx.description}”?`))return;
+    const previous=transactions;
+    setTransactions(rows=>rows.filter(row=>row.id!==tx.id));
+    setNotice('Transaction deleted.');
+    const result=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',tx.id);
+    if(result.error){
+      setTransactions(previous);
+      setNotice('');
+      setError(result.error.message);
+      return;
+    }
+    invalidateSupabaseCache();
+  }
 
   function exportCsv(){const rows=[['Date','Property','Unit','Description','Category','Payee','Type','Status','Needs Review','Receipt Path','Amount'],...filtered.map(tx=>[tx.transaction_date,propertyName(tx.property_id),unitName(tx.unit_id),tx.description,tx.category,tx.payee_source||'',tx.type,tx.status||'posted',String(Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)),(tx as Transaction & {receipt_path?:string|null}).receipt_path||'',String(tx.amount)])];const csv=rows.map(r=>r.map(v=>`"${String(v).split('"').join('""')}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ledger.csv';a.click();URL.revokeObjectURL(url);}
 
@@ -213,7 +234,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       })}
     </div>}
 
-    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async message=>{await loadData();setToast(message||'Transaction archived')}}/>}
+    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async (message,id,phase)=>{const archivedId=id||editing?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {showImport&&<UiModal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
       <p style={{fontSize:14,color:'var(--text-secondary)'}}>Import a Doorvest ledger export in bulk. Re-importing the same CSV is safe because duplicate rows are skipped.</p>

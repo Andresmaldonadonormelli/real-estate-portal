@@ -110,9 +110,7 @@
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-contrast);
-  font-size: var(--type-button-size);
-  line-height: var(--type-button-line);
-  font-weight: var(--type-button-weight);
+  font: var(--font-button-strong);
 }
 @media(max-width:767px){
   .actions-page-item { grid-template-columns: 40px minmax(0,1fr) auto; padding: var(--space-4) 0; gap: var(--space-3); }}
@@ -298,9 +296,11 @@
 
 .pulse-periods{display:flex;align-items:center;justify-content:flex-start;gap:var(--space-5)}
 
-.pulse-periods button{position:relative;min-height:32px;padding:0;color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-semibold)}
+.pulse-periods button{position:relative;min-height:32px;padding:0;color:var(--text-secondary);font:var(--font-button)}
 
-.pulse-periods button.active{color:var(--text-primary)}
+.pulse-periods button.active,.pulse-periods button.active:hover{color:var(--text-primary);font:var(--font-button)}
+
+.pulse-periods button:not(.active):hover{color:var(--text-primary);font:var(--font-button)}
 
 .pulse-periods button.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:var(--radius-pill);background:var(--positive)}
 
