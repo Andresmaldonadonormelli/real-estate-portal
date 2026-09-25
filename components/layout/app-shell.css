@@ -18,4 +18,10 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 @media (hover:hover) and (pointer:fine){.nav-link:hover,.property-nav-link:hover,.bottom-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover{background:var(--surface-hover)!important;color:var(--text-primary)!important}}
 @media (hover:none){.nav-link:hover,.property-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover,.bottom-nav-link:hover{background:transparent!important}.nav-link:active,.property-nav-link:active,.theme-toggle:active,.mobile-menu-item:active,.bottom-nav-link:active{background:var(--surface-hover)!important}}
 @media(min-width:768px){.main-content{padding-left:240px}}
+.app-mascot{display:none}
+@media(min-width:768px){
+  .app-mascot{display:block;position:fixed;z-index:45;top:8px;left:16px;width:36px;height:36px;pointer-events:none;user-select:none}
+  .app-mascot img{display:block;width:36px;height:36px}
+}
+[data-theme="dark"] .app-mascot{border-radius:10px;background:var(--theme-action)}
 .pulse-add-menu{position:relative}.pulse-add-button{cursor:pointer}.pulse-add-options{position:absolute;right:0;top:calc(100% + var(--space-2));z-index:20;min-width:220px;padding:var(--space-2);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--bg-primary);box-shadow:var(--card-shadow)}.pulse-add-options button{display:flex;width:100%;align-items:center;gap:var(--space-3);min-height:42px;padding:0 var(--space-3);border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);font:inherit;text-align:left;cursor:pointer}.pulse-add-options button:hover{background:var(--surface-hover)}.recent-activity-copy{min-width:0}.recent-activity-meta{color:var(--text-muted)!important}.recent-activity-right{display:grid;justify-items:end;gap:2px;font-variant-numeric:tabular-nums}.recent-activity-right small{color:var(--text-muted);font-size:var(--type-label-size);line-height:var(--type-label-line)}
