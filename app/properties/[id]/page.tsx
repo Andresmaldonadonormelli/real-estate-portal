@@ -149,7 +149,7 @@ export default function PropertyWorkspacePage(){
   </div>;
   if(error || !property) return <div className="property-workspace"><Link href="/properties" className="property-back"><ArrowLeft size={16}/> Properties</Link><div className="card property-empty">{error || 'Property not found.'}</div></div>;
 
-  return <div className="property-workspace">
+  return <div className={`property-workspace${tab==='overview'?' is-overview':''}`}>
     <Link href="/properties" className="property-back"><ArrowLeft size={16}/> Back to Properties</Link>
 
     <header className="property-workspace-header">

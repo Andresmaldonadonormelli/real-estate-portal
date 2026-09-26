@@ -1,2 +1,30 @@
 /* Shared monthly income, expense, and cash-flow chart */
-.amount-cash-flow{color:var(--cash-flow-result)!important}.financial-history-chart{cursor:crosshair}.financial-history-income-bar{fill:var(--positive)}.financial-history-expense-bar{fill:var(--negative)}.financial-history-guide{stroke:var(--text-secondary);stroke-width:1}.financial-history-tooltip{position:absolute;top:0;z-index:5;display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-5);min-width:210px;padding:var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--bg-primary);box-shadow:var(--shadow-overlay);transform:translateX(-50%);pointer-events:none}.financial-history-tooltip[data-edge="left"]{transform:none}.financial-history-tooltip[data-edge="right"]{transform:translateX(-100%)}.financial-history-tooltip strong{color:var(--text-secondary)}.financial-history-tooltip>b{color:var(--cash-flow-result);font-variant-numeric:tabular-nums}.financial-history-tooltip span{display:contents}.financial-history-tooltip i{font-style:normal}.financial-history-tooltip span:first-of-type i,.financial-history-tooltip span:first-of-type em{color:var(--positive)}.financial-history-tooltip span:last-of-type i,.financial-history-tooltip span:last-of-type em{color:var(--negative)}.financial-history-tooltip em{font-style:normal;text-align:right;font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums}.product-chart-legend i.is-income{background:var(--positive)}.product-chart-legend i.is-expense{background:var(--negative)}.product-chart-legend i.is-result{background:var(--cash-flow-result)}.property-chart-breakdown em{font-style:normal}
+.amount-cash-flow{color:var(--cash-flow-result)!important}
+.financial-history-chart{cursor:crosshair}
+.financial-history-income-bar{fill:var(--positive)}
+.financial-history-expense-bar{fill:var(--negative)}
+.financial-history-income-series-bar{fill:var(--chart-income,var(--theme-brand-fill))}
+.financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
+.financial-history-guide{stroke:var(--text-secondary);stroke-width:1}
+.financial-history-tooltip{position:absolute;top:0;z-index:5;display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-5);min-width:210px;padding:var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--bg-primary);box-shadow:var(--shadow-overlay);transform:translateX(-50%);pointer-events:none}
+.financial-history-tooltip[data-edge="left"]{transform:none}
+.financial-history-tooltip[data-edge="right"]{transform:translateX(-100%)}
+.financial-history-tooltip strong{color:var(--text-secondary)}
+.financial-history-tooltip>b{color:var(--cash-flow-result);font-variant-numeric:tabular-nums}
+.financial-history-tooltip span{display:contents}
+.financial-history-tooltip i{font-style:normal}
+.financial-history-tooltip span:first-of-type i,.financial-history-tooltip span:first-of-type em{color:var(--positive)}
+.financial-history-tooltip span:last-of-type i,.financial-history-tooltip span:last-of-type em{color:var(--negative)}
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:first-of-type i,
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:first-of-type em,
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:first-of-type strong{color:var(--theme-brand-strong,var(--theme-brand))}
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:last-of-type i,
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:last-of-type em,
+.financial-history-chart-wrap.is-income-expense .financial-history-tooltip span:last-of-type strong{color:var(--theme-chart-expense-muted,var(--text-secondary))}
+.financial-history-tooltip em{font-style:normal;text-align:right;font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums}
+.product-chart-legend i.is-income{background:var(--positive)}
+.product-chart-legend i.is-expense{background:var(--negative)}
+.product-chart-legend i.is-result{background:var(--cash-flow-result)}
+.product-chart-legend i.is-income-series{background:var(--chart-income,var(--theme-brand-fill))}
+.product-chart-legend i.is-expense-series{background:var(--chart-expense,var(--theme-chart-expense))}
+.property-chart-breakdown em{font-style:normal}

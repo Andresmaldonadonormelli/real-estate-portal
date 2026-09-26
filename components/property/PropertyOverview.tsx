@@ -38,9 +38,9 @@ export default function PropertyOverview({ property, units, transactions, expect
     try { setCollapsedSections(JSON.parse(localStorage.getItem(collapseStorageKey) || '{}')); } catch { setCollapsedSections({}); }
   }, [collapseStorageKey]);
 
-  function toggleSection(id:string) {
+  function toggleSection(id: string) {
     setCollapsedSections(current => {
-      const next = {...current, [id]: !current[id]};
+      const next = { ...current, [id]: !current[id] };
       localStorage.setItem(collapseStorageKey, JSON.stringify(next));
       return next;
     });
@@ -119,64 +119,193 @@ export default function PropertyOverview({ property, units, transactions, expect
   const periodCashFlow = periodTotals.income - periodTotals.cash;
   const recentItems = transactions.filter(tx => (tx.status || 'posted') === 'posted').map(tx => ({ id: tx.id, title: tx.description || tx.category, detail: `${tx.category} · ${formatDate(tx.transaction_date)}`, amount: Number(tx.amount || 0), type: tx.type, href: `/ledger?property=${property.id}` }));
 
-  return <div className="property-overview-pulse"><div className="property-overview-layout">
-    <main className="property-overview-main">
-      <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{fullyVacant?(inspected?`${inspected.fullLabel} holding costs`:'Holding costs this month'):(inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month')}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={fullyVacant||currentValue<0?'amount-negative':'amount-positive'}><AnimatedValue value={fullyVacant?currentExpenses:currentValue} animate={!inspected} tone={fullyVacant?'negative':undefined}/></span></div>{!fullyVacant&&<div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div>}</div></div></div>
-        {fullyVacant?<div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense"/>Holding costs</span></div>:<ChartLegend negative={currentValue<0}/>} 
-        <FinancialHistoryChart rows={history} mode="cashFlow" kind={fullyVacant?'holdingCosts':'cashFlow'} label={fullyVacant?`Monthly holding costs for ${property.address}`:`Monthly net cash flow for ${property.address}`} onInspect={setInspected}/>
-        <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div></div>
+  return (
+    <div className="property-overview-system">
+      <section className="property-overview-section property-overview-summary-section" aria-label="Financial summary">
+        <div className="property-overview-section-head">
+          <h2>Financial summary</h2>
+          <span>{period} trailing</span>
+        </div>
+        <FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow} compact />
       </section>
-      <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`}/>
-      <CollapsibleSection id="financials" title="Financial breakdown" collapsed={Boolean(collapsedSections.financials)} onToggle={toggleSection}><FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/></CollapsibleSection>
-      <CollapsibleSection id="trends" title="Operating expense trends" collapsed={Boolean(collapsedSections.trends)} onToggle={toggleSection}><PropertyExpenseTrendsChart transactions={transactions}/></CollapsibleSection>
-      <CollapsibleSection id="expenses" title="Operating expenses" collapsed={Boolean(collapsedSections.expenses)} onToggle={toggleSection}><OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal}/></CollapsibleSection>
-      <CollapsibleSection id="statistics" title="Key statistics" collapsed={Boolean(collapsedSections.statistics)} onToggle={toggleSection}><KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period}/></CollapsibleSection>
-      <CollapsibleSection id="transactions" title="Recent transactions" collapsed={Boolean(collapsedSections.transactions)} onToggle={toggleSection}><RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false} onOpenTransaction={onOpenTransaction}/></CollapsibleSection>
-    </main>
-    <PropertyPulse title={pulseHeadline} explanation={pulseExplanation} updatedAt={pulseUpdatedAt} collectedRent={collectedRent} expectedRent={expectedPayout} rentProgress={rentProgress} expectedByToday={expectedByToday} signals={pulseSignals}/>
-  </div></div>;
+
+      <div className="property-overview-layout">
+        <section className="property-overview-section property-overview-chart-section">
+          <div className="property-overview-chart-head">
+            <div className="property-overview-chart-metric">
+              <h2>{fullyVacant ? (inspected ? `${inspected.fullLabel} holding costs` : 'Holding costs this month') : (inspected ? `${inspected.fullLabel} net cash flow` : 'Net cash flow this month')}</h2>
+              <div className="property-overview-summary">
+                <div className="property-overview-value-row">
+                  <span className={fullyVacant || currentValue < 0 ? 'amount-negative' : 'amount-positive'}>
+                    <AnimatedValue value={fullyVacant ? currentExpenses : currentValue} animate={!inspected} tone={fullyVacant ? 'negative' : undefined} />
+                  </span>
+                </div>
+                {!fullyVacant && (
+                  <div className="property-chart-breakdown">
+                    <b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b>
+                    <b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          {fullyVacant
+            ? <div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense"/>Holding costs</span></div>
+            : <ChartLegend variant="incomeExpense" />}
+          <FinancialHistoryChart
+            rows={history}
+            mode="cashFlow"
+            kind={fullyVacant ? 'holdingCosts' : 'incomeExpense'}
+            label={fullyVacant ? `Monthly holding costs for ${property.address}` : `Monthly income and expenses for ${property.address}`}
+            onInspect={setInspected}
+          />
+          <div className="property-chart-footer">
+            <div className={`property-chart-periods ${fullyVacant || currentValue < 0 ? 'is-negative' : 'is-positive'}`} aria-label="Chart period">
+              {(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => (
+                <button key={value} type="button" className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <PropertyPulse
+          title={pulseHeadline}
+          explanation={pulseExplanation}
+          updatedAt={pulseUpdatedAt}
+          collectedRent={collectedRent}
+          expectedRent={expectedPayout}
+          rentProgress={rentProgress}
+          expectedByToday={expectedByToday}
+          signals={pulseSignals}
+        />
+      </div>
+
+      <div className="property-overview-stack">
+        <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`} />
+        <CollapsibleSection id="trends" title="Operating expense trends" collapsed={Boolean(collapsedSections.trends)} onToggle={toggleSection}>
+          <PropertyExpenseTrendsChart transactions={transactions} />
+        </CollapsibleSection>
+        <CollapsibleSection id="expenses" title="Operating expenses" collapsed={Boolean(collapsedSections.expenses)} onToggle={toggleSection}>
+          <OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal} />
+        </CollapsibleSection>
+        <CollapsibleSection id="statistics" title="Key statistics" collapsed={Boolean(collapsedSections.statistics)} onToggle={toggleSection}>
+          <KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period} />
+        </CollapsibleSection>
+        <CollapsibleSection id="transactions" title="Recent transactions" collapsed={Boolean(collapsedSections.transactions)} onToggle={toggleSection}>
+          <RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false} onOpenTransaction={onOpenTransaction} />
+        </CollapsibleSection>
+      </div>
+    </div>
+  );
 }
 
-function CollapsibleSection({id,title,collapsed,onToggle,children}:{id:string;title:string;collapsed:boolean;onToggle:(id:string)=>void;children:React.ReactNode}){
-  return <section className="property-collapsible" data-section={id}>
-    <button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={()=>onToggle(id)}>
-      <span>{title}</span>
-      <ChevronDown size={18} aria-hidden="true"/>
-    </button>
-    <div className="property-collapsible-body" hidden={collapsed}>{children}</div>
-  </section>;
+function CollapsibleSection({ id, title, collapsed, onToggle, children }: { id: string; title: string; collapsed: boolean; onToggle: (id: string) => void; children: React.ReactNode }) {
+  return (
+    <section className="property-overview-section property-collapsible" data-section={id}>
+      <button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={() => onToggle(id)}>
+        <span>{title}</span>
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      <div className="property-collapsible-body" hidden={collapsed}>{children}</div>
+    </section>
+  );
 }
 
 function PropertyPulse({ title, explanation, updatedAt, collectedRent, expectedRent, rentProgress, expectedByToday, signals }: { title: string; explanation: string; updatedAt: string; collectedRent: number; expectedRent: number; rentProgress: number; expectedByToday: number; signals: { key: string; label: string; value: string; tone: string; action: () => void }[] }) {
-  return <aside className="property-pulse-rail"><div className="property-pulse-head"><h2>Property Pulse</h2><span>Updated {updatedAt}</span></div><div className="property-pulse-summary"><strong>{title}</strong><span>{explanation}</span></div><div className="property-pulse-rent-progress" aria-label={`${rentProgress}% of expected rent confirmed; ${expectedByToday}% expected by today`}><i><b style={{ width: `${rentProgress}%` }}/></i><span><b>{formatKpiCurrency(collectedRent)} received</b><small>{formatKpiCurrency(expectedRent)} expected after management fees</small></span></div><div className="property-pulse-list">{signals.map(signal => <button type="button" onClick={signal.action} key={signal.key} className={`property-pulse-row is-${signal.tone}`}><span>{signal.label}</span><strong>{signal.value}</strong></button>)}</div></aside>;
+  return (
+    <aside className="property-overview-section property-pulse-rail">
+      <div className="property-pulse-head">
+        <h2>Property Pulse</h2>
+        <span>Updated {updatedAt}</span>
+      </div>
+      <div className="property-pulse-summary">
+        <strong>{title}</strong>
+        <span>{explanation}</span>
+      </div>
+      <div className="property-pulse-rent-progress" aria-label={`${rentProgress}% of expected rent confirmed; ${expectedByToday}% expected by today`}>
+        <i><b style={{ width: `${rentProgress}%` }} /></i>
+        <span>
+          <b>{formatKpiCurrency(collectedRent)} received</b>
+          <small>{formatKpiCurrency(expectedRent)} expected after management fees</small>
+        </span>
+      </div>
+      <div className="property-pulse-list">
+        {signals.map(signal => (
+          <button type="button" onClick={signal.action} key={signal.key} className={`property-pulse-row is-${signal.tone}`}>
+            <span>{signal.label}</span>
+            <strong>{signal.value}</strong>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
 }
 
-function FinancialBreakdown({ propertyId, totals, noi, mortgage, cashFlow }: { propertyId: string; totals: { income: number; operating: number; cash: number }; noi: number; mortgage: number; cashFlow: number }) {
-  const rows = [['Rental income', totals.income, 'income'], ['Operating expenses', -totals.operating, 'expense'], ['NOI', noi, ''], ['Mortgage payments', -mortgage, 'expense'], ['Net cash flow', cashFlow, cashFlow >= 0 ? 'income' : 'expense']] as const;
-  return <section className="property-financial-breakdown"><div className="property-section-head"><h2>Financial breakdown</h2></div>{rows.map(([label, value, tone]) => <Link href={`/ledger?property=${propertyId}`} key={label}><span>{label}</span><strong className={tone === 'income' ? 'amount-positive' : tone === 'expense' ? 'amount-negative' : ''}>{formatKpiCurrency(value)}</strong></Link>)}</section>;
+function FinancialBreakdown({ propertyId, totals, noi, mortgage, cashFlow, compact = false }: { propertyId: string; totals: { income: number; operating: number; cash: number }; noi: number; mortgage: number; cashFlow: number; compact?: boolean }) {
+  const rows = [
+    ['Rental income', totals.income, 'income'],
+    ['Operating expenses', -totals.operating, 'expense'],
+    ['NOI', noi, ''],
+    ['Mortgage payments', -mortgage, 'expense'],
+    ['Net cash flow', cashFlow, cashFlow >= 0 ? 'income' : 'expense'],
+  ] as const;
+  return (
+    <div className={`property-financial-breakdown ${compact ? 'is-compact' : ''}`}>
+      {!compact && <div className="property-section-head"><h2>Financial breakdown</h2></div>}
+      {rows.map(([label, value, tone]) => (
+        <Link href={`/ledger?property=${propertyId}`} key={label}>
+          <span>{label}</span>
+          <strong className={tone === 'income' ? 'amount-positive' : tone === 'expense' ? 'amount-negative' : ''}>{formatKpiCurrency(value)}</strong>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 function OperatingExpenses({ propertyId, items, total }: { propertyId: string; items: ReturnType<typeof buildBreakdown>; total: number }) {
-  return <section className="property-open-panel"><div className="property-panel-head"><div><h2>Operating expenses</h2></div></div><div className="origin-breakdown">{items.length ? items.map((item, index) => <BreakdownRow key={item.category} item={item} index={index} total={total} propertyId={propertyId}/>) : <Empty text="No operating expenses recorded."/>}</div></section>;
+  return (
+    <div className="property-open-panel">
+      <div className="origin-breakdown">
+        {items.length ? items.map((item, index) => <BreakdownRow key={item.category} item={item} index={index} total={total} propertyId={propertyId} />) : <Empty text="No operating expenses recorded." />}
+      </div>
+    </div>
+  );
 }
 
 function KeyStatistics({ property, expectedRent, occupied, unitCount, noi, expenseRatio, hasIncome, mortgage, period }: { property: Property; expectedRent: number; occupied: number; unitCount: number; noi: number; expenseRatio: number; hasIncome: boolean; mortgage: number; period: HistoryPeriod }) {
-  const rows = [['Purchase price', property.purchase_price ? formatKpiCurrency(Number(property.purchase_price)) : '—'], ['Acquisition date', property.purchase_date ? formatDate(property.purchase_date) : '—'], ['Monthly rent', formatKpiCurrency(expectedRent)], ['Occupancy', `${occupied}/${unitCount}`], ['Trailing NOI', formatKpiCurrency(noi)], ['Cap rate', property.purchase_price && period === '1Y' ? `${(noi / Number(property.purchase_price) * 100).toFixed(1)}%` : '—'], ['Expense ratio', hasIncome ? `${(expenseRatio * 100).toFixed(1)}%` : '—'], ['Debt-service coverage', mortgage ? `${(noi / mortgage).toFixed(2)}×` : '—'], ['Mortgage balance', formatKpiCurrency(Number(property.mortgage_balance || 0))]];
-  return <section className="property-key-statistics"><div className="property-section-head"><h2>Key statistics</h2></div><div>{rows.map(([label, value]) => <span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div></section>;
+  const rows = [
+    ['Purchase price', property.purchase_price ? formatKpiCurrency(Number(property.purchase_price)) : '—'],
+    ['Acquisition date', property.purchase_date ? formatDate(property.purchase_date) : '—'],
+    ['Monthly rent', formatKpiCurrency(expectedRent)],
+    ['Occupancy', `${occupied}/${unitCount}`],
+    ['Trailing NOI', formatKpiCurrency(noi)],
+    ['Cap rate', property.purchase_price && period === '1Y' ? `${(noi / Number(property.purchase_price) * 100).toFixed(1)}%` : '—'],
+    ['Expense ratio', hasIncome ? `${(expenseRatio * 100).toFixed(1)}%` : '—'],
+    ['Debt-service coverage', mortgage ? `${(noi / mortgage).toFixed(2)}×` : '—'],
+    ['Mortgage balance', formatKpiCurrency(Number(property.mortgage_balance || 0))],
+  ];
+  return (
+    <div className="property-key-statistics">
+      <div>{rows.map(([label, value]) => <span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div>
+    </div>
+  );
 }
 
-function AnimatedValue({ value, animate, tone }: { value: number; animate: boolean; tone?:'positive'|'negative' }) {
+function AnimatedValue({ value, animate, tone }: { value: number; animate: boolean; tone?: 'positive' | 'negative' }) {
   const [display, setDisplay] = useState(value);
   useEffect(() => {
     if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setDisplay(value); return; }
     let frame = 0;
     const start = performance.now();
-    const tick = (time: number) => { const progress = Math.min(1, (time - start) / 650); setDisplay(value * (1 - Math.pow(1 - progress, 3))); if (progress < 1) frame = requestAnimationFrame(tick); };
+    const tick = (time: number) => {
+      const progress = Math.min(1, (time - start) / 650);
+      setDisplay(value * (1 - Math.pow(1 - progress, 3)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [value, animate]);
-  return <strong className={tone?`amount-${tone}`:display < 0 ? 'amount-negative' : display > 0 ? 'amount-positive' : ''}>{formatKpiCurrency(display)}</strong>;
+  return <strong className={tone ? `amount-${tone}` : display < 0 ? 'amount-negative' : display > 0 ? 'amount-positive' : ''}>{formatKpiCurrency(display)}</strong>;
 }
 
 function BreakdownRow({ item, index, total, propertyId }: { item: ReturnType<typeof buildBreakdown>[number]; index: number; total: number; propertyId: string }) {
@@ -199,7 +328,37 @@ function BreakdownRow({ item, index, total, propertyId }: { item: ReturnType<typ
   const fallback = ['var(--category-maintenance)', 'var(--category-management)', 'var(--category-mortgage)', 'var(--category-utilities)'];
   const color = colorMap[key] || fallback[index % fallback.length];
   const pct = total ? Math.round(item.amount / total * 100) : 0;
-  return <div className={`origin-breakdown-row expandable ${open ? 'open' : ''}`}><button type="button" className="origin-breakdown-toggle" onClick={() => setOpen(value => !value)}><div className="origin-breakdown-label"><span className="origin-dot" style={{ background: color }}/><strong>{item.category}</strong><span>{formatKpiCurrency(item.amount)}</span><ChevronDown size={15}/></div><div className="origin-breakdown-track"><i style={{ width: `${pct}%`, background: color }}/></div><div className="origin-breakdown-percent">{pct}%</div></button>{open && <div className="origin-breakdown-details">{item.transactions.slice(0, 8).map(transaction => { const title = transaction.payee_source || transaction.description || item.category; const detail = transaction.payee_source && transaction.description && transaction.payee_source !== transaction.description ? transaction.description : transaction.category; return <Link href={`/ledger?property=${propertyId}`} key={transaction.id}><span><strong>{title}</strong><small>{formatDate(transaction.transaction_date)} · {detail}</small></span><b>{formatKpiCurrency(Math.abs(transaction.amount))}</b></Link>; })}{item.transactions.length > 8 && <Link className="origin-more-link" href={`/ledger?property=${propertyId}`}>+ {item.transactions.length - 8} more transactions</Link>}</div>}</div>;
+  return (
+    <div className={`origin-breakdown-row expandable ${open ? 'open' : ''}`}>
+      <button type="button" className="origin-breakdown-toggle" onClick={() => setOpen(value => !value)}>
+        <div className="origin-breakdown-label">
+          <span className="origin-dot" style={{ background: color }} />
+          <strong>{item.category}</strong>
+          <span>{formatKpiCurrency(item.amount)}</span>
+          <ChevronDown size={15} />
+        </div>
+        <div className="origin-breakdown-track"><i style={{ width: `${pct}%`, background: color }} /></div>
+        <div className="origin-breakdown-percent">{pct}%</div>
+      </button>
+      {open && (
+        <div className="origin-breakdown-details">
+          {item.transactions.slice(0, 8).map(transaction => {
+            const title = transaction.payee_source || transaction.description || item.category;
+            const detail = transaction.payee_source && transaction.description && transaction.payee_source !== transaction.description ? transaction.description : transaction.category;
+            return (
+              <Link href={`/ledger?property=${propertyId}`} key={transaction.id}>
+                <span><strong>{title}</strong><small>{formatDate(transaction.transaction_date)} · {detail}</small></span>
+                <b>{formatKpiCurrency(Math.abs(transaction.amount))}</b>
+              </Link>
+            );
+          })}
+          {item.transactions.length > 8 && <Link className="origin-more-link" href={`/ledger?property=${propertyId}`}>+ {item.transactions.length - 8} more transactions</Link>}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function Empty({ text }: { text: string }) { return <div className="property-empty-inline">{text}</div>; }
+function Empty({ text }: { text: string }) {
+  return <div className="property-empty-inline">{text}</div>;
+}
