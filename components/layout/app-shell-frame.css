@@ -41,7 +41,8 @@ body {
     min-width: 0;
     padding-left: 0 !important;
     padding-bottom: var(--space-6) !important;
-    background: var(--theme-card);
+    background: var(--theme-card) !important;
+    border-radius: 0 var(--theme-shell-radius, 22px) var(--theme-shell-radius, 22px) 0;
   }
   .app-shell .side-nav-brand {
     display: flex;

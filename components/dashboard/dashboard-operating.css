@@ -86,7 +86,7 @@
   grid-template-columns: minmax(0, 1.75fr) minmax(260px, 0.82fr);
 }
 .dashboard-lower-row {
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
 }
 .dashboard-chart-module {
   display: grid;
@@ -148,6 +148,9 @@
 }
 .dashboard-operating .financial-history-chart {
   height: 196px;
+}
+.dashboard-operating .financial-history-y-axis {
+  width: 72px;
 }
 .dashboard-operating .product-chart-legend {
   margin: 0;
@@ -246,7 +249,7 @@
 }
 .dashboard-expense-track {
   display: block;
-  height: 10px;
+  height: 16px;
   overflow: hidden;
   border-radius: var(--radius-pill);
   background: var(--surface-subtle);
@@ -390,6 +393,9 @@
   }
   .dashboard-operating .financial-history-chart {
     height: 220px;
+  }
+  .dashboard-expense-track {
+    height: 10px;
   }
   .dashboard-operating .recent-activity-copy strong,
   .dashboard-operating .recent-activity-copy span {

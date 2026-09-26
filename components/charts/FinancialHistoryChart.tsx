@@ -6,6 +6,31 @@ import { formatCurrency } from '@/lib/formatters';
 
 type ChartKind = 'cashFlow' | 'holdingCosts' | 'incomeExpense';
 
+function evenAxis(maxValue: number) {
+  const value = Math.max(maxValue, 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+  const steps = [0.2, 0.25, 0.5, 1, 2].map((factor) => factor * magnitude).filter((step) => step >= 2);
+  let step = steps[0] ?? 2;
+  let bestScore = Number.POSITIVE_INFINITY;
+  steps.forEach((candidate) => {
+    const evenStep = candidate % 2 === 0 ? candidate : candidate * 2;
+    const max = Math.ceil(value / evenStep) * evenStep;
+    const count = Math.round(max / evenStep) + 1;
+    const score = Math.abs(count - 6) + (max / value > 1.35 ? 3 : 0);
+    if (score < bestScore) {
+      bestScore = score;
+      step = evenStep;
+    }
+  });
+  const max = Math.ceil(value / step) * step;
+  const ticks: number[] = [];
+  for (let tick = max; tick >= -step / 2; tick -= step) {
+    const rounded = Math.round(tick);
+    if (rounded >= 0 && ticks[ticks.length - 1] !== rounded) ticks.push(rounded);
+  }
+  return { max, ticks };
+}
+
 function compactCurrency(value: number) {
   const sign = value < 0 ? '-' : '';
   const absolute = Math.abs(value);
@@ -39,13 +64,13 @@ export default function FinancialHistoryChart({
   const grouped = kind === 'incomeExpense';
   const width = 820;
   const height = grouped ? 280 : 420;
-  const pad = grouped ? { left: 52, right: 8, top: 16, bottom: 8 } : { left: 58, right: 4, top: 88, bottom: 12 };
+  const pad = grouped ? { left: 76, right: 8, top: 12, bottom: 8 } : { left: 58, right: 4, top: 88, bottom: 12 };
   const innerWidth = width - pad.left - pad.right;
   const plotHeight = height - pad.top - pad.bottom;
   const netValues = rows.map((row) => (mode === 'cashFlow' ? row.cashFlow : row.noi));
   const expenseValues = rows.map((row) => (mode === 'cashFlow' ? row.cashExpenses : row.operatingExpenses));
   const incomeValues = rows.map((row) => row.income);
-  const extent = Math.max(
+  const rawExtent = Math.max(
     1,
     ...(holdingOnly
       ? expenseValues
@@ -53,13 +78,15 @@ export default function FinancialHistoryChart({
         ? [...incomeValues, ...expenseValues]
         : netValues.map((value) => Math.abs(value))),
   );
+  const groupedAxis = grouped ? evenAxis(rawExtent) : null;
+  const extent = groupedAxis?.max ?? rawExtent;
   const zeroY = holdingOnly || grouped ? height - pad.bottom : pad.top + plotHeight / 2;
   const positiveHeight = holdingOnly || grouped ? plotHeight : zeroY - pad.top;
   const negativeHeight = holdingOnly || grouped ? 0 : height - pad.bottom - zeroY;
   const xStep = innerWidth / Math.max(1, rows.length);
   const barWidth = Math.min(
-    holdingOnly ? 26 : grouped ? 42 : 34,
-    Math.max(grouped ? 16 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.36 : 0.46)),
+    holdingOnly ? 26 : grouped ? 32 : 34,
+    Math.max(grouped ? 14 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.28 : 0.46)),
   );
   const groupGap = grouped ? 3 : 0;
   const highlightIndex = grouped ? (selected == null ? Math.max(0, rows.length - 1) : selected) : selected;
@@ -82,7 +109,12 @@ export default function FinancialHistoryChart({
     onInspect?.(null);
   }
 
-  const axisLabels = holdingOnly || grouped
+  const axisLabels = grouped && groupedAxis
+    ? groupedAxis.ticks.map((tick) => ({
+        value: tick === 0 ? '$0' : formatCurrency(tick),
+        y: zeroY - (tick / extent) * positiveHeight,
+      }))
+    : holdingOnly
     ? [
         { value: compactCurrency(extent), y: pad.top },
         { value: compactCurrency(extent / 2), y: middleY },
@@ -128,11 +160,18 @@ export default function FinancialHistoryChart({
           }}
           onPointerCancel={finish}
         >
-          <line x1={pad.left} x2={width - pad.right} y1={pad.top} y2={pad.top} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
-          {(holdingOnly || grouped) && (
-            <line x1={pad.left} x2={width - pad.right} y1={middleY} y2={middleY} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
+          {grouped && groupedAxis ? groupedAxis.ticks.map((tick) => {
+            const y = zeroY - (tick / extent) * positiveHeight;
+            return <line key={tick} x1={pad.left} x2={width - pad.right} y1={y} y2={y} className={tick === 0 ? 'financial-history-zero' : 'financial-history-grid'} vectorEffect="non-scaling-stroke" />;
+          }) : (
+            <>
+              <line x1={pad.left} x2={width - pad.right} y1={pad.top} y2={pad.top} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
+              {holdingOnly && (
+                <line x1={pad.left} x2={width - pad.right} y1={middleY} y2={middleY} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
+              )}
+              <line x1={pad.left} x2={width - pad.right} y1={zeroY} y2={zeroY} className="financial-history-zero" vectorEffect="non-scaling-stroke" />
+            </>
           )}
-          <line x1={pad.left} x2={width - pad.right} y1={zeroY} y2={zeroY} className="financial-history-zero" vectorEffect="non-scaling-stroke" />
           {!holdingOnly && !grouped && (
             <line x1={pad.left} x2={width - pad.right} y1={height - pad.bottom} y2={height - pad.bottom} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
           )}
