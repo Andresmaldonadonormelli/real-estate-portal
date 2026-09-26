@@ -1,4 +1,8 @@
-/* Desktop application frame. The page stays pale; the product sits in one inset shell. */
+/* Desktop application frame. Gray page, one white rounded window, tinted sidebar. */
+html,
+body {
+  background: var(--theme-page);
+}
 @media (min-width: 768px) {
   .app-frame {
     min-height: 100vh;
@@ -13,6 +17,7 @@
     border: 1px solid var(--theme-border);
     border-radius: var(--theme-shell-radius, 22px);
     background: var(--theme-card);
+    box-shadow: none;
   }
   .app-shell .side-nav {
     position: static !important;

@@ -29,7 +29,7 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('1Y');
+  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
@@ -171,7 +171,7 @@ export default function Dashboard() {
   }
 
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
-  const currentMonth=new Date().toISOString().slice(0,7);
+  const currentMonth=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
   const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
@@ -248,29 +248,40 @@ export default function Dashboard() {
       return days<=90;
     }).length;
   },[scopedUnits]);
+  const monthComparison=useMemo(()=>buildMonthlyFinancialHistory(transactions,'6M',cashPropertyId),[transactions,cashPropertyId]);
+  const comparisonCurrent=monthComparison[monthComparison.length-1];
+  const comparisonPrevious=monthComparison[monthComparison.length-2];
+  const rentForMonth=(key?:string)=>postedScoped.filter(tx=>Boolean(key)&&tx.transaction_date.startsWith(key||'')&&tx.type==='income'&&categoryKey(tx.category)==='rent').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+  const rentChange=monthOverMonth(rentForMonth(comparisonCurrent?.key),rentForMonth(comparisonPrevious?.key),'higher-better');
+  const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
+  const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
   const expenseBreakdown=useMemo(()=>{
     const keys=new Set(cashFlow.map(row=>row.key));
     const debt=new Set(['mortgage-interest','mortgage-principal','mortgage','capex','distribution']);
-    const map=new Map<string,number>();
+    const map=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
     postedScoped.forEach(tx=>{
       if(tx.type!=='expense'||!keys.has(tx.transaction_date.slice(0,7))) return;
       const key=categoryKey(tx.category||'');
       if(debt.has(key)) return;
-      const label=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
-      map.set(label,(map.get(label)||0)+Math.abs(Number(tx.amount||0)));
+      const uncategorized=!tx.category||/needs review|uncategor/i.test(tx.category);
+      const label=uncategorized?'Uncategorized':tx.category;
+      const current=map.get(label)||{label,key:uncategorized?'uncategorized':key,amount:0,uncategorized};
+      current.amount+=Math.abs(Number(tx.amount||0));
+      map.set(label,current);
     });
-    const items=[...map.entries()].map(([label,amount])=>({label,amount,uncategorized:label==='Uncategorized'})).sort((a,b)=>b.amount-a.amount);
+    const items=[...map.values()].sort((a,b)=>b.amount-a.amount);
     const total=items.reduce((sum,item)=>sum+item.amount,0);
     const top=items.filter(item=>!item.uncategorized).slice(0,5);
     const uncategorized=items.find(item=>item.uncategorized);
     const rows=uncategorized&&!top.includes(uncategorized)?[...top,uncategorized]:top;
-    return {rows:rows.map(item=>({...item,share:total?item.amount/total:0})),total};
+    return {rows:rows.map((item,index)=>({...item,share:total?item.amount/total:0,color:expenseColor(item.key,item.uncategorized,index)})),total};
   },[cashFlow,postedScoped]);
   const recentItems=postedScoped.map(tx=>{
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
-    const bank=tx.source==='plaid'?`${tx.source_institution||'Bank'}${tx.source_account_mask?` •••• ${tx.source_account_mask}`:''} · Imported`:tx.category;
-    return {id:tx.id,title:tx.description||tx.payee_source||tx.category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':bank,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
+    const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
+    const description=tx.description&&tx.description!==category?`${category} · ${tx.description}`:category;
+    return {id:tx.id,title:tx.description||tx.payee_source||category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor:tx.payee_source||tx.description||category,property:property?.address||'Portfolio',category:description,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
   });
   const netValue=displayedCashFlow?.cashFlow||0;
   const netTone=netValue>0?'positive':netValue<0?'negative':'';
@@ -290,9 +301,9 @@ export default function Dashboard() {
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
-        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><small>of {formatKpiCurrency(rentExpected)} expected</small></div>
-        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><small>This month</small></div>
-        <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><small>This month</small></div>
+        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><small className={rentChange.tone==='neutral'?'':`amount-${rentChange.tone}`}>{rentChange.text}</small></div>
+        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><small className={expenseChange.tone==='neutral'?'':`amount-${expenseChange.tone}`}>{expenseChange.text}</small></div>
+        <div><span>Net cash flow</span><strong>{formatKpiCurrency(monthNet)}</strong><small className={cashChange.tone==='neutral'?'':`amount-${cashChange.tone}`}>{cashChange.text}</small></div>
       </section>
       <div className="dashboard-main-row">
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
@@ -327,9 +338,9 @@ export default function Dashboard() {
         <section className="dashboard-module" aria-label="Operating expenses">
           <h2>Expense breakdown</h2>
           <p className="dashboard-module-kicker">{periodNames[cashPeriod]} · mortgage excluded</p>
-          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><strong>{item.label}</strong><b>{formatKpiCurrency(item.amount)}</b><em>{Math.round(item.share*100)}%</em><span className="dashboard-expense-track"><i style={{width:`${Math.round(item.share*100)}%`}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses in this range.</p>}
+          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><div className="dashboard-expense-label"><strong>{item.label} ({Math.round(item.share*100)}%)</strong><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses in this range.</p>}
         </section>
-        <RecentActivity items={recentItems} ledgerHref={cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
+        <RecentActivity variant="table" items={recentItems} ledgerHref={cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </div>
     </>}
     {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
@@ -339,6 +350,29 @@ export default function Dashboard() {
       {testPreview&&testReviewUnits.length===0&&<div style={{padding:18,textAlign:'center',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:10}}>Test complete. All occupied units were reviewed.</div>}
     </div></div></div>}
   </div>;
+}
+function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
+  const delta=current-previous;
+  if(Math.abs(delta)<0.5) return {text:'No change from last month',tone:'neutral' as const};
+  if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const};
+  const pct=(delta/Math.abs(previous))*100;
+  const text=`${pct>0?'+':'−'}${Math.abs(pct).toFixed(1)}% from last month`;
+  const improved=direction==='higher-better'?pct>0:pct<0;
+  return {text,tone:improved?'positive' as const:'negative' as const};
+}
+function expenseColor(key:string,uncategorized:boolean,index:number){
+  if(uncategorized) return 'var(--dashboard-series-uncategorized)';
+  const colors:Record<string,string>={
+    maintenance:'var(--theme-maintenance)',
+    management:'var(--theme-management)',
+    utilities:'var(--theme-utilities)',
+    insurance:'var(--theme-insurance)',
+    taxes:'var(--theme-taxes)',
+    legal:'var(--theme-legal)',
+    leasing:'var(--theme-capex)',
+  };
+  const fallback=['var(--theme-insurance)','var(--theme-utilities)','var(--theme-maintenance)','var(--theme-management)','var(--theme-taxes)','var(--theme-legal)'];
+  return colors[key]||fallback[index%fallback.length];
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function formatRailCurrency(value:number){return formatCurrency(Math.round(value)).replace(/\.00$/,'')}

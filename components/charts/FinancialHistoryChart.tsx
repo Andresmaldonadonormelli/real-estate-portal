@@ -58,10 +58,10 @@ export default function FinancialHistoryChart({
   const negativeHeight = holdingOnly || grouped ? 0 : height - pad.bottom - zeroY;
   const xStep = innerWidth / Math.max(1, rows.length);
   const barWidth = Math.min(
-    holdingOnly ? 26 : grouped ? 28 : 34,
-    Math.max(grouped ? 12 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.32 : 0.46)),
+    holdingOnly ? 26 : grouped ? 42 : 34,
+    Math.max(grouped ? 16 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.36 : 0.46)),
   );
-  const groupGap = grouped ? 4 : 0;
+  const groupGap = grouped ? 3 : 0;
   const highlightIndex = grouped ? (selected == null ? Math.max(0, rows.length - 1) : selected) : selected;
   const x = (index: number) => pad.left + xStep * (index + 0.5);
   const upwardY = (value: number) => zeroY - (value / extent) * positiveHeight;

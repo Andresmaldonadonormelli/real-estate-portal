@@ -77,8 +77,8 @@
   --palette-near-black: #020202;
 
   /* Light surfaces and text */
-  --theme-page: #f3f2f5;
-  --theme-sidebar: #eceaf1;
+  --theme-page: #e4e3e8;
+  --theme-sidebar: #f4f3f7;
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-subtle: #eeeaf6;
@@ -95,6 +95,8 @@
   --theme-shadow-card: none;
   --theme-shell-radius: 22px;
   --theme-module-radius: 16px;
+  --theme-control-radius: 8px;
+  --dashboard-series-uncategorized: #6e6b76;
   --theme-section-radius: var(--theme-module-radius);
   --theme-section-padding: var(--space-5);
   --theme-section-gap: var(--space-4);
@@ -175,6 +177,7 @@
   --theme-overlay: rgba(0, 0, 0, 0.66);
   --theme-shadow-card: none;
   --theme-chart-muted: #3a3742;
+  --dashboard-series-uncategorized: #b7b4bf;
   --theme-chart-expense: #5c5868;
   --theme-chart-expense-muted: #8a8596;
   --theme-brand: #c4b0ff;
