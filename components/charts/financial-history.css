@@ -5,7 +5,7 @@
 .financial-history-expense-bar{fill:var(--negative)}
 .financial-history-income-series-bar{fill:var(--chart-income,var(--theme-brand-fill))}
 .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
-.financial-history-chart-wrap.is-income-expense .is-quiet .financial-history-income-series-bar{fill:var(--chart-muted,var(--theme-chart-muted))}
+.financial-history-chart-wrap.is-income-expense .is-quiet .financial-history-income-series-bar{fill:var(--chart-income-quiet,var(--theme-chart-income-quiet))}
 .financial-history-chart-wrap.is-income-expense .is-quiet .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
 .financial-history-chart-wrap.is-income-expense .is-active .financial-history-income-series-bar{fill:var(--chart-income,var(--theme-brand-fill))}
 .financial-history-chart-wrap.is-income-expense .is-active .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}

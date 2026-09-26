@@ -216,7 +216,7 @@ export default function FinancialHistoryChart({
                     height={Math.max(2, zeroY - upwardY(income))}
                     rx="3"
                     className="financial-history-income-series-bar"
-                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-muted, #c9c6d1)'}
+                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-income-quiet, #e4daf8)'}
                   />
                 </g>
               );

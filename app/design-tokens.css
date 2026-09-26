@@ -77,8 +77,8 @@
   --palette-near-black: #020202;
 
   /* Light surfaces and text */
-  --theme-page: #e4e3e8;
-  --theme-sidebar: #f4f3f7;
+  --theme-page: #f4f3f7;
+  --theme-sidebar: var(--theme-page);
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-subtle: #eeeaf6;
@@ -97,10 +97,18 @@
   --theme-module-radius: 16px;
   --theme-control-radius: 8px;
   --dashboard-series-uncategorized: #6e6b76;
+  --dashboard-series-track: #ececee;
+  --dashboard-series-maintenance: #d7a06a;
+  --dashboard-series-management: #b7a4e0;
+  --dashboard-series-utilities: #8fb8c4;
+  --dashboard-series-insurance: #9aa6d4;
+  --dashboard-series-taxes: #c4b08a;
+  --dashboard-series-legal: #b3a6d4;
   --theme-section-radius: var(--theme-module-radius);
   --theme-section-padding: var(--space-5);
   --theme-section-gap: var(--space-4);
   --theme-chart-muted: #c9c6d1;
+  --theme-chart-income-quiet: #e4daf8;
   --theme-chart-expense: #b0adb8;
   --theme-chart-expense-muted: #8d8a94;
 
@@ -177,7 +185,15 @@
   --theme-overlay: rgba(0, 0, 0, 0.66);
   --theme-shadow-card: none;
   --theme-chart-muted: #3a3742;
+  --theme-chart-income-quiet: #6d5c9a;
   --dashboard-series-uncategorized: #b7b4bf;
+  --dashboard-series-track: #2a2832;
+  --dashboard-series-maintenance: #c49262;
+  --dashboard-series-management: #b7a4e0;
+  --dashboard-series-utilities: #8fb8c4;
+  --dashboard-series-insurance: #a8b0d8;
+  --dashboard-series-taxes: #c4b08a;
+  --dashboard-series-legal: #b3a6d4;
   --theme-chart-expense: #5c5868;
   --theme-chart-expense-muted: #8a8596;
   --theme-brand: #c4b0ff;

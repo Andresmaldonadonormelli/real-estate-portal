@@ -232,9 +232,36 @@ export default function Dashboard() {
   const scopedTransactions=useMemo(()=>cashPropertyId?transactions.filter(tx=>tx.property_id===cashPropertyId):transactions,[transactions,cashPropertyId]);
   const scopedUnits=useMemo(()=>cashPropertyId?units.filter(unit=>unit.property_id===cashPropertyId):units,[units,cashPropertyId]);
   const postedScoped=useMemo(()=>scopedTransactions.filter(tx=>(tx.status||'posted')==='posted'),[scopedTransactions]);
-  const rentCollected=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[postedScoped,currentMonth]);
+  const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
+  const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
   const rentExpected=useMemo(()=>scopedUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0),[scopedUnits]);
-  const managementFees=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='expense'&&categoryKey(tx.category)==='management').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[postedScoped,currentMonth]);
+  const payableUnits=useMemo(()=>scopedUnits.filter(unit=>unit.occupied&&Number(unit.current_rent||0)>0.5),[scopedUnits]);
+  const unitsPaidCount=useMemo(()=>{
+    if(!payableUnits.length||monthRent.some(tx=>!tx.unit_id)) return null;
+    return payableUnits.filter(unit=>{
+      const received=monthRent.filter(tx=>tx.unit_id===unit.id).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+      return received+0.5>=Number(unit.current_rent||0);
+    }).length;
+  },[monthRent,payableUnits]);
+  const rentRows=useMemo(()=>{
+    const receivedFor=(match:(tx:Transaction)=>boolean)=>monthRent.filter(match).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+    if(cashPropertyId){
+      return scopedUnits.flatMap(unit=>{
+        const expected=unit.occupied?Math.max(0,Number(unit.current_rent||0)):0;
+        const received=receivedFor(tx=>tx.unit_id===unit.id);
+        const status=rentRowStatus(received,expected,!unit.occupied);
+        if(!status&&received<0.5&&expected<0.5) return [];
+        return [{id:unit.id,name:unit.unit_number||'Unit',received,expected,status}];
+      });
+    }
+    return properties.flatMap(property=>{
+      const expected=scopedUnits.filter(unit=>unit.property_id===property.id&&unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+      const received=receivedFor(tx=>tx.property_id===property.id);
+      const status=rentRowStatus(received,expected);
+      if(!status&&received<0.5&&expected<0.5) return [];
+      return [{id:property.id,name:property.address,received,expected,status}];
+    });
+  },[cashPropertyId,monthRent,properties,scopedUnits]);
   const pendingBank=useMemo(()=>scopedTransactions.filter(tx=>tx.source==='plaid'&&tx.is_new_import&&(tx.status||'posted')==='posted').length,[scopedTransactions]);
   const pendingRent=useMemo(()=>scopedTransactions.filter(tx=>tx.status==='pending'&&categoryKey(tx.category)==='rent').length,[scopedTransactions]);
   const vacantCount=scopedUnits.filter(unit=>!unit.occupied).length;
@@ -280,14 +307,17 @@ export default function Dashboard() {
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
     const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
-    const description=tx.description&&tx.description!==category?`${category} · ${tx.description}`:category;
+    const description=activityPhrase(category,tx.description);
     return {id:tx.id,title:tx.description||tx.payee_source||category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor:tx.payee_source||tx.description||category,property:property?.address||'Portfolio',category:description,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
   });
   const netValue=displayedCashFlow?.cashFlow||0;
   const netTone=netValue>0?'positive':netValue<0?'negative':'';
   const monthNet=currentCashFlow?.cashFlow||0;
   const monthNetTone=monthNet>0?'positive':monthNet<0?'negative':'';
-  const rentProgress=rentExpected>0?Math.min(100,Math.round(rentCollected/rentExpected*100)):0;
+  const collectedRatio=rentExpected>0.5?rentCollected/rentExpected:null;
+  const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
+  const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
+  const rentAhead=rentCollected-rentExpected;
   const periodNames:Record<HistoryPeriod,string>={'3M':'Last 3 months','6M':'Last 6 months','9M':'Last 9 months','1Y':'Last 12 months'};
 
   return <div className="dashboard-operating">
@@ -295,7 +325,7 @@ export default function Dashboard() {
       <div><h1>{greeting}</h1><p>{todayLabel}</p></div>
       <div className="dashboard-operating-controls">
         {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
-        {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span></button>{addMenuOpen&&<div className="pulse-add-options"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
+        {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
@@ -321,15 +351,17 @@ export default function Dashboard() {
         <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
           <h2>Rent status</h2>
           <div className="dashboard-rent-figure">
-            <strong>{formatKpiCurrency(rentCollected)}</strong>
-            <span>received of {formatKpiCurrency(rentExpected)} expected this month</span>
+            {collectedPercent!==null&&<strong>{collectedPercent}% collected</strong>}
+            <span>{formatKpiCurrency(rentCollected)} of {formatKpiCurrency(rentExpected)} expected</span>
           </div>
-          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentProgress}%`}}/></span>
+          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
+          {rentExpected>0.5&&rentAhead>0.5&&<p className="dashboard-rent-ahead">Ahead: +{formatKpiCurrency(rentAhead)}</p>}
           <div className="dashboard-rent-list">
-            {managementFees>0&&<p><span>Management fees deducted</span><b>{formatKpiCurrency(managementFees)}</b></p>}
+            {unitsPaidCount!==null&&<p><span>Units paid</span><b>{unitsPaidCount} of {payableUnits.length}</b></p>}
+            {rentRows.map(row=><p key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} of {formatKpiCurrency(row.expected)}</small>}</span>{row.status&&<b data-status={row.status}>{row.status}</b>}</p>)}
             {pendingBank>0&&<p><span>Pending bank activity</span><b>{pendingBank} new</b></p>}
             {pendingRent>0&&<p><span>Rent awaiting confirmation</span><b>{pendingRent}</b></p>}
-            {scopedUnits.length>0&&vacantCount>0&&<p className="is-warning"><span>Vacant units</span><b>{vacantCount} of {scopedUnits.length}</b></p>}
+            {!cashPropertyId&&scopedUnits.length>0&&vacantCount>0&&<p className="is-warning"><span>Vacant units</span><b>{vacantCount} of {scopedUnits.length}</b></p>}
             {leaseRisk>0&&<p className="is-warning"><span>Lease risk within 90 days</span><b>{leaseRisk}</b></p>}
           </div>
         </section>
@@ -351,6 +383,22 @@ export default function Dashboard() {
     </div></div></div>}
   </div>;
 }
+function rentRowStatus(received:number,expected:number,vacant=false){
+  if(vacant&&received<0.5) return 'Vacant' as const;
+  if(expected>0.5&&received+0.5>=expected) return 'Collected' as const;
+  if(received>0.5&&expected>received+0.5) return 'Partial' as const;
+  if(expected>0.5&&received<0.5) return 'Outstanding' as const;
+  return null;
+}
+function activityPhrase(category:string,description?:string|null){
+  const detail=(description||'').trim();
+  const label=category.trim();
+  if(!detail) return label;
+  const detailKey=detail.toLowerCase();
+  const labelKey=label.toLowerCase();
+  if(detailKey===labelKey||detailKey.includes(labelKey)||labelKey.includes(detailKey)) return detail.length>=label.length?detail:label;
+  return `${label} · ${detail}`;
+}
 function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
   const delta=current-previous;
   if(Math.abs(delta)<0.5) return {text:'No change from last month',tone:'neutral' as const};
@@ -363,15 +411,15 @@ function monthOverMonth(current:number,previous:number,direction:'higher-better'
 function expenseColor(key:string,uncategorized:boolean,index:number){
   if(uncategorized) return 'var(--dashboard-series-uncategorized)';
   const colors:Record<string,string>={
-    maintenance:'var(--theme-maintenance)',
-    management:'var(--theme-management)',
-    utilities:'var(--theme-utilities)',
-    insurance:'var(--theme-insurance)',
-    taxes:'var(--theme-taxes)',
-    legal:'var(--theme-legal)',
-    leasing:'var(--theme-capex)',
+    maintenance:'var(--dashboard-series-maintenance)',
+    management:'var(--dashboard-series-management)',
+    utilities:'var(--dashboard-series-utilities)',
+    insurance:'var(--dashboard-series-insurance)',
+    taxes:'var(--dashboard-series-taxes)',
+    legal:'var(--dashboard-series-legal)',
+    leasing:'var(--dashboard-series-management)',
   };
-  const fallback=['var(--theme-insurance)','var(--theme-utilities)','var(--theme-maintenance)','var(--theme-management)','var(--theme-taxes)','var(--theme-legal)'];
+  const fallback=['var(--dashboard-series-insurance)','var(--dashboard-series-utilities)','var(--dashboard-series-maintenance)','var(--dashboard-series-management)','var(--dashboard-series-taxes)','var(--dashboard-series-legal)'];
   return colors[key]||fallback[index%fallback.length];
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}

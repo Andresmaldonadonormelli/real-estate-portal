@@ -1,4 +1,4 @@
-/* Desktop application frame. Gray page, one white rounded window, tinted sidebar. */
+/* Desktop frame: one pale-gray canvas, sidebar on that canvas, white content panel rounded on all four sides. */
 html,
 body {
   background: var(--theme-page);
@@ -12,11 +12,12 @@ body {
   .app-shell {
     display: flex;
     align-items: stretch;
+    gap: 16px;
     min-height: calc(100vh - 32px);
-    overflow: hidden;
-    border: 1px solid var(--theme-border);
-    border-radius: var(--theme-shell-radius, 22px);
-    background: var(--theme-card);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     box-shadow: none;
   }
   .app-shell .side-nav {
@@ -33,7 +34,7 @@ body {
     height: auto;
     margin: 0;
     padding: 8px 10px 12px;
-    border-right: 1px solid var(--theme-border);
+    border-right: 0;
     background: var(--theme-sidebar);
   }
   .app-shell .main-content {
@@ -41,8 +42,9 @@ body {
     min-width: 0;
     padding-left: 0 !important;
     padding-bottom: var(--space-6) !important;
+    overflow: hidden;
     background: var(--theme-card) !important;
-    border-radius: 0 var(--theme-shell-radius, 22px) var(--theme-shell-radius, 22px) 0;
+    border-radius: var(--theme-shell-radius, 22px);
   }
   .app-shell .side-nav-brand {
     display: flex;

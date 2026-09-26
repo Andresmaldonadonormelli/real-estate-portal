@@ -190,6 +190,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --chart-income: var(--theme-brand-fill);
   --chart-expense: var(--theme-chart-expense);
   --chart-muted: var(--theme-chart-muted);
+  --chart-income-quiet: var(--theme-chart-income-quiet);
 
   --category-rent: var(--theme-income);
   --category-maintenance: var(--theme-maintenance);
@@ -247,6 +248,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --chart-income: var(--theme-brand-fill)!important;
   --chart-expense: var(--theme-chart-expense)!important;
   --chart-muted: var(--theme-chart-muted)!important;
+  --chart-income-quiet: var(--theme-chart-income-quiet)!important;
 
   --category-rent: var(--theme-income)!important;
   --category-maintenance: var(--theme-maintenance)!important;
