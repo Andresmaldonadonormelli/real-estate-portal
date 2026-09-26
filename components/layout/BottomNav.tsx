@@ -18,7 +18,7 @@ export default function BottomNav() {
   const items=[
     {href:'/',label:'Dashboard',icon:Gauge},
     {href:'/properties',label:'Properties',icon:Building2},
-    {href:'/ledger',label:'Ledger',icon:WalletCards},
+    {href:'/ledger',label:'Transactions',icon:WalletCards},
     {href:'/utilities',label:'Utilities',icon:Zap},
   ];
 

@@ -26,9 +26,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => { setShowNav(false); }, [pathname]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {!isMobile && <SideNav />}
-      <main className="main-content">{children}</main>
+    <div className="app-frame">
+      <div className="app-shell">
+        {!isMobile && <SideNav />}
+        <main className="main-content">{children}</main>
+      </div>
       {isMobile && <BottomNav />}
       {isMobile && showNav && (
         <div className="mobile-menu-backdrop" onClick={() => setShowNav(false)}>

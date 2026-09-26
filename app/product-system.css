@@ -32,3 +32,5 @@
 @import "../components/shared/mobile-controls.css";
 @import "../components/transactions/transaction-modal.css";
 @import "../components/ledger/ledger-workspace-clean.css";
+@import "../components/layout/app-shell-frame.css";
+@import "../components/dashboard/dashboard-operating.css";

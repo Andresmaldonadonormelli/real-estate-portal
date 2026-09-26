@@ -1,0 +1,131 @@
+/* Desktop frame: one pale-gray canvas, sidebar on that canvas, white content panel rounded on all four sides. */
+html,
+body {
+  background: var(--theme-page);
+}
+@media (min-width: 768px) {
+  .app-frame {
+    min-height: 100vh;
+    padding: 16px;
+    background: var(--theme-page);
+  }
+  .app-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    min-height: calc(100vh - 32px);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-shell .side-nav {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: 1;
+    display: flex;
+    flex: 0 0 228px;
+    flex-direction: column;
+    width: 228px;
+    height: auto;
+    margin: 0;
+    padding: 8px 10px 12px;
+    border-right: 0;
+    background: var(--theme-sidebar);
+  }
+  .app-shell .main-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-left: 0 !important;
+    padding-bottom: var(--space-6) !important;
+    overflow: hidden;
+    background: var(--theme-card) !important;
+    border-radius: var(--theme-shell-radius, 22px);
+  }
+  .app-shell .side-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 56px;
+    padding: var(--space-3) var(--space-2) var(--space-4);
+  }
+  .app-shell .side-nav-brand strong {
+    color: var(--text-primary);
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
+    font-weight: var(--weight-semibold);
+    letter-spacing: -0.02em;
+  }
+  .side-nav-mascot,
+  .side-nav-mascot img {
+    display: block;
+    width: 28px;
+    height: 28px;
+  }
+  .app-shell .side-nav-scroll {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    flex: 1 1 auto;
+    padding: 0;
+    overflow: visible;
+  }
+  .app-shell .side-nav-footer {
+    margin-top: auto;
+    padding: var(--space-3) 0 0;
+    border-top: 0;
+  }
+  .app-shell .nav-link {
+    min-height: 40px;
+    margin: 0;
+    padding: 0 var(--space-3) !important;
+    border-radius: 12px !important;
+    color: var(--text-secondary);
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
+    font-weight: var(--weight-medium);
+  }
+  .app-shell .nav-link.active {
+    background: var(--theme-card) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--weight-medium) !important;
+  }
+  .app-shell .nav-link svg {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-frame {
+    min-height: 100vh;
+    padding: 0;
+    background: var(--theme-page);
+  }
+  .app-shell {
+    display: block;
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .app-shell .main-content {
+    padding-left: 0 !important;
+    background: transparent;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .nav-link:hover {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--weight-medium) !important;
+  }
+  .app-shell .nav-link.active:hover {
+    background: var(--theme-card) !important;
+    color: var(--text-primary) !important;
+  }
+}

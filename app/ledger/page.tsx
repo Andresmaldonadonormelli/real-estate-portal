@@ -32,9 +32,9 @@ export default function LedgerDocsPage(){
   useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
   function changeTab(next:Tab){setTab(next);setAddRequest(0);setUploadRequest(0)}
   return <div className="ledger-page ledger-v230-page">
-    <PageHeader title="Ledger & Docs" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:<span className="ledger-v230-action-placeholder" aria-hidden="true"/>}/>
+    <PageHeader title="Transactions" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:<span className="ledger-v230-action-placeholder" aria-hidden="true"/>}/>
     <div className="ledger-v230-workspace">
-      <UnderlineTabs primary value={tab} onChange={changeTab} label="Ledger sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Ledger'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
+      <UnderlineTabs primary value={tab} onChange={changeTab} label="Transaction sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Transactions'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
       {!loading&&<ProductSelect className="ledger-v230-shared-property" aria-label="Property" value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'
         ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest} onActionHandled={()=>setAddRequest(0)}/>

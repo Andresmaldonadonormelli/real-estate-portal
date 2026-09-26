@@ -9,7 +9,7 @@ function mascotSrc(id: number) {
   return `/mascots/${String(id).padStart(2, '0')}.svg`;
 }
 
-export default function RotatingMascot() {
+export default function RotatingMascot({ embedded = false }: { embedded?: boolean }) {
   const [mascotId, setMascotId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function RotatingMascot() {
   }, []);
 
   return (
-    <div className="app-mascot" aria-hidden="true">
+    <div className={embedded ? 'side-nav-mascot' : 'app-mascot'} aria-hidden="true">
       {mascotId !== null && (
         <img src={mascotSrc(mascotId)} alt="" width={36} height={36} draggable={false} />
       )}

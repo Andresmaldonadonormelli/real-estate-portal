@@ -15,8 +15,6 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
-import MiniSparkline from '@/components/charts/MiniSparkline';
-import ActionCenter from '@/components/dashboard/ActionCenter';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { ChartLegend, ProductSelect } from '@/components/common/ProductControls';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
@@ -31,7 +29,7 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('1Y');
+  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
   const [cashPropertyId, setCashPropertyId] = useState('');
   const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
@@ -110,7 +108,7 @@ export default function Dashboard() {
     try {
       const [p,u,t,d] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
-        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('dashboard:units',async()=>await supabase.from('units').select(`${UNIT_FIELDS},lease_end_date`).is('archived_at',null).order('unit_number')),
         cachedSupabaseRequest('dashboard:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false})),
         cachedSupabaseRequest('dashboard:documents',async()=>await supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at',null).order('created_at',{ascending:false})),
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
@@ -173,7 +171,7 @@ export default function Dashboard() {
   }
 
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
-  const currentMonth=new Date().toISOString().slice(0,7);
+  const currentMonth=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
   const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
@@ -229,41 +227,152 @@ export default function Dashboard() {
   }
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
-  const periodCashFlow=useMemo(()=>cashFlow.reduce((total,row)=>({cashFlow:total.cashFlow+row.cashFlow,income:total.income+row.income,cashExpenses:total.cashExpenses+row.cashExpenses}),{cashFlow:0,income:0,cashExpenses:0}),[cashFlow]);
   const currentCashFlow=cashFlow[cashFlow.length-1];
   const displayedCashFlow=inspectedCashFlow||currentCashFlow;
+  const scopedTransactions=useMemo(()=>cashPropertyId?transactions.filter(tx=>tx.property_id===cashPropertyId):transactions,[transactions,cashPropertyId]);
+  const scopedUnits=useMemo(()=>cashPropertyId?units.filter(unit=>unit.property_id===cashPropertyId):units,[units,cashPropertyId]);
+  const postedScoped=useMemo(()=>scopedTransactions.filter(tx=>(tx.status||'posted')==='posted'),[scopedTransactions]);
+  const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
+  const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
+  const rentExpected=useMemo(()=>scopedUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0),[scopedUnits]);
+  const payableUnits=useMemo(()=>scopedUnits.filter(unit=>unit.occupied&&Number(unit.current_rent||0)>0.5),[scopedUnits]);
+  const unitsPaidCount=useMemo(()=>{
+    if(!payableUnits.length||monthRent.some(tx=>!tx.unit_id)) return null;
+    return payableUnits.filter(unit=>{
+      const received=monthRent.filter(tx=>tx.unit_id===unit.id).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+      return received+0.5>=Number(unit.current_rent||0);
+    }).length;
+  },[monthRent,payableUnits]);
+  const rentRows=useMemo(()=>{
+    const receivedFor=(match:(tx:Transaction)=>boolean)=>monthRent.filter(match).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+    if(cashPropertyId){
+      return scopedUnits.flatMap(unit=>{
+        const expected=unit.occupied?Math.max(0,Number(unit.current_rent||0)):0;
+        const received=receivedFor(tx=>tx.unit_id===unit.id);
+        const status=rentRowStatus(received,expected,!unit.occupied);
+        if(!status&&received<0.5&&expected<0.5) return [];
+        return [{id:unit.id,name:unit.unit_number||'Unit',received,expected,status}];
+      });
+    }
+    return properties.flatMap(property=>{
+      const expected=scopedUnits.filter(unit=>unit.property_id===property.id&&unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+      const received=receivedFor(tx=>tx.property_id===property.id);
+      const status=rentRowStatus(received,expected);
+      if(!status&&received<0.5&&expected<0.5) return [];
+      return [{id:property.id,name:property.address,received,expected,status}];
+    });
+  },[cashPropertyId,monthRent,properties,scopedUnits]);
+  const pendingBank=useMemo(()=>scopedTransactions.filter(tx=>tx.source==='plaid'&&tx.is_new_import&&(tx.status||'posted')==='posted').length,[scopedTransactions]);
+  const pendingRent=useMemo(()=>scopedTransactions.filter(tx=>tx.status==='pending'&&categoryKey(tx.category)==='rent').length,[scopedTransactions]);
+  const vacantCount=scopedUnits.filter(unit=>!unit.occupied).length;
+  const leaseRisk=useMemo(()=>{
+    const today=new Date(); today.setHours(0,0,0,0);
+    return scopedUnits.filter(unit=>{
+      const end=(unit as Unit & {lease_end_date?:string|null}).lease_end_date;
+      if(!end) return false;
+      const date=new Date(`${end.slice(0,10)}T12:00:00`);
+      const days=Math.ceil((date.getTime()-today.getTime())/86400000);
+      return days<=90;
+    }).length;
+  },[scopedUnits]);
+  const monthComparison=useMemo(()=>buildMonthlyFinancialHistory(transactions,'6M',cashPropertyId),[transactions,cashPropertyId]);
+  const comparisonCurrent=monthComparison[monthComparison.length-1];
+  const comparisonPrevious=monthComparison[monthComparison.length-2];
+  const rentForMonth=(key?:string)=>postedScoped.filter(tx=>Boolean(key)&&tx.transaction_date.startsWith(key||'')&&tx.type==='income'&&categoryKey(tx.category)==='rent').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+  const rentChange=monthOverMonth(rentForMonth(comparisonCurrent?.key),rentForMonth(comparisonPrevious?.key),'higher-better');
+  const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
+  const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
+  const expenseBreakdown=useMemo(()=>{
+    const keys=new Set(cashFlow.map(row=>row.key));
+    const debt=new Set(['mortgage-interest','mortgage-principal','mortgage','capex','distribution']);
+    const map=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
+    postedScoped.forEach(tx=>{
+      if(tx.type!=='expense'||!keys.has(tx.transaction_date.slice(0,7))) return;
+      const key=categoryKey(tx.category||'');
+      if(debt.has(key)) return;
+      const uncategorized=!tx.category||/needs review|uncategor/i.test(tx.category);
+      const label=uncategorized?'Uncategorized':tx.category;
+      const current=map.get(label)||{label,key:uncategorized?'uncategorized':key,amount:0,uncategorized};
+      current.amount+=Math.abs(Number(tx.amount||0));
+      map.set(label,current);
+    });
+    const items=[...map.values()].sort((a,b)=>b.amount-a.amount);
+    const total=items.reduce((sum,item)=>sum+item.amount,0);
+    const top=items.filter(item=>!item.uncategorized).slice(0,5);
+    const uncategorized=items.find(item=>item.uncategorized);
+    const rows=uncategorized&&!top.includes(uncategorized)?[...top,uncategorized]:top;
+    return {rows:rows.map((item,index)=>({...item,share:total?item.amount/total:0,color:expenseColor(item.key,item.uncategorized,index)})),total};
+  },[cashFlow,postedScoped]);
+  const recentItems=postedScoped.map(tx=>{
+    const property=properties.find(p=>p.id===tx.property_id);
+    const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
+    const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
+    const description=activityPhrase(category,tx.description);
+    return {id:tx.id,title:tx.description||tx.payee_source||category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor:tx.payee_source||tx.description||category,property:property?.address||'Portfolio',category:description,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
+  });
+  const netValue=displayedCashFlow?.cashFlow||0;
+  const netTone=netValue>0?'positive':netValue<0?'negative':'';
+  const monthNet=currentCashFlow?.cashFlow||0;
+  const monthNetTone=monthNet>0?'positive':monthNet<0?'negative':'';
+  const collectedRatio=rentExpected>0.5?rentCollected/rentExpected:null;
+  const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
+  const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
+  const rentAhead=rentCollected-rentExpected;
+  const periodNames:Record<HistoryPeriod,string>={'3M':'Last 3 months','6M':'Last 6 months','9M':'Last 9 months','1Y':'Last 12 months'};
 
-  return <div className="dashboard-page pulse-page">
-    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span className="pulse-add-desktop">Add</span><span className="pulse-add-mobile">Add</span></button>{addMenuOpen&&<div className="pulse-add-options"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}</header>
+  return <div className="dashboard-operating">
+    <header className="dashboard-operating-header">
+      <div><h1>{greeting}</h1><p>{todayLabel}</p></div>
+      <div className="dashboard-operating-controls">
+        {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+        {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
+      </div>
+    </header>
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <div className="pulse-dashboard-grid">
-      <main className="pulse-dashboard-main">
-        <section className="pulse-performance-open">
-          <div className="pulse-chart-head"><span className="pulse-kicker">{inspectedCashFlow?`${inspectedCashFlow.fullLabel} net cash flow`:'Net cash flow this month'}</span></div>
-          <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><b>Income</b><strong className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)}</strong></span><span><b>Expenses</b><strong className="amount-negative">{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong></span></div></div>
-          <ChartLegend negative={(displayedCashFlow?.cashFlow||0)<0}/>
-          <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
-          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><ProductSelect className="pulse-property-select" aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect></div>
-          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-pace"><strong>{formatCurrency(dailyRent)} per day</strong><span>for {now.getDate()} days this month</span></div>}</div>
-        </section>
-      <section className="daily-brief" aria-labelledby="daily-brief-title">
-        <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
-        {activeBrief?<><article key={activeBrief.id} className="daily-insight" data-tone={activeBrief.tone} data-direction={briefDirection} onTouchStart={event=>{const touch=event.touches[0];briefTouchStart.current={x:touch.clientX,y:touch.clientY};briefSwipeHandled.current=false;}} onTouchEnd={event=>{const start=briefTouchStart.current;const touch=event.changedTouches[0];briefTouchStart.current=null;if(!start||visibleDailyInsights.length<2)return;const dx=touch.clientX-start.x;const dy=touch.clientY-start.y;if(Math.abs(dx)<42||Math.abs(dx)<=Math.abs(dy)*1.2)return;briefSwipeHandled.current=true;if(dx<0){setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}else{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}}>
-          <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(activeBrief.id)} aria-label={`Dismiss ${activeBrief.kicker}`}><X size={18}/></button>
-          <Link href={activeBrief.href} onClick={event=>{if(briefSwipeHandled.current){event.preventDefault();briefSwipeHandled.current=false;return}void openDailyInsight(activeBrief.id)}} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
-        </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>No material changes since yesterday</strong><span>New portfolio changes will appear here.</span></div>}
+      <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
+        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><small className={rentChange.tone==='neutral'?'':`amount-${rentChange.tone}`}>{rentChange.text}</small></div>
+        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><small className={expenseChange.tone==='neutral'?'':`amount-${expenseChange.tone}`}>{expenseChange.text}</small></div>
+        <div><span>Net cash flow</span><strong>{formatKpiCurrency(monthNet)}</strong><small className={cashChange.tone==='neutral'?'':`amount-${cashChange.tone}`}>{cashChange.text}</small></div>
       </section>
-      <ActionCenter items={actionItems.map(item=>({...item,detail:`${item.detail}${item.test?' · Test preview':''}`,onSelect:()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.id==='new-bank-imports'?'/ledger?imports=1':item.kind==='review'?'/ledger?review=1':'/ledger')}}))} onViewAll={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}/>
-      <RecentActivity items={transactions.filter(t=>(t.status||'posted')==='posted').map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;const bank=tx.source==='plaid'?`${tx.source_institution||'Bank'}${tx.source_account_mask?` •••• ${tx.source_account_mask}`:''} · Imported`:tx.category;return {id:tx.id,title:tx.description||tx.payee_source||tx.category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as any).needs_review?'Category needed':bank,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:'/ledger'}})} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
-      </main>
-      <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
-        <div className="portfolio-rail-head"><h2 id="portfolio-rail-title">Properties</h2><Link href="/properties">Manage</Link></div>
-        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const propertyCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':propertyCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
-          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
-          <MiniSparkline rows={history} negative={propertyCashFlow<0}/><strong className={propertyCashFlow>=0?'amount-positive':'amount-negative'}>{formatRailCurrency(propertyCashFlow)}</strong>
-        </Link>})}</div>
-      </aside>
+      <div className="dashboard-main-row">
+        <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
+          <div className="dashboard-chart-top">
+            <div>
+              <h2>{inspectedCashFlow?`${inspectedCashFlow.fullLabel} net cash flow`:'Net cash flow'}</h2>
+              <div className={`dashboard-chart-value ${netTone?`amount-${netTone}`:''}`}>{formatKpiCurrency(netValue)}</div>
+            </div>
+            <div className="dashboard-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
+          </div>
+          <ChartLegend variant="incomeExpense"/>
+          <div className="dashboard-chart-meta"><span>Expenses <b>{formatKpiCurrency(displayedCashFlow?.cashExpenses||0)}</b></span><span>Income <b>{formatKpiCurrency(displayedCashFlow?.income||0)}</b></span></div>
+          <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
+        </section>
+        <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
+          <h2>Rent status</h2>
+          <div className="dashboard-rent-figure">
+            {collectedPercent!==null&&<strong>{collectedPercent}% collected</strong>}
+            <span>{formatKpiCurrency(rentCollected)} of {formatKpiCurrency(rentExpected)} expected</span>
+          </div>
+          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
+          {rentExpected>0.5&&rentAhead>0.5&&<p className="dashboard-rent-ahead">Ahead: +{formatKpiCurrency(rentAhead)}</p>}
+          <div className="dashboard-rent-list">
+            {unitsPaidCount!==null&&<p><span>Units paid</span><b>{unitsPaidCount} of {payableUnits.length}</b></p>}
+            {rentRows.map(row=><p key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} of {formatKpiCurrency(row.expected)}</small>}</span>{row.status&&<b data-status={row.status}>{row.status}</b>}</p>)}
+            {pendingBank>0&&<p><span>Pending bank activity</span><b>{pendingBank} new</b></p>}
+            {pendingRent>0&&<p><span>Rent awaiting confirmation</span><b>{pendingRent}</b></p>}
+            {!cashPropertyId&&scopedUnits.length>0&&vacantCount>0&&<p className="is-warning"><span>Vacant units</span><b>{vacantCount} of {scopedUnits.length}</b></p>}
+            {leaseRisk>0&&<p className="is-warning"><span>Lease risk within 90 days</span><b>{leaseRisk}</b></p>}
+          </div>
+        </section>
+      </div>
+      <div className="dashboard-lower-row">
+        <section className="dashboard-module" aria-label="Operating expenses">
+          <h2>Expense breakdown</h2>
+          <p className="dashboard-module-kicker">{periodNames[cashPeriod]} · mortgage excluded</p>
+          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><div className="dashboard-expense-label"><strong>{item.label} ({Math.round(item.share*100)}%)</strong><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses in this range.</p>}
+        </section>
+        <RecentActivity variant="table" items={recentItems} ledgerHref={cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </div>
     </>}
     {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
@@ -273,6 +382,45 @@ export default function Dashboard() {
       {testPreview&&testReviewUnits.length===0&&<div style={{padding:18,textAlign:'center',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:10}}>Test complete. All occupied units were reviewed.</div>}
     </div></div></div>}
   </div>;
+}
+function rentRowStatus(received:number,expected:number,vacant=false){
+  if(vacant&&received<0.5) return 'Vacant' as const;
+  if(expected>0.5&&received+0.5>=expected) return 'Collected' as const;
+  if(received>0.5&&expected>received+0.5) return 'Partial' as const;
+  if(expected>0.5&&received<0.5) return 'Outstanding' as const;
+  return null;
+}
+function activityPhrase(category:string,description?:string|null){
+  const detail=(description||'').trim();
+  const label=category.trim();
+  if(!detail) return label;
+  const detailKey=detail.toLowerCase();
+  const labelKey=label.toLowerCase();
+  if(detailKey===labelKey||detailKey.includes(labelKey)||labelKey.includes(detailKey)) return detail.length>=label.length?detail:label;
+  return `${label} · ${detail}`;
+}
+function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
+  const delta=current-previous;
+  if(Math.abs(delta)<0.5) return {text:'No change from last month',tone:'neutral' as const};
+  if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const};
+  const pct=(delta/Math.abs(previous))*100;
+  const text=`${pct>0?'+':'−'}${Math.abs(pct).toFixed(1)}% from last month`;
+  const improved=direction==='higher-better'?pct>0:pct<0;
+  return {text,tone:improved?'positive' as const:'negative' as const};
+}
+function expenseColor(key:string,uncategorized:boolean,index:number){
+  if(uncategorized) return 'var(--dashboard-series-uncategorized)';
+  const colors:Record<string,string>={
+    maintenance:'var(--dashboard-series-maintenance)',
+    management:'var(--dashboard-series-management)',
+    utilities:'var(--dashboard-series-utilities)',
+    insurance:'var(--dashboard-series-insurance)',
+    taxes:'var(--dashboard-series-taxes)',
+    legal:'var(--dashboard-series-legal)',
+    leasing:'var(--dashboard-series-management)',
+  };
+  const fallback=['var(--dashboard-series-insurance)','var(--dashboard-series-utilities)','var(--dashboard-series-maintenance)','var(--dashboard-series-management)','var(--dashboard-series-taxes)','var(--dashboard-series-legal)'];
+  return colors[key]||fallback[index%fallback.length];
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function formatRailCurrency(value:number){return formatCurrency(Math.round(value)).replace(/\.00$/,'')}

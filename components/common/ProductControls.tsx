@@ -33,6 +33,9 @@ export function UnderlineTabs<T extends string>({value,options,onChange,label,pr
   return <SharedUnderlineTabs value={value} options={options} onChange={onChange} label={label} primary={primary} className={`product-underline-tabs ${className}`.trim()}/>;
 }
 
-export function ChartLegend({negative=false}:{negative?:boolean}){
+export function ChartLegend({negative=false,variant='signed'}:{negative?:boolean;variant?:'signed'|'incomeExpense'}){
+  if(variant==='incomeExpense'){
+    return <div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense-series"/>Expenses</span><span><i className="is-income-series"/>Income</span></div>;
+  }
   return <div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-income"/>Positive</span><span><i className={`is-expense ${negative?'is-negative':''}`}/>Negative</span></div>;
 }

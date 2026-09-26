@@ -183,6 +183,14 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --warning: var(--theme-warning);
   --warning-soft: var(--theme-warning-soft);
   --warning-border: var(--theme-warning-border);
+  --brand-accent: var(--theme-brand);
+  --brand-accent-soft: var(--theme-brand-soft);
+  --brand-accent-border: var(--theme-brand-border);
+  --brand-accent-fill: var(--theme-brand-fill);
+  --chart-income: var(--theme-brand-fill);
+  --chart-expense: var(--theme-chart-expense);
+  --chart-muted: var(--theme-chart-muted);
+  --chart-income-quiet: var(--theme-chart-income-quiet);
 
   --category-rent: var(--theme-income);
   --category-maintenance: var(--theme-maintenance);
@@ -233,6 +241,14 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --warning: var(--theme-warning)!important;
   --warning-soft: var(--theme-warning-soft)!important;
   --warning-border: var(--theme-warning-border)!important;
+  --brand-accent: var(--theme-brand)!important;
+  --brand-accent-soft: var(--theme-brand-soft)!important;
+  --brand-accent-border: var(--theme-brand-border)!important;
+  --brand-accent-fill: var(--theme-brand-fill)!important;
+  --chart-income: var(--theme-brand-fill)!important;
+  --chart-expense: var(--theme-chart-expense)!important;
+  --chart-muted: var(--theme-chart-muted)!important;
+  --chart-income-quiet: var(--theme-chart-income-quiet)!important;
 
   --category-rent: var(--theme-income)!important;
   --category-maintenance: var(--theme-maintenance)!important;
