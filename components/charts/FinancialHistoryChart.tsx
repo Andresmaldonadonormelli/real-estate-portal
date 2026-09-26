@@ -35,13 +35,13 @@ export default function FinancialHistoryChart({
     onInspect?.(null);
   }, [rows, mode, kind, onInspect]);
 
-  const width = 820;
-  const height = 420;
-  const pad = { left: 58, right: 4, top: 88, bottom: 12 };
-  const innerWidth = width - pad.left - pad.right;
-  const plotHeight = height - pad.top - pad.bottom;
   const holdingOnly = kind === 'holdingCosts';
   const grouped = kind === 'incomeExpense';
+  const width = 820;
+  const height = grouped ? 280 : 420;
+  const pad = grouped ? { left: 52, right: 8, top: 16, bottom: 8 } : { left: 58, right: 4, top: 88, bottom: 12 };
+  const innerWidth = width - pad.left - pad.right;
+  const plotHeight = height - pad.top - pad.bottom;
   const netValues = rows.map((row) => (mode === 'cashFlow' ? row.cashFlow : row.noi));
   const expenseValues = rows.map((row) => (mode === 'cashFlow' ? row.cashExpenses : row.operatingExpenses));
   const incomeValues = rows.map((row) => row.income);
@@ -58,23 +58,24 @@ export default function FinancialHistoryChart({
   const negativeHeight = holdingOnly || grouped ? 0 : height - pad.bottom - zeroY;
   const xStep = innerWidth / Math.max(1, rows.length);
   const barWidth = Math.min(
-    holdingOnly ? 26 : grouped ? 14 : 34,
-    Math.max(grouped ? 8 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.28 : 0.46)),
+    holdingOnly ? 26 : grouped ? 28 : 34,
+    Math.max(grouped ? 12 : 10, xStep * (holdingOnly ? 0.34 : grouped ? 0.32 : 0.46)),
   );
-  const groupGap = grouped ? Math.max(2, Math.min(6, barWidth * 0.28)) : 0;
+  const groupGap = grouped ? 4 : 0;
+  const highlightIndex = grouped ? (selected == null ? Math.max(0, rows.length - 1) : selected) : selected;
   const x = (index: number) => pad.left + xStep * (index + 0.5);
   const upwardY = (value: number) => zeroY - (value / extent) * positiveHeight;
   const downwardHeight = (value: number) => (value / extent) * negativeHeight;
   const active = selected == null ? null : rows[selected];
   const middleY = pad.top + plotHeight / 2;
 
-  function inspect(event: React.PointerEvent<SVGSVGElement>) {
+  function inspect(event: React.MouseEvent<SVGSVGElement>) {
     if (!rows.length) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const pointer = ((event.clientX - rect.left) / rect.width) * width;
     const index = Math.max(0, Math.min(rows.length - 1, Math.floor((pointer - pad.left) / Math.max(1, xStep))));
     setSelected(index);
-    onInspect?.(rows[index]);
+    onInspect?.(rows[index] ?? null);
   }
   function finish() {
     setSelected(null);
@@ -113,12 +114,14 @@ export default function FinancialHistoryChart({
             event.currentTarget.setPointerCapture(event.pointerId);
             inspect(event);
           }}
+          onMouseMove={grouped ? inspect : undefined}
+          onMouseLeave={grouped ? finish : undefined}
           onPointerMove={(event) => {
-            if (event.pointerType === 'mouse' || event.currentTarget.hasPointerCapture(event.pointerId)) inspect(event);
+            if (grouped || event.pointerType === 'mouse' || event.currentTarget.hasPointerCapture(event.pointerId)) inspect(event);
           }}
           onPointerUp={(event) => {
             if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-            finish();
+            if (!grouped) finish();
           }}
           onPointerLeave={(event) => {
             if (event.pointerType === 'mouse') finish();
@@ -153,25 +156,28 @@ export default function FinancialHistoryChart({
               const income = incomeValues[index];
               const expenses = expenseValues[index];
               const pairWidth = barWidth * 2 + groupGap;
-              const incomeX = x(index) - pairWidth / 2;
-              const expenseX = incomeX + barWidth + groupGap;
+              const expenseX = x(index) - pairWidth / 2;
+              const incomeX = expenseX + barWidth + groupGap;
+              const activeMonth = index === highlightIndex;
               return (
-                <g key={row.key}>
-                  <rect
-                    x={incomeX}
-                    y={upwardY(income)}
-                    width={barWidth}
-                    height={Math.max(0, zeroY - upwardY(income))}
-                    rx="3"
-                    className="financial-history-income-series-bar"
-                  />
+                <g key={row.key} className={activeMonth ? 'is-active' : 'is-quiet'}>
                   <rect
                     x={expenseX}
                     y={upwardY(expenses)}
                     width={barWidth}
-                    height={Math.max(0, zeroY - upwardY(expenses))}
+                    height={Math.max(2, zeroY - upwardY(expenses))}
                     rx="3"
                     className="financial-history-expense-series-bar"
+                    fill="var(--chart-expense, #b0adb8)"
+                  />
+                  <rect
+                    x={incomeX}
+                    y={upwardY(income)}
+                    width={barWidth}
+                    height={Math.max(2, zeroY - upwardY(income))}
+                    rx="3"
+                    className="financial-history-income-series-bar"
+                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-muted, #c9c6d1)'}
                   />
                 </g>
               );
@@ -204,12 +210,12 @@ export default function FinancialHistoryChart({
               </g>
             );
           })}
-          {selected != null && (
+          {selected != null && !grouped && (
             <line x1={x(selected)} x2={x(selected)} y1={pad.top} y2={height - pad.bottom} className="financial-history-guide" vectorEffect="non-scaling-stroke" />
           )}
           <rect x={pad.left} y={pad.top} width={innerWidth} height={plotHeight} className="financial-history-hit" />
         </svg>
-        {active && (
+        {active && !grouped && (
           <div
             className="financial-history-tooltip"
             data-edge={selected === 0 ? 'left' : selected === rows.length - 1 ? 'right' : 'center'}
@@ -253,9 +259,29 @@ export default function FinancialHistoryChart({
           paddingLeft: `${(pad.left / width) * 100}%`,
           paddingRight: `${(pad.right / width) * 100}%`,
         }}
-        aria-hidden="true"
+        aria-hidden={grouped ? undefined : true}
+        role={grouped ? 'listbox' : undefined}
+        aria-label={grouped ? 'Months' : undefined}
+        onKeyDown={grouped ? (event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          const current = selected == null ? rows.length - 1 : selected;
+          const next = event.key === 'ArrowRight' ? Math.min(rows.length - 1, current + 1) : Math.max(0, current - 1);
+          setSelected(next);
+          onInspect?.(rows[next] ?? null);
+        } : undefined}
       >
-        {rows.map((row) => (
+        {rows.map((row, index) => grouped ? (
+          <button
+            type="button"
+            key={row.key}
+            role="option"
+            aria-selected={index === highlightIndex}
+            className={index === highlightIndex ? 'is-selected' : ''}
+            onClick={() => { setSelected(index); onInspect?.(rows[index] ?? null); }}
+            onFocus={() => { setSelected(index); onInspect?.(rows[index] ?? null); }}
+          >{row.label}</button>
+        ) : (
           <span key={row.key}>{row.label}</span>
         ))}
       </div>

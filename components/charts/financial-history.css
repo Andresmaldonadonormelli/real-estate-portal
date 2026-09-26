@@ -5,6 +5,12 @@
 .financial-history-expense-bar{fill:var(--negative)}
 .financial-history-income-series-bar{fill:var(--chart-income,var(--theme-brand-fill))}
 .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
+.financial-history-chart-wrap.is-income-expense .is-quiet .financial-history-income-series-bar{fill:var(--chart-muted,var(--theme-chart-muted))}
+.financial-history-chart-wrap.is-income-expense .is-quiet .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
+.financial-history-chart-wrap.is-income-expense .is-active .financial-history-income-series-bar{fill:var(--chart-income,var(--theme-brand-fill))}
+.financial-history-chart-wrap.is-income-expense .is-active .financial-history-expense-series-bar{fill:var(--chart-expense,var(--theme-chart-expense))}
+.financial-history-axis button{min-height:44px;padding:0;border:0;background:transparent;color:var(--text-secondary);font:var(--font-button);font-weight:var(--weight-medium)}
+.financial-history-axis button.is-selected{color:var(--text-primary);font-weight:var(--weight-medium)}
 .financial-history-guide{stroke:var(--text-secondary);stroke-width:1}
 .financial-history-tooltip{position:absolute;top:0;z-index:5;display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-5);min-width:210px;padding:var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--bg-primary);box-shadow:var(--shadow-overlay);transform:translateX(-50%);pointer-events:none}
 .financial-history-tooltip[data-edge="left"]{transform:none}

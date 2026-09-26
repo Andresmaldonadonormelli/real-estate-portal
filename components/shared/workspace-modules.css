@@ -33,10 +33,9 @@
   .property-workspace-header{margin-bottom:var(--space-5)}
   .property-workspace-image{width:88px;height:72px}
   .property-subnav{display:grid;width:100%;max-width:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:0!important;margin-bottom:var(--space-6);overflow:visible}.property-subnav button{min-width:0!important;min-height:42px!important;padding:0 var(--space-2)!important;font:var(--font-button)!important;letter-spacing:0!important}.property-subnav button.active{font:var(--font-button-strong)!important}
-  .property-overview-layout{grid-template-columns:1fr;gap:var(--space-4)}
+  .property-overview-layout{grid-template-columns:1fr;gap:var(--space-6)}
   .property-chart-footer{gap:var(--space-2)}.property-chart-footer .property-chart-periods{gap:var(--space-4)}.property-chart-footer .property-chart-modes{width:max-content!important}.property-chart-modes button{padding:0 var(--space-2)}
   .property-overview-main{display:grid;min-width:0;gap:0}
-  .property-overview-stack{gap:var(--space-4)}
   .property-pulse-rail{position:static}
   .property-skeleton-overview{grid-template-columns:1fr;gap:var(--space-5)}.property-skeleton-chart{height:300px}.property-skeleton-pulse{height:260px}
   .property-key-statistics>div{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -67,9 +66,6 @@
 .document-modal-head h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line)}
 .ledger-bank-source{display:inline-flex;align-items:center;gap:var(--space-1)}.ledger-bank-source::before{content:'·';color:var(--text-secondary)}
 .property-collapsible{border-top:1px solid var(--border-color);border-bottom:0;background:transparent}.property-collapsible-toggle{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);width:100%;min-height:var(--control-height-desktop);padding:var(--space-5) 0;border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold);text-align:left;cursor:pointer}.property-collapsible-toggle svg{flex:0 0 auto;transition:transform var(--motion-fast)}.property-collapsible-toggle[aria-expanded='false'] svg{transform:rotate(-90deg)}.property-collapsible-body{padding:0 0 var(--space-5);border:0;background:transparent}.property-collapsible-body>.property-expense-trends>.property-section-head,.property-collapsible-body>.property-open-panel>.property-panel-head,.property-collapsible-body>.property-key-statistics>.property-section-head,.property-collapsible-body>.pulse-activity-section>.pulse-section-title,.property-collapsible-body>.property-financial-breakdown>.property-section-head{display:none}
-.property-overview-system .property-collapsible{border:1px solid var(--border-color);border-radius:var(--theme-section-radius,var(--radius-card));background:var(--theme-card);box-shadow:none}
-.property-overview-system .property-collapsible-toggle{min-height:44px;padding:0;border-radius:0;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}
-.property-overview-system .property-collapsible-body{padding:var(--space-4) 0 0}
 @media (hover:hover) and (pointer:fine){.property-collapsible-toggle:hover{background:var(--surface-subtle)}}
 @media (hover:none){.property-collapsible-toggle:hover{background:transparent}.property-collapsible-toggle:active{background:var(--surface-subtle)}}
 @media (hover:none){.ledger-feed-row:hover,.document-feed-row:hover,.statement-feed-row:hover{background:transparent}}

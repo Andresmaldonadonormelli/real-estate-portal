@@ -77,8 +77,8 @@
   --palette-near-black: #020202;
 
   /* Light surfaces and text */
-  --theme-page: #f4f2f8;
-  --theme-sidebar: #ffffff;
+  --theme-page: #f3f2f5;
+  --theme-sidebar: #eceaf1;
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-subtle: #eeeaf6;
@@ -93,11 +93,14 @@
   --theme-border-strong: rgba(18, 22, 20, 0.18);
   --theme-overlay: rgba(9, 12, 10, 0.48);
   --theme-shadow-card: none;
-  --theme-section-radius: var(--radius-card);
-  --theme-section-padding: var(--space-6);
-  --theme-section-gap: var(--space-5);
-  --theme-chart-expense: #c4c0cb;
-  --theme-chart-expense-muted: #9b97a3;
+  --theme-shell-radius: 22px;
+  --theme-module-radius: 16px;
+  --theme-section-radius: var(--theme-module-radius);
+  --theme-section-padding: var(--space-5);
+  --theme-section-gap: var(--space-4);
+  --theme-chart-muted: #c9c6d1;
+  --theme-chart-expense: #b0adb8;
+  --theme-chart-expense-muted: #8d8a94;
 
   /* Brand / selected accents from lilac (accessible on light surfaces) */
   --theme-brand: #6b4fd4;
@@ -171,6 +174,7 @@
   --theme-border-strong: rgba(255, 255, 255, 0.18);
   --theme-overlay: rgba(0, 0, 0, 0.66);
   --theme-shadow-card: none;
+  --theme-chart-muted: #3a3742;
   --theme-chart-expense: #5c5868;
   --theme-chart-expense-muted: #8a8596;
   --theme-brand: #c4b0ff;

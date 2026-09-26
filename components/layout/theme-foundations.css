@@ -189,6 +189,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --brand-accent-fill: var(--theme-brand-fill);
   --chart-income: var(--theme-brand-fill);
   --chart-expense: var(--theme-chart-expense);
+  --chart-muted: var(--theme-chart-muted);
 
   --category-rent: var(--theme-income);
   --category-maintenance: var(--theme-maintenance);
@@ -245,6 +246,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --brand-accent-fill: var(--theme-brand-fill)!important;
   --chart-income: var(--theme-brand-fill)!important;
   --chart-expense: var(--theme-chart-expense)!important;
+  --chart-muted: var(--theme-chart-muted)!important;
 
   --category-rent: var(--theme-income)!important;
   --category-maintenance: var(--theme-maintenance)!important;
