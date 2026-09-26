@@ -7,7 +7,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
@@ -259,7 +259,7 @@ export default function Dashboard() {
       const received=receivedFor(tx=>tx.property_id===property.id);
       const status=rentRowStatus(received,expected);
       if(!status&&received<0.5&&expected<0.5) return [];
-      return [{id:property.id,name:property.address,received,expected,status}];
+      return [{id:property.id,name:shortPropertyName(property.address),received,expected,status}];
     });
   },[cashPropertyId,monthRent,properties,scopedUnits]);
   const pendingBank=useMemo(()=>scopedTransactions.filter(tx=>tx.source==='plaid'&&tx.is_new_import&&(tx.status||'posted')==='posted').length,[scopedTransactions]);
@@ -307,8 +307,10 @@ export default function Dashboard() {
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
     const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
-    const description=activityPhrase(category,tx.description);
-    return {id:tx.id,title:tx.description||tx.payee_source||category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor:tx.payee_source||tx.description||category,property:property?.address||'Portfolio',category:description,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
+    const vendor=friendlyVendor(tx,category);
+    const support=supportingLine(tx,category,vendor);
+    const propertyName=property?shortPropertyName(property.address):'Portfolio';
+    return {id:tx.id,title:vendor,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor,support,property:propertyName,category,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
   });
   const netValue=displayedCashFlow?.cashFlow||0;
   const netTone=netValue>0?'positive':netValue<0?'negative':'';
@@ -317,7 +319,9 @@ export default function Dashboard() {
   const collectedRatio=rentExpected>0.5?rentCollected/rentExpected:null;
   const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
   const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
-  const rentAhead=rentCollected-rentExpected;
+  const rentShortfall=rentExpected-rentCollected;
+  const propertiesWithRent=rentRows.filter(row=>row.expected>0.5);
+  const propertiesPaidCount=propertiesWithRent.filter(row=>row.status==='Collected').length;
   const periodNames:Record<HistoryPeriod,string>={'3M':'Last 3 months','6M':'Last 6 months','9M':'Last 9 months','1Y':'Last 12 months'};
 
   return <div className="dashboard-operating">
@@ -339,13 +343,18 @@ export default function Dashboard() {
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
           <div className="dashboard-chart-top">
             <div>
-              <h2>{inspectedCashFlow?`${inspectedCashFlow.fullLabel} net cash flow`:'Net cash flow'}</h2>
+              <h2>Net cash flow</h2>
               <div className={`dashboard-chart-value ${netTone?`amount-${netTone}`:''}`}>{formatKpiCurrency(netValue)}</div>
             </div>
             <div className="dashboard-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
           </div>
           <ChartLegend variant="incomeExpense"/>
-          <div className="dashboard-chart-meta"><span>Expenses <b>{formatKpiCurrency(displayedCashFlow?.cashExpenses||0)}</b></span><span>Income <b>{formatKpiCurrency(displayedCashFlow?.income||0)}</b></span></div>
+          <div className="dashboard-chart-readout" aria-live="polite">
+            <span>{displayedCashFlow?.fullLabel||'Latest month'}</span>
+            <span>Income <b>{formatKpiCurrency(displayedCashFlow?.income||0)}</b></span>
+            <span>Expenses <b>{formatKpiCurrency(displayedCashFlow?.cashExpenses||0)}</b></span>
+            <span>Net <b className={netTone?`amount-${netTone}`:''}>{formatKpiCurrency(netValue)}</b></span>
+          </div>
           <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
         </section>
         <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
@@ -355,9 +364,10 @@ export default function Dashboard() {
             <span>{formatKpiCurrency(rentCollected)} of {formatKpiCurrency(rentExpected)} expected</span>
           </div>
           <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
-          {rentExpected>0.5&&rentAhead>0.5&&<p className="dashboard-rent-ahead">Ahead: +{formatKpiCurrency(rentAhead)}</p>}
+          {rentExpected>0.5&&rentShortfall>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentShortfall)} outstanding</p>}
           <div className="dashboard-rent-list">
-            {unitsPaidCount!==null&&<p><span>Units paid</span><b>{unitsPaidCount} of {payableUnits.length}</b></p>}
+            {!cashPropertyId&&propertiesWithRent.length>0&&<p><span>Properties paid</span><b>{propertiesPaidCount} of {propertiesWithRent.length}</b></p>}
+            {cashPropertyId&&unitsPaidCount!==null&&<p><span>Units paid</span><b>{unitsPaidCount} of {payableUnits.length}</b></p>}
             {rentRows.map(row=><p key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} of {formatKpiCurrency(row.expected)}</small>}</span>{row.status&&<b data-status={row.status}>{row.status}</b>}</p>)}
             {pendingBank>0&&<p><span>Pending bank activity</span><b>{pendingBank} new</b></p>}
             {pendingRent>0&&<p><span>Rent awaiting confirmation</span><b>{pendingRent}</b></p>}
@@ -390,23 +400,47 @@ function rentRowStatus(received:number,expected:number,vacant=false){
   if(expected>0.5&&received<0.5) return 'Outstanding' as const;
   return null;
 }
-function activityPhrase(category:string,description?:string|null){
-  const detail=(description||'').trim();
-  const label=category.trim();
-  if(!detail) return label;
-  const detailKey=detail.toLowerCase();
-  const labelKey=label.toLowerCase();
-  if(detailKey===labelKey||detailKey.includes(labelKey)||labelKey.includes(detailKey)) return detail.length>=label.length?detail:label;
-  return `${label} · ${detail}`;
+function looksLikeBankDescriptor(value:string){
+  const text=value.trim();
+  if(!text) return false;
+  if(/\b(ach|pos|debit|autopay|auto-pay|auto pay|chk|checkcard|sq \*|tst\*|paypal|visa|mastercard|withdrawal|orig co|ppd|web id|trace)\b/i.test(text)) return true;
+  const letters=text.replace(/[^A-Za-z]/g,'');
+  if(letters.length>=10&&letters===letters.toUpperCase()) return true;
+  if(/\d{5,}/.test(text)) return true;
+  return false;
+}
+function friendlyVendor(tx:Transaction,category:string){
+  const payee=(tx.payee_source||'').trim();
+  const description=(tx.description||'').trim();
+  if(tx.source==='plaid') return payee&&!looksLikeBankDescriptor(payee)?payee:category;
+  if(payee&&!looksLikeBankDescriptor(payee)) return payee;
+  if(description&&!looksLikeBankDescriptor(description)) return description;
+  return category;
+}
+function supportingLine(tx:Transaction,category:string,vendor:string){
+  const key=categoryKey(tx.category||'');
+  let line='';
+  if(key==='rent'&&tx.type==='income') line='Rent received';
+  else if(/auto-?pay/i.test(`${tx.description||''} ${tx.notes||''} ${tx.payee_source||''}`)||tx.source==='recurring') line='Auto-pay';
+  else if(tx.source==='plaid'){
+    const payee=(tx.payee_source||'').trim();
+    const hidden=!payee||looksLikeBankDescriptor(payee)||looksLikeBankDescriptor(tx.description||'');
+    line=hidden?'Bank activity':category==='Uncategorized'?'':category;
+  }
+  else if(vendor.toLowerCase()===category.toLowerCase()) line=tx.type==='income'?'Income':'Expense';
+  else line=category;
+  return line.toLowerCase()===vendor.toLowerCase()?'':line;
 }
 function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
   const delta=current-previous;
   if(Math.abs(delta)<0.5) return {text:'No change from last month',tone:'neutral' as const};
   if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const};
   const pct=(delta/Math.abs(previous))*100;
-  const text=`${pct>0?'+':'−'}${Math.abs(pct).toFixed(1)}% from last month`;
+  const magnitude=`${Math.abs(pct).toFixed(1)}%`;
   const improved=direction==='higher-better'?pct>0:pct<0;
-  return {text,tone:improved?'positive' as const:'negative' as const};
+  if(improved) return {text:`Improved ${magnitude} from last month`,tone:'positive' as const};
+  const word=direction==='higher-better'?'lower':'higher';
+  return {text:`${magnitude} ${word} than last month`,tone:'negative' as const};
 }
 function expenseColor(key:string,uncategorized:boolean,index:number){
   if(uncategorized) return 'var(--dashboard-series-uncategorized)';
@@ -417,7 +451,7 @@ function expenseColor(key:string,uncategorized:boolean,index:number){
     insurance:'var(--dashboard-series-insurance)',
     taxes:'var(--dashboard-series-taxes)',
     legal:'var(--dashboard-series-legal)',
-    leasing:'var(--dashboard-series-management)',
+    leasing:'var(--dashboard-series-leasing)',
   };
   const fallback=['var(--dashboard-series-insurance)','var(--dashboard-series-utilities)','var(--dashboard-series-maintenance)','var(--dashboard-series-management)','var(--dashboard-series-taxes)','var(--dashboard-series-legal)'];
   return colors[key]||fallback[index%fallback.length];

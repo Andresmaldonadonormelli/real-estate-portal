@@ -21,8 +21,8 @@ body {
     box-shadow: none;
   }
   .app-shell .side-nav {
-    position: static !important;
-    top: auto !important;
+    position: sticky !important;
+    top: 16px;
     right: auto !important;
     bottom: auto !important;
     left: auto !important;
@@ -30,10 +30,13 @@ body {
     display: flex;
     flex: 0 0 228px;
     flex-direction: column;
+    align-self: flex-start;
     width: 228px;
-    height: auto;
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
     margin: 0;
     padding: 8px 10px 12px;
+    overflow: hidden;
     border-right: 0;
     background: var(--theme-sidebar);
   }
@@ -71,8 +74,42 @@ body {
     align-content: start;
     gap: 2px;
     flex: 1 1 auto;
+    min-height: 0;
     padding: 0;
-    overflow: visible;
+    overflow: auto;
+  }
+  .app-shell button.nav-link {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
+    font-weight: var(--weight-medium);
+    text-align: left;
+    cursor: pointer;
+  }
+  .app-shell .nav-disclosure svg:last-child {
+    margin-left: auto;
+    transition: transform var(--motion-fast);
+  }
+  .app-shell .nav-disclosure[aria-expanded='true'] svg:last-child {
+    transform: rotate(180deg);
+  }
+  .app-shell .property-nav-list {
+    display: grid;
+    margin: 0 0 var(--space-2);
+    padding-left: 28px;
+  }
+  .app-shell .property-nav-link {
+    min-height: 36px;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-line);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .app-shell .side-nav-footer {
     margin-top: auto;

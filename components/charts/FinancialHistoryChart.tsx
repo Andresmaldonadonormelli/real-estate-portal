@@ -205,18 +205,18 @@ export default function FinancialHistoryChart({
                     y={upwardY(expenses)}
                     width={barWidth}
                     height={Math.max(2, zeroY - upwardY(expenses))}
-                    rx="3"
+                    rx="4"
                     className="financial-history-expense-series-bar"
-                    fill="var(--chart-expense, #b0adb8)"
+                    fill={activeMonth ? 'var(--chart-expense, #8b8794)' : 'var(--chart-quiet, #e6e5ea)'}
                   />
                   <rect
                     x={incomeX}
                     y={upwardY(income)}
                     width={barWidth}
                     height={Math.max(2, zeroY - upwardY(income))}
-                    rx="3"
+                    rx="4"
                     className="financial-history-income-series-bar"
-                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-income-quiet, #e4daf8)'}
+                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-quiet, #e6e5ea)'}
                   />
                 </g>
               );
