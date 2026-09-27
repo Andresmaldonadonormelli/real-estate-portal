@@ -12,15 +12,8 @@ import RotatingMascot from '@/components/layout/RotatingMascot';
 
 export default function SideNav() {
   const pathname = usePathname();
-  const [reviewCount,setReviewCount]=useState(0);
   const [properties,setProperties]=useState<Property[]>([]);
   const [propertiesOpen,setPropertiesOpen]=useState(false);
-
-  useEffect(()=>{ let alive=true; (async()=>{
-    const t=await cachedSupabaseRequest('nav:new-import-count',async()=>await supabase.from('transactions').select('id',{count:'exact',head:true}).is('archived_at',null).eq('source','plaid').eq('is_new_import',true).eq('status','posted'));
-    if(!alive)return;
-    if(!t.error)setReviewCount(t.count||0);
-  })(); return()=>{alive=false}; },[pathname]);
 
   useEffect(()=>{ let alive=true; (async()=>{
     const result=await cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address'));
@@ -31,7 +24,7 @@ export default function SideNav() {
   return <nav className="side-nav" aria-label="Primary">
     <div className="side-nav-brand">
       <RotatingMascot embedded />
-      <strong>RE Portal</strong>
+      <strong>Portfolio</strong>
     </div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><Gauge size={18} strokeWidth={1.75}/>Dashboard</Link>
@@ -40,7 +33,7 @@ export default function SideNav() {
         <Link href="/properties" className={`property-nav-link ${pathname==='/properties'?'active':''}`}>All properties</Link>
         {properties.map(property=><Link key={property.id} href={`/properties/${property.id}`} className={`property-nav-link ${pathname===`/properties/${property.id}`?'active':''}`}>{shortPropertyName(property.address)}</Link>)}
       </div>}
-      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18} strokeWidth={1.75}/><span>Transactions</span>{reviewCount>0&&<span className="nav-count nav-count-review">{reviewCount}</span>}</Link>
+      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18} strokeWidth={1.75}/><span>Transactions</span></Link>
       <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Settings size={18} strokeWidth={1.75}/>Utilities</Link>
     </div>
     <div className="side-nav-footer">

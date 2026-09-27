@@ -15,9 +15,10 @@ import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
+import NotificationBell from '@/components/dashboard/NotificationBell';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { ChartLegend, ProductSelect } from '@/components/common/ProductControls';
-import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
+import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 type DailyInsight={id:string;kicker:'Changed'|'Watch'|'Progress';title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy';href:string;opened?:boolean;resolved?:boolean};
@@ -31,7 +32,6 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
   const [cashPropertyId, setCashPropertyId] = useState('');
-  const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -206,8 +206,7 @@ export default function Dashboard() {
   const dailyRent=expectedMonthlyRent/daysInMonth;
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
-  const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
-  const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const overviewYear=now.getFullYear();
 
   const visibleDailyInsights=briefItems;
   const activeBrief=visibleDailyInsights.length?visibleDailyInsights[Math.min(briefIndex,visibleDailyInsights.length-1)]:null;
@@ -228,53 +227,32 @@ export default function Dashboard() {
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
   const currentCashFlow=cashFlow[cashFlow.length-1];
-  const displayedCashFlow=inspectedCashFlow||currentCashFlow;
   const scopedTransactions=useMemo(()=>cashPropertyId?transactions.filter(tx=>tx.property_id===cashPropertyId):transactions,[transactions,cashPropertyId]);
   const scopedUnits=useMemo(()=>cashPropertyId?units.filter(unit=>unit.property_id===cashPropertyId):units,[units,cashPropertyId]);
   const postedScoped=useMemo(()=>scopedTransactions.filter(tx=>(tx.status||'posted')==='posted'),[scopedTransactions]);
   const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
   const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
   const rentExpected=useMemo(()=>scopedUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0),[scopedUnits]);
-  const payableUnits=useMemo(()=>scopedUnits.filter(unit=>unit.occupied&&Number(unit.current_rent||0)>0.5),[scopedUnits]);
-  const unitsPaidCount=useMemo(()=>{
-    if(!payableUnits.length||monthRent.some(tx=>!tx.unit_id)) return null;
-    return payableUnits.filter(unit=>{
-      const received=monthRent.filter(tx=>tx.unit_id===unit.id).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      return received+0.5>=Number(unit.current_rent||0);
-    }).length;
-  },[monthRent,payableUnits]);
   const rentRows=useMemo(()=>{
     const receivedFor=(match:(tx:Transaction)=>boolean)=>monthRent.filter(match).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
     if(cashPropertyId){
-      return scopedUnits.flatMap(unit=>{
-        const expected=unit.occupied?Math.max(0,Number(unit.current_rent||0)):0;
+      return scopedUnits.map(unit=>{
+        const occupied=Boolean(unit.occupied);
+        const expected=occupied?Math.max(0,Number(unit.current_rent||0)):0;
         const received=receivedFor(tx=>tx.unit_id===unit.id);
-        const status=rentRowStatus(received,expected,!unit.occupied);
-        if(!status&&received<0.5&&expected<0.5) return [];
-        return [{id:unit.id,name:unit.unit_number||'Unit',received,expected,status}];
+        return {id:unit.id,name:unit.unit_number||'Unit',occupancy:occupied?'Occupied':'Vacant',received,expected,status:rentRowStatus(received,expected,!occupied),shortfall:Math.max(0,expected-received)};
       });
     }
     return properties.flatMap(property=>{
-      const expected=scopedUnits.filter(unit=>unit.property_id===property.id&&unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+      const propertyUnits=scopedUnits.filter(unit=>unit.property_id===property.id);
+      if(!propertyUnits.length) return [];
+      const occupiedCount=propertyUnits.filter(unit=>unit.occupied).length;
+      const expected=propertyUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
       const received=receivedFor(tx=>tx.property_id===property.id);
-      const status=rentRowStatus(received,expected);
-      if(!status&&received<0.5&&expected<0.5) return [];
-      return [{id:property.id,name:shortPropertyName(property.address),received,expected,status}];
+      const status=occupiedCount===0&&received<0.5?'Vacant' as const:rentRowStatus(received,expected);
+      return [{id:property.id,name:shortPropertyName(property.address),occupancy:`${occupiedCount} of ${propertyUnits.length} units occupied`,received,expected,status,shortfall:Math.max(0,expected-received)}];
     });
   },[cashPropertyId,monthRent,properties,scopedUnits]);
-  const pendingBank=useMemo(()=>scopedTransactions.filter(tx=>tx.source==='plaid'&&tx.is_new_import&&(tx.status||'posted')==='posted').length,[scopedTransactions]);
-  const pendingRent=useMemo(()=>scopedTransactions.filter(tx=>tx.status==='pending'&&categoryKey(tx.category)==='rent').length,[scopedTransactions]);
-  const vacantCount=scopedUnits.filter(unit=>!unit.occupied).length;
-  const leaseRisk=useMemo(()=>{
-    const today=new Date(); today.setHours(0,0,0,0);
-    return scopedUnits.filter(unit=>{
-      const end=(unit as Unit & {lease_end_date?:string|null}).lease_end_date;
-      if(!end) return false;
-      const date=new Date(`${end.slice(0,10)}T12:00:00`);
-      const days=Math.ceil((date.getTime()-today.getTime())/86400000);
-      return days<=90;
-    }).length;
-  },[scopedUnits]);
   const monthComparison=useMemo(()=>buildMonthlyFinancialHistory(transactions,'6M',cashPropertyId),[transactions,cashPropertyId]);
   const comparisonCurrent=monthComparison[monthComparison.length-1];
   const comparisonPrevious=monthComparison[monthComparison.length-2];
@@ -282,7 +260,7 @@ export default function Dashboard() {
   const rentChange=monthOverMonth(rentForMonth(comparisonCurrent?.key),rentForMonth(comparisonPrevious?.key),'higher-better');
   const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
   const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
-  const expenseMonthKey=displayedCashFlow?.key||'';
+  const expenseMonthKey=currentMonth;
   const expenseBreakdown=useMemo(()=>{
     const debt=new Set(['mortgage-interest','mortgage-principal','mortgage','capex','distribution']);
     const map=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
@@ -303,7 +281,7 @@ export default function Dashboard() {
     const rows=uncategorized&&!top.includes(uncategorized)?[...top,uncategorized]:top;
     return {rows:rows.map((item,index)=>({...item,share:total?item.amount/total:0,color:expenseColor(item.key,item.uncategorized,index)})),total};
   },[expenseMonthKey,postedScoped]);
-  const recentItems=postedScoped.map(tx=>{
+  const recentItems=postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)).map(tx=>{
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
     const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
@@ -312,22 +290,22 @@ export default function Dashboard() {
     const propertyName=property?shortPropertyName(property.address):'Portfolio';
     return {id:tx.id,title:vendor,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor,support,property:propertyName,category,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
   });
-  const netValue=displayedCashFlow?.cashFlow||0;
-  const netTone=netValue>0?'positive':netValue<0?'negative':'';
   const monthNet=currentCashFlow?.cashFlow||0;
   const monthNetTone=monthNet>0?'positive':monthNet<0?'negative':'';
   const collectedRatio=rentExpected>0.5?rentCollected/rentExpected:null;
   const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
   const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
   const rentShortfall=rentExpected-rentCollected;
-  const propertiesWithRent=rentRows.filter(row=>row.expected>0.5);
-  const propertiesPaidCount=propertiesWithRent.filter(row=>row.status==='Collected').length;
-
   return <div className="dashboard-operating">
     <header className="dashboard-operating-header">
-      <div><h1>{greeting}</h1><p>{todayLabel}</p></div>
+      <strong className="dashboard-mobile-brand">Portfolio</strong>
+      <div className="dashboard-heading"><h1>{monthLabel} {overviewYear} overview</h1><p>Portfolio performance for the current month</p></div>
       <div className="dashboard-operating-controls">
-        {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+        <div className="dashboard-filter-row">
+          {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+          <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
+        </div>
+        <NotificationBell />
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>
@@ -343,12 +321,12 @@ export default function Dashboard() {
           <div className="dashboard-chart-top">
             <div>
               <h2>Net cash flow</h2>
-              <div className={`dashboard-chart-value ${netTone?`amount-${netTone}`:''}`}>{formatKpiCurrency(netValue)}</div>
+              <div className={`dashboard-chart-value ${monthNetTone?`amount-${monthNetTone}`:''}`}>{formatKpiCurrency(monthNet)}</div>
             </div>
-            <div className="dashboard-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
+            <div className="dashboard-periods" aria-label="Chart history"><span>History</span>{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
           </div>
           <ChartLegend variant="incomeExpense"/>
-          <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
+          <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses"/>
         </section>
         <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
           <h2>Rent status</h2>
@@ -359,13 +337,10 @@ export default function Dashboard() {
           <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
           {rentExpected>0.5&&rentShortfall>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentShortfall)} outstanding</p>}
           <div className="dashboard-rent-list">
-            {!cashPropertyId&&propertiesWithRent.length>0&&<p><span>Properties paid</span><b>{propertiesPaidCount} of {propertiesWithRent.length}</b></p>}
-            {cashPropertyId&&unitsPaidCount!==null&&<p><span>Units paid</span><b>{unitsPaidCount} of {payableUnits.length}</b></p>}
-            {rentRows.map(row=><p key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} of {formatKpiCurrency(row.expected)}</small>}</span>{row.status&&<b data-status={row.status}>{row.status}</b>}</p>)}
-            {pendingBank>0&&<p><span>Pending bank activity</span><b>{pendingBank} new</b></p>}
-            {pendingRent>0&&<p><span>Rent awaiting confirmation</span><b>{pendingRent}</b></p>}
-            {!cashPropertyId&&scopedUnits.length>0&&vacantCount>0&&<p className="is-warning"><span>Vacant units</span><b>{vacantCount} of {scopedUnits.length}</b></p>}
-            {leaseRisk>0&&<p className="is-warning"><span>Lease risk within 90 days</span><b>{leaseRisk}</b></p>}
+            {rentRows.map(row=>{
+              const statusLabel=row.status==='Outstanding'?`Outstanding ${formatKpiCurrency(row.shortfall)}`:row.status;
+              return <div className="dashboard-rent-row" key={row.id}><span className="dashboard-rent-copy"><strong>{row.name} · {row.occupancy}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} collected of {formatKpiCurrency(row.expected)} expected</small>}</span>{statusLabel&&<b data-status={row.status||''}>{statusLabel}</b>}</div>;
+            })}
           </div>
         </section>
       </div>

@@ -24,7 +24,7 @@ export default function RotatingMascot({ embedded = false }: { embedded?: boolea
   return (
     <div className={embedded ? 'side-nav-mascot' : 'app-mascot'} aria-hidden="true">
       {mascotId !== null && (
-        <img src={mascotSrc(mascotId)} alt="" width={36} height={36} draggable={false} />
+        <img src={mascotSrc(mascotId)} alt="" width={32} height={32} draggable={false} />
       )}
     </div>
   );

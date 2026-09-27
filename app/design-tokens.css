@@ -99,20 +99,21 @@
   --theme-bar-radius: 4px;
   --dashboard-series-uncategorized: #6e6b76;
   --dashboard-series-track: #ececee;
-  --dashboard-series-maintenance: #c47a32;
-  --dashboard-series-management: #5e6a86;
-  --dashboard-series-utilities: #3d7a6a;
-  --dashboard-series-insurance: #4f62c4;
-  --dashboard-series-taxes: #b0892e;
-  --dashboard-series-legal: #a15d86;
-  --dashboard-series-leasing: #3f8f6b;
+  --dashboard-series-maintenance: #d97706;
+  --dashboard-series-management: #3e5cad;
+  --dashboard-series-utilities: #1f8a70;
+  --dashboard-series-insurance: #3d56d6;
+  --dashboard-series-taxes: #c49214;
+  --dashboard-series-legal: #c44b86;
+  --dashboard-series-leasing: #1f9a5c;
   --theme-section-radius: var(--theme-module-radius);
   --theme-section-padding: var(--space-5);
   --theme-section-gap: var(--space-4);
   --theme-chart-muted: #c9c6d1;
   --theme-chart-quiet: #f1f0f3;
   --theme-chart-income-quiet: var(--theme-chart-quiet);
-  --theme-chart-expense: #9c98a3;
+  --theme-chart-income: #9b6ff0;
+  --theme-chart-expense: #8d8796;
   --theme-chart-expense-muted: #8d8a94;
   --theme-chart-grid: rgba(23, 25, 24, 0.07);
 
@@ -133,7 +134,7 @@
   --theme-focus: var(--theme-brand);
 
   /* Semantic financial states — accessible text colors + soft tints from source palette */
-  --theme-income: #128a3e;
+  --theme-income: #0e9a42;
   --theme-on-income: #ffffff;
   --theme-income-soft: #e7fbef;
   --theme-income-border: #9ee9b5;
@@ -141,7 +142,7 @@
   --theme-expense-series-2: #12a846;
   --theme-expense-series-3: #3dbe6a;
   --theme-expense-series-4: #8fd9a8;
-  --theme-expense: #e15d68;
+  --theme-expense: #e23d52;
   --theme-expense-soft: #fbecee;
   --theme-expense-border: #f0b8be;
   --theme-warning: #9a7600;
@@ -189,19 +190,20 @@
   --theme-overlay: rgba(0, 0, 0, 0.66);
   --theme-shadow-card: none;
   --theme-chart-muted: #3a3742;
-  --theme-chart-quiet: #2e2c34;
+  --theme-chart-quiet: #1e1c26;
   --theme-chart-income-quiet: var(--theme-chart-quiet);
+  --theme-chart-income: #d2a8ff;
   --theme-chart-grid: rgba(255, 255, 255, 0.08);
   --dashboard-series-uncategorized: #b7b4bf;
   --dashboard-series-track: #2a2832;
-  --dashboard-series-maintenance: #e0a15a;
-  --dashboard-series-management: #9aa6c2;
-  --dashboard-series-utilities: #7eaea0;
-  --dashboard-series-insurance: #9aabef;
-  --dashboard-series-taxes: #e0c27a;
-  --dashboard-series-legal: #d7a0c0;
-  --dashboard-series-leasing: #8fceae;
-  --theme-chart-expense: #a39eab;
+  --dashboard-series-maintenance: #f0a04a;
+  --dashboard-series-management: #8eabef;
+  --dashboard-series-utilities: #5dbea4;
+  --dashboard-series-insurance: #9aabff;
+  --dashboard-series-taxes: #f0c15a;
+  --dashboard-series-legal: #f0a0c4;
+  --dashboard-series-leasing: #6dcea0;
+  --theme-chart-expense: #b7b2c0;
   --theme-chart-expense-muted: #8a8596;
   --theme-brand: #c4b0ff;
   --theme-brand-strong: #d6c8ff;
@@ -215,7 +217,7 @@
   --theme-nav-active: #2a2a2e;
   --theme-nav-active-text: #f4f5f3;
   --theme-focus: var(--theme-brand);
-  --theme-income: #3dbe6a;
+  --theme-income: #3dce74;
   --theme-on-income: #062412;
   --theme-income-soft: rgba(61, 190, 106, 0.16);
   --theme-income-border: rgba(61, 190, 106, 0.34);
@@ -223,7 +225,7 @@
   --theme-expense-series-2: #12a846;
   --theme-expense-series-3: #3dbe6a;
   --theme-expense-series-4: #8fd9a8;
-  --theme-expense: #f08b92;
+  --theme-expense: #ff6b78;
   --theme-expense-soft: rgba(219, 84, 97, 0.16);
   --theme-expense-border: rgba(219, 84, 97, 0.34);
   --theme-warning: #eeba0b;

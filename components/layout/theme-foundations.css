@@ -187,7 +187,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --brand-accent-soft: var(--theme-brand-soft);
   --brand-accent-border: var(--theme-brand-border);
   --brand-accent-fill: var(--theme-brand-fill);
-  --chart-income: var(--theme-brand-fill);
+  --chart-income: var(--theme-chart-income, var(--theme-brand-fill));
   --chart-expense: var(--theme-chart-expense);
   --chart-muted: var(--theme-chart-muted);
   --chart-quiet: var(--theme-chart-quiet);
@@ -246,7 +246,7 @@ html,body,.main-content { background:var(--bg-primary)!important; color:var(--te
   --brand-accent-soft: var(--theme-brand-soft)!important;
   --brand-accent-border: var(--theme-brand-border)!important;
   --brand-accent-fill: var(--theme-brand-fill)!important;
-  --chart-income: var(--theme-brand-fill)!important;
+  --chart-income: var(--theme-chart-income, var(--theme-brand-fill))!important;
   --chart-expense: var(--theme-chart-expense)!important;
   --chart-muted: var(--theme-chart-muted)!important;
   --chart-quiet: var(--theme-chart-quiet)!important;

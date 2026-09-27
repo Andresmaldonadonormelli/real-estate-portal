@@ -58,16 +58,16 @@ body {
   }
   .app-shell .side-nav-brand strong {
     color: var(--text-primary);
-    font-size: var(--type-small-size);
-    line-height: var(--type-small-line);
+    font-size: var(--type-card-title-size);
+    line-height: var(--type-card-title-line);
     font-weight: var(--weight-semibold);
     letter-spacing: -0.02em;
   }
   .side-nav-mascot,
   .side-nav-mascot img {
     display: block;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
   }
   .app-shell .side-nav-scroll {
     display: grid;
@@ -165,4 +165,13 @@ body {
     background: var(--theme-card) !important;
     color: var(--text-primary) !important;
   }
+}
+
+[data-theme="dark"] .app-shell .nav-link.active,
+[data-theme="dark"] .app-shell .nav-link.active:hover {
+  background: var(--theme-surface-hover) !important;
+  color: var(--theme-text-primary) !important;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
