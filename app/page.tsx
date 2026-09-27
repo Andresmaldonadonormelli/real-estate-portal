@@ -349,7 +349,7 @@ export default function Dashboard() {
             {collectedPercent!==null&&<strong>{collectedPercent}% collected</strong>}
             <span>{formatKpiCurrency(rentCollected)} received of {formatKpiCurrency(rentExpected)} expected</span>
           </div>
-          <span className="dashboard-rent-track" data-remaining={rentExpected>0.5&&rentShortfall>0.5?'true':'false'} aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
+          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
           {rentExpected>0.5&&rentShortfall>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentShortfall)} remaining</p>}
           {rentRows.length>0&&<h3>{cashPropertyId?'Unit status':'Property status'}</h3>}
           <div className="dashboard-rent-list">

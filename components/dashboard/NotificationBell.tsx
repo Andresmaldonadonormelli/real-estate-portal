@@ -12,23 +12,46 @@ const SAMPLE_NOTIFICATIONS = [
   { id: 'expense', title: 'Large expense posted', detail: 'Harbor Plumbing', amount: '-$280', tone: 'negative' as const, time: '6h ago' },
 ];
 
+const SLIDE_MS = 280;
+
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [present, setPresent] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [unread, setUnread] = useState<string[]>(() => SAMPLE_NOTIFICATIONS.map((item) => item.id));
 
   useEffect(() => setMounted(true), []);
+
   useEffect(() => {
-    if (!open) return;
+    if (!present) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [present]);
 
-  const drawer = open ? (
-    <div className="dashboard-drawer-root">
+  useEffect(() => {
+    if (open || !present) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setPresent(false), reduce ? 0 : SLIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, present]);
+
+  function show() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setPresent(true);
+    if (reduce) {
+      setOpen(true);
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setOpen(true));
+    });
+  }
+
+  const drawer = present ? (
+    <div className="dashboard-drawer-root" data-open={open ? 'true' : 'false'}>
       <button type="button" className="dashboard-drawer-scrim" aria-label="Close notifications" onClick={() => setOpen(false)} />
       <aside className="dashboard-drawer" role="dialog" aria-modal="true" aria-label="Notifications">
         <header className="dashboard-drawer-head">
@@ -53,7 +76,7 @@ export default function NotificationBell() {
 
   return (
     <>
-      <button type="button" className="dashboard-bell" aria-label={unread.length ? `Notifications, ${unread.length} unread` : 'Notifications'} aria-expanded={open} onClick={() => setOpen(true)}>
+      <button type="button" className="dashboard-bell" aria-label={unread.length ? `Notifications, ${unread.length} unread` : 'Notifications'} aria-expanded={open} onClick={show}>
         <Bell size={18} />
         {unread.length > 0 && <span className="dashboard-bell-count">{unread.length}</span>}
       </button>
