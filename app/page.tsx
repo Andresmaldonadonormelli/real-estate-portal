@@ -173,6 +173,9 @@ export default function Dashboard() {
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
   const currentMonth=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
+  const priorMonthDate=new Date(new Date().getFullYear(),new Date().getMonth()-1,1);
+  const priorMonthKey=`${priorMonthDate.getFullYear()}-${String(priorMonthDate.getMonth()+1).padStart(2,'0')}`;
+  const priorMonthShort=priorMonthDate.toLocaleString('en-US',{month:'short'});
   const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
   const monthlyTotals=useMemo(()=>calculateMonthlyTotals(postedThisMonth),[postedThisMonth]);
@@ -247,10 +250,11 @@ export default function Dashboard() {
       const propertyUnits=scopedUnits.filter(unit=>unit.property_id===property.id);
       if(!propertyUnits.length) return [];
       const occupiedCount=propertyUnits.filter(unit=>unit.occupied).length;
+      const occupancy=`${occupiedCount}/${propertyUnits.length} units occupied`;
       const expected=propertyUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
       const received=receivedFor(tx=>tx.property_id===property.id);
       const status=occupiedCount===0&&received<0.5?'Vacant' as const:rentRowStatus(received,expected);
-      return [{id:property.id,name:shortPropertyName(property.address),occupancy:`${occupiedCount} of ${propertyUnits.length} units occupied`,received,expected,status,shortfall:Math.max(0,expected-received)}];
+      return [{id:property.id,name:shortPropertyName(property.address),occupancy,received,expected,status,shortfall:Math.max(0,expected-received)}];
     });
   },[cashPropertyId,monthRent,properties,scopedUnits]);
   const monthComparison=useMemo(()=>buildMonthlyFinancialHistory(transactions,'6M',cashPropertyId),[transactions,cashPropertyId]);
@@ -261,26 +265,37 @@ export default function Dashboard() {
   const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
   const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
   const expenseMonthKey=currentMonth;
+  const ledgerHref=cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger';
+  const reviewHref=cashPropertyId?`/ledger?property=${cashPropertyId}&review=1`:'/ledger?review=1';
   const expenseBreakdown=useMemo(()=>{
     const debt=new Set(['mortgage-interest','mortgage-principal','mortgage','capex','distribution']);
-    const map=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
+    const current=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
+    const prior=new Map<string,number>();
     postedScoped.forEach(tx=>{
-      if(tx.type!=='expense'||tx.transaction_date.slice(0,7)!==expenseMonthKey) return;
-      const key=categoryKey(tx.category||'');
-      if(debt.has(key)) return;
+      if(tx.type!=='expense') return;
+      const month=tx.transaction_date.slice(0,7);
+      if(month!==expenseMonthKey&&month!==priorMonthKey) return;
+      const rawKey=categoryKey(tx.category||'');
+      if(debt.has(rawKey)) return;
       const uncategorized=!tx.category||/needs review|uncategor/i.test(tx.category);
-      const label=uncategorized?'Uncategorized':tx.category;
-      const current=map.get(label)||{label,key:uncategorized?'uncategorized':key,amount:0,uncategorized};
-      current.amount+=Math.abs(Number(tx.amount||0));
-      map.set(label,current);
+      const key=uncategorized?'uncategorized':rawKey;
+      const amount=Math.abs(Number(tx.amount||0));
+      if(month===priorMonthKey){prior.set(key,(prior.get(key)||0)+amount);return;}
+      const label=uncategorized?'Uncategorized':expenseCategoryLabel(rawKey,tx.category);
+      const row=current.get(key)||{label,key,amount:0,uncategorized};
+      row.amount+=amount;
+      current.set(key,row);
     });
-    const items=[...map.values()].sort((a,b)=>b.amount-a.amount);
+    const items=[...current.values()];
     const total=items.reduce((sum,item)=>sum+item.amount,0);
-    const top=items.filter(item=>!item.uncategorized).slice(0,5);
-    const uncategorized=items.find(item=>item.uncategorized);
-    const rows=uncategorized&&!top.includes(uncategorized)?[...top,uncategorized]:top;
-    return {rows:rows.map((item,index)=>({...item,share:total?item.amount/total:0,color:expenseColor(item.key,item.uncategorized,index)})),total};
-  },[expenseMonthKey,postedScoped]);
+    const ranked=items.filter(item=>!item.uncategorized&&item.amount>0.5).sort((a,b)=>b.amount-a.amount).slice(0,4);
+    const uncategorized=items.find(item=>item.uncategorized&&item.amount>0.5);
+    const rows=[...ranked,...(uncategorized?[uncategorized]:[])].map((item,index)=>{
+      const delta=item.amount-(prior.get(item.key)||0);
+      return {...item,share:total?item.amount/total:0,delta,color:item.uncategorized?'var(--warning)':expenseColor(item.key,false,index)};
+    });
+    return {rows,total};
+  },[expenseMonthKey,priorMonthKey,postedScoped]);
   const recentItems=postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)).map(tx=>{
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
@@ -328,28 +343,36 @@ export default function Dashboard() {
           <ChartLegend variant="incomeExpense"/>
           <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses"/>
         </section>
-        <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
-          <h2>Rent status</h2>
+        <section className="dashboard-module dashboard-rent-status" aria-label="Rent this month">
+          <h2>Rent this month</h2>
           <div className="dashboard-rent-figure">
             {collectedPercent!==null&&<strong>{collectedPercent}% collected</strong>}
-            <span>{formatKpiCurrency(rentCollected)} of {formatKpiCurrency(rentExpected)} expected</span>
+            <span>{formatKpiCurrency(rentCollected)} received of {formatKpiCurrency(rentExpected)} expected</span>
           </div>
-          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
-          {rentExpected>0.5&&rentShortfall>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentShortfall)} outstanding</p>}
+          <span className="dashboard-rent-track" data-remaining={rentExpected>0.5&&rentShortfall>0.5?'true':'false'} aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
+          {rentExpected>0.5&&rentShortfall>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentShortfall)} remaining</p>}
+          {rentRows.length>0&&<h3>{cashPropertyId?'Unit status':'Property status'}</h3>}
           <div className="dashboard-rent-list">
             {rentRows.map(row=>{
-              const statusLabel=row.status==='Outstanding'?`Outstanding ${formatKpiCurrency(row.shortfall)}`:row.status;
-              return <div className="dashboard-rent-row" key={row.id}><span className="dashboard-rent-copy"><strong>{row.name} · {row.occupancy}</strong>{(row.received>0.5||row.expected>0.5)&&<small>{formatKpiCurrency(row.received)} collected of {formatKpiCurrency(row.expected)} expected</small>}</span>{statusLabel&&<b data-status={row.status||''}>{statusLabel}</b>}</div>;
+              const statusLabel=row.status==='Partial'?`Partial payment · ${formatKpiCurrency(row.shortfall)} remaining`:row.status==='Outstanding'?`Outstanding ${formatKpiCurrency(row.shortfall)}`:row.status;
+              return <div className="dashboard-rent-row" key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong><small>{row.occupancy}</small></span>{statusLabel&&<b data-status={row.status||''}>{statusLabel}</b>}</div>;
             })}
           </div>
         </section>
       </div>
       <div className="dashboard-lower-row">
-        <section className="dashboard-module" aria-label="Operating expenses">
-          <h2>Expense breakdown</h2>
-          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><div className="dashboard-expense-label"><strong>{item.label} ({Math.round(item.share*100)}%)</strong><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses this month.</p>}
+        <section className="dashboard-module" aria-label="Expenses">
+          <div className="dashboard-expense-head"><h2>Expenses</h2><Link href={ledgerHref} className="dashboard-tx-all">View all expenses<ChevronRight size={14} aria-hidden="true"/></Link></div>
+          <p className="dashboard-expense-scope">{monthLabel} {overviewYear} · Operating expenses only</p>
+          {expenseBreakdown.total>0.5&&<strong className="dashboard-expense-total">{formatKpiCurrency(expenseBreakdown.total)}</strong>}
+          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=>{
+            const share=item.share>0&&Math.round(item.share*100)===0?'<1%':`${Math.round(item.share*100)}%`;
+            const change=expenseChangeLabel(item.delta,priorMonthShort);
+            const body=<><div className="dashboard-expense-label"><strong>{item.label}</strong><b>{formatKpiCurrency(item.amount)}</b></div><div className="dashboard-expense-meta"><span>{item.uncategorized?`${share} · Review`:share}</span><span className={change.tone==='neutral'?'':`amount-${change.tone}`}>{change.text}</span></div><span className="dashboard-expense-track"><i style={{width:`${Math.max(item.share*100,item.amount>0.5?2:0)}%`,background:item.color}}/></span></>;
+            return item.uncategorized?<Link href={reviewHref} className="dashboard-expense-row is-uncategorized" key={item.key}>{body}</Link>:<div className="dashboard-expense-row" key={item.key}>{body}</div>;
+          })}</div>:<p className="dashboard-empty">No operating expenses this month.</p>}
         </section>
-        <RecentActivity variant="table" items={recentItems} ledgerHref={cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
+        <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </div>
     </>}
     {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
@@ -412,6 +435,27 @@ function monthOverMonth(current:number,previous:number,direction:'higher-better'
 function SummaryChange({change}:{change:ReturnType<typeof monthOverMonth>}){
   if(change.tone==='neutral') return <small>{change.text}</small>;
   return <small><b className={`amount-${change.tone}`}>{change.delta}</b> {change.rest}</small>;
+}
+function expenseCategoryLabel(key:string,raw:string){
+  const labels:Record<string,string>={
+    management:'Management Fee',
+    leasing:'Leasing Fee',
+    maintenance:'Repairs & Maintenance',
+    utilities:'Utilities',
+    insurance:'Insurance',
+    taxes:'Property Taxes',
+    legal:'Legal & Professional',
+    review:'Other Expense',
+    contribution:'Owner Contribution',
+    refund:'Refund',
+    'other-income':'Other Income',
+  };
+  return labels[key]||raw||'Other';
+}
+function expenseChangeLabel(delta:number,priorLabel:string){
+  if(Math.abs(delta)<0.5) return {text:`No change vs ${priorLabel}`,tone:'neutral' as const};
+  const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(Math.abs(delta)));
+  return {text:`${delta>0?'+':'−'}${amount} vs ${priorLabel}`,tone:delta>0?'negative' as const:'positive' as const};
 }
 function expenseColor(key:string,uncategorized:boolean,index:number){
   if(uncategorized) return 'var(--dashboard-series-uncategorized)';

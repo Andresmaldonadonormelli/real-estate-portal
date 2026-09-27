@@ -5,11 +5,11 @@ import { createPortal } from 'react-dom';
 import { Bell, X } from 'lucide-react';
 
 const SAMPLE_NOTIFICATIONS = [
-  { id: 'lease', title: 'Lease ending soon', detail: '214 Maple · Unit 1', time: '2d ago' },
-  { id: 'rent', title: 'Rent still outstanding', detail: '88 Harbor · $1,800', time: '1d ago' },
-  { id: 'vacant', title: 'Unit is vacant', detail: '214 Maple · Unit 3', time: '5d ago' },
-  { id: 'review', title: 'Bank transaction needs review', detail: '214 Maple · Uncategorized', time: '3h ago' },
-  { id: 'expense', title: 'Large expense posted', detail: 'Harbor Plumbing · $280', time: '6h ago' },
+  { id: 'transfer', title: 'Bank transfer received', detail: '15334 Triskett', amount: '+$2,377', tone: 'positive' as const, time: '2h ago' },
+  { id: 'rent', title: 'Rent still outstanding', detail: 'W134', amount: '$1,200 remaining', tone: 'negative' as const, time: '1d ago' },
+  { id: 'lease', title: 'Lease ends in 30 days', detail: '214 Maple · Unit 1', amount: '', tone: '' as const, time: '2d ago' },
+  { id: 'review', title: 'Transaction needs review', detail: '3765 W134th · Uncategorized', amount: '', tone: '' as const, time: '3h ago' },
+  { id: 'expense', title: 'Large expense posted', detail: 'Harbor Plumbing', amount: '-$280', tone: 'negative' as const, time: '6h ago' },
 ];
 
 export default function NotificationBell() {
@@ -39,9 +39,11 @@ export default function NotificationBell() {
         <ul className="dashboard-drawer-list">
           {SAMPLE_NOTIFICATIONS.map((item) => (
             <li key={item.id} data-unread={unread.includes(item.id) ? 'true' : 'false'}>
-              <strong>{item.title}</strong>
-              <span>{item.detail}</span>
-              <time>{item.time}</time>
+              <button type="button">
+                <strong>{item.title}</strong>
+                <span>{item.detail}{item.amount ? <> · <b className={item.tone ? `amount-${item.tone}` : ''}>{item.amount}</b></> : null}</span>
+                <time>{item.time}</time>
+              </button>
             </li>
           ))}
         </ul>
