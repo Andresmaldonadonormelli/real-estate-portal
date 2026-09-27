@@ -243,7 +243,8 @@ export default function Dashboard() {
       const applied=Math.min(gap,pool);
       const reasons:string[]=[];
       let covered=0;
-      [...deductionTxs].sort((a,b)=>Math.abs(Number(b.amount||0))-Math.abs(Number(a.amount||0))).forEach(tx=>{
+      const rank=(tx:Transaction)=>{const key=categoryKey(tx.category||'');const order=['management','maintenance','leasing','legal','utilities','review','neutral'];const index=order.indexOf(key);return index<0?99:index;};
+      [...deductionTxs].sort((a,b)=>rank(a)-rank(b)||Math.abs(Number(b.amount||0))-Math.abs(Number(a.amount||0))).forEach(tx=>{
         if(covered>=applied-0.5) return;
         const label=deductionReason(tx);
         if(!reasons.includes(label)) reasons.push(label);
