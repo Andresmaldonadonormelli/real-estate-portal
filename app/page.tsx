@@ -173,9 +173,6 @@ export default function Dashboard() {
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
   const currentMonth=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
-  const priorMonthDate=new Date(new Date().getFullYear(),new Date().getMonth()-1,1);
-  const priorMonthKey=`${priorMonthDate.getFullYear()}-${String(priorMonthDate.getMonth()+1).padStart(2,'0')}`;
-  const priorMonthShort=priorMonthDate.toLocaleString('en-US',{month:'short'});
   const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
   const monthlyTotals=useMemo(()=>calculateMonthlyTotals(postedThisMonth),[postedThisMonth]);
@@ -292,24 +289,19 @@ export default function Dashboard() {
   const reviewHref=cashPropertyId?`/ledger?property=${cashPropertyId}&review=1`:'/ledger?review=1';
   const expenseBreakdown=useMemo(()=>{
     const current=new Map(DASHBOARD_EXPENSE_ROWS.map(row=>[row.key,0]));
-    const prior=new Map(DASHBOARD_EXPENSE_ROWS.map(row=>[row.key,0]));
     postedScoped.forEach(tx=>{
-      if(tx.type!=='expense') return;
-      const month=tx.transaction_date.slice(0,7);
-      if(month!==expenseMonthKey&&month!==priorMonthKey) return;
+      if(tx.type!=='expense'||!tx.transaction_date.startsWith(expenseMonthKey)) return;
       const group=dashboardExpenseGroup(tx.category||'');
       if(!group) return;
-      const amount=Math.abs(Number(tx.amount||0));
-      const bucket=month===priorMonthKey?prior:current;
-      bucket.set(group,(bucket.get(group)||0)+amount);
+      current.set(group,(current.get(group)||0)+Math.abs(Number(tx.amount||0)));
     });
     const total=[...current.values()].reduce((sum,amount)=>sum+amount,0);
     const rows=DASHBOARD_EXPENSE_ROWS.map(row=>{
       const amount=current.get(row.key)||0;
-      return {...row,amount,delta:amount-(prior.get(row.key)||0),share:total?amount/total:0,review:row.key==='uncategorized'&&amount>0.5};
+      return {...row,amount,share:total?amount/total:0,review:row.key==='uncategorized'&&amount>0.5};
     });
     return {rows,total};
-  },[expenseMonthKey,priorMonthKey,postedScoped]);
+  },[expenseMonthKey,postedScoped]);
   const recentItems=postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)).map(tx=>{
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
@@ -377,10 +369,7 @@ export default function Dashboard() {
           <div className="dashboard-expense-head"><h2>Expenses</h2><Link href={ledgerHref} className="dashboard-tx-all">View all expenses<ChevronRight size={14} aria-hidden="true"/></Link></div>
           <p className="dashboard-expense-scope">{monthLabel} {overviewYear} · Operating expenses only</p>
           <strong className="dashboard-expense-total">{formatKpiCurrency(expenseBreakdown.total)}</strong>
-          <div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=>{
-            const change=expenseCompareLine(item.delta,priorMonthShort);
-            return <div className="dashboard-expense-row" key={item.key}><div className="dashboard-expense-label"><span className="dashboard-expense-name"><i className="dashboard-expense-marker" style={{background:item.color}} aria-hidden="true"/><strong>{item.label} ({Math.round(item.share*100)}%)</strong>{item.review&&<Link href={reviewHref} className="dashboard-expense-review">Review</Link>}</span><b>{formatKpiCurrency(item.amount)}</b></div>{change&&<p className={`dashboard-expense-compare amount-${change.tone}`}>{change.text}</p>}<span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>;
-          })}</div>
+          <div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className="dashboard-expense-row" key={item.key}><div className="dashboard-expense-label"><span className="dashboard-expense-name"><strong>{item.label} ({Math.round(item.share*100)}%)</strong>{item.review&&<Link href={reviewHref} className="dashboard-expense-review">Review</Link>}</span><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>
         </section>
         <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </div>
@@ -491,11 +480,6 @@ function expenseCategoryLabel(key:string,raw:string){
     'other-income':'Other Income',
   };
   return labels[key]||raw||'Other';
-}
-function expenseCompareLine(delta:number,priorLabel:string){
-  if(Math.abs(delta)<0.5) return null;
-  const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(Math.abs(delta)));
-  return delta<0?{text:`${amount} lower than ${priorLabel}`,tone:'positive' as const}:{text:`${amount} higher than ${priorLabel}`,tone:'negative' as const};
 }
 function expenseColor(key:string,uncategorized:boolean,index:number){
   if(uncategorized) return 'var(--dashboard-series-uncategorized)';
