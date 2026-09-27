@@ -225,21 +225,21 @@
   font-weight: var(--weight-medium);
 }
 .dashboard-periods button {
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: 20px;
+  padding: 0 6px;
   border: 1px solid var(--border-color);
   border-radius: var(--theme-control-radius, 8px);
   background: var(--theme-card);
   color: var(--text-secondary);
-  font: var(--font-button);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
   font-weight: var(--weight-medium);
   cursor: pointer;
 }
 .dashboard-periods button.active {
   border-color: var(--text-primary);
-  background: var(--theme-card);
-  color: var(--text-primary);
-  font-weight: var(--weight-medium);
+  background: var(--text-primary);
+  color: var(--theme-card);
 }
 .dashboard-operating .financial-history-chart {
   height: 196px;
@@ -600,9 +600,8 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .dashboard-periods button:hover {
-    color: var(--text-primary);
-    font-weight: var(--weight-medium);
+  .dashboard-periods button:hover:not(.active) {
+    background: var(--theme-surface-hover);
   }
 }
 
@@ -865,6 +864,8 @@
   .dashboard-periods button,
   .dashboard-operating .financial-history-axis button {
     min-height: 44px;
+    min-width: 44px;
+    padding: 0 10px;
   }
   .dashboard-operating .financial-history-chart {
     height: 220px;
