@@ -63,9 +63,12 @@ export default function NotificationBell() {
           {SAMPLE_NOTIFICATIONS.map((item) => (
             <li key={item.id} data-unread={unread.includes(item.id) ? 'true' : 'false'}>
               <button type="button">
-                <strong>{item.title}</strong>
+                <span className="dashboard-drawer-title">
+                  <strong>{item.title}</strong>
+                  <time>{item.time}</time>
+                  {unread.includes(item.id) ? <i className="dashboard-drawer-dot" aria-hidden="true" /> : null}
+                </span>
                 <span>{item.detail}{item.amount ? <> · <b className={item.tone ? `amount-${item.tone}` : ''}>{item.amount}</b></> : null}</span>
-                <time>{item.time}</time>
               </button>
             </li>
           ))}

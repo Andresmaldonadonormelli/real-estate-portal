@@ -309,12 +309,22 @@
   line-height: var(--type-label-line);
   font-weight: var(--weight-medium);
 }
-.dashboard-rent-list b[data-status='Collected'] {
+.dashboard-rent-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+}
+.dashboard-rent-list b[data-status='Paid'] {
   color: var(--positive);
 }
-.dashboard-rent-list b[data-status='Partial'],
 .dashboard-rent-list b[data-status='Outstanding'] {
   color: var(--negative);
+}
+.dashboard-rent-list b[data-status='Vacant'],
+.dashboard-rent-list b[data-status='Mixed'] {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
 }
 .dashboard-rent-track {
   display: block;
@@ -401,20 +411,31 @@
 }
 .dashboard-expense-list {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-top: var(--space-4);
 }
 .dashboard-expense-row {
   display: grid;
-  gap: var(--space-2);
+  gap: 4px;
   min-width: 0;
-  padding-block: var(--space-1);
 }
 .dashboard-expense-label {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
+}
+.dashboard-expense-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.dashboard-expense-marker {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
 }
 .dashboard-expense-row strong {
   min-width: 0;
@@ -423,34 +444,25 @@
   line-height: var(--type-small-line);
   font-weight: var(--weight-medium);
 }
-.dashboard-expense-row.is-uncategorized {
-  margin-top: var(--space-1);
-  padding: var(--space-3);
-  border-radius: var(--theme-control-radius, 8px);
-  background: var(--warning-soft);
-  color: inherit;
+.dashboard-expense-review {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+  font-weight: var(--weight-medium);
   text-decoration: none;
 }
-.dashboard-expense-row.is-uncategorized strong {
-  color: var(--warning);
-  font-weight: var(--weight-semibold);
-}
-.dashboard-expense-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+.dashboard-expense-compare {
+  margin: 0 0 0 16px;
   color: var(--text-secondary);
   font-size: var(--type-label-size);
   line-height: var(--type-label-line);
 }
-.dashboard-expense-meta .amount-positive {
+.dashboard-expense-compare.amount-positive {
   color: var(--positive);
-  font-weight: var(--weight-semibold);
 }
-.dashboard-expense-meta .amount-negative {
+.dashboard-expense-compare.amount-negative {
   color: var(--negative);
-  font-weight: var(--weight-semibold);
 }
 .dashboard-expense-row b {
   flex: 0 0 auto;
@@ -462,7 +474,7 @@
 }
 .dashboard-expense-track {
   display: block;
-  height: 20px;
+  height: 10px;
   overflow: hidden;
   border-radius: var(--theme-bar-radius, 4px);
   background: var(--dashboard-series-track);
@@ -471,9 +483,6 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-}
-.dashboard-expense-row.is-uncategorized .dashboard-expense-track {
-  background: color-mix(in srgb, var(--warning) 18%, var(--dashboard-series-track));
 }
 .dashboard-tx {
   display: grid;
@@ -733,7 +742,6 @@
   border-top: 1px solid var(--border-color);
 }
 .dashboard-drawer-list button {
-  position: relative;
   display: grid;
   gap: 2px;
   width: 100%;
@@ -745,14 +753,22 @@
   text-align: left;
   cursor: pointer;
 }
-.dashboard-drawer-list li[data-unread='true'] button {
-  padding-right: 36px;
+.dashboard-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
-.dashboard-drawer-list li[data-unread='true'] button::before {
-  content: '';
-  position: absolute;
-  top: 18px;
-  right: 16px;
+.dashboard-drawer-title strong {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dashboard-drawer-title time {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.dashboard-drawer-dot {
+  flex: 0 0 auto;
   width: 7px;
   height: 7px;
   border-radius: var(--radius-pill);
@@ -872,7 +888,7 @@
     height: 220px;
   }
   .dashboard-expense-track {
-    height: 14px;
+    height: 10px;
   }
   .dashboard-summary strong {
     font-size: calc(var(--type-page-title-size) - 4px);
