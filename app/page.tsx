@@ -282,12 +282,12 @@ export default function Dashboard() {
   const rentChange=monthOverMonth(rentForMonth(comparisonCurrent?.key),rentForMonth(comparisonPrevious?.key),'higher-better');
   const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
   const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
+  const expenseMonthKey=displayedCashFlow?.key||'';
   const expenseBreakdown=useMemo(()=>{
-    const keys=new Set(cashFlow.map(row=>row.key));
     const debt=new Set(['mortgage-interest','mortgage-principal','mortgage','capex','distribution']);
     const map=new Map<string,{label:string;key:string;amount:number;uncategorized:boolean}>();
     postedScoped.forEach(tx=>{
-      if(tx.type!=='expense'||!keys.has(tx.transaction_date.slice(0,7))) return;
+      if(tx.type!=='expense'||tx.transaction_date.slice(0,7)!==expenseMonthKey) return;
       const key=categoryKey(tx.category||'');
       if(debt.has(key)) return;
       const uncategorized=!tx.category||/needs review|uncategor/i.test(tx.category);
@@ -302,7 +302,7 @@ export default function Dashboard() {
     const uncategorized=items.find(item=>item.uncategorized);
     const rows=uncategorized&&!top.includes(uncategorized)?[...top,uncategorized]:top;
     return {rows:rows.map((item,index)=>({...item,share:total?item.amount/total:0,color:expenseColor(item.key,item.uncategorized,index)})),total};
-  },[cashFlow,postedScoped]);
+  },[expenseMonthKey,postedScoped]);
   const recentItems=postedScoped.map(tx=>{
     const property=properties.find(p=>p.id===tx.property_id);
     const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
@@ -322,7 +322,6 @@ export default function Dashboard() {
   const rentShortfall=rentExpected-rentCollected;
   const propertiesWithRent=rentRows.filter(row=>row.expected>0.5);
   const propertiesPaidCount=propertiesWithRent.filter(row=>row.status==='Collected').length;
-  const periodNames:Record<HistoryPeriod,string>={'3M':'Last 3 months','6M':'Last 6 months','9M':'Last 9 months','1Y':'Last 12 months'};
 
   return <div className="dashboard-operating">
     <header className="dashboard-operating-header">
@@ -335,9 +334,9 @@ export default function Dashboard() {
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
-        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><small className={rentChange.tone==='neutral'?'':`amount-${rentChange.tone}`}>{rentChange.text}</small></div>
-        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><small className={expenseChange.tone==='neutral'?'':`amount-${expenseChange.tone}`}>{expenseChange.text}</small></div>
-        <div><span>Net cash flow</span><strong>{formatKpiCurrency(monthNet)}</strong><small className={cashChange.tone==='neutral'?'':`amount-${cashChange.tone}`}>{cashChange.text}</small></div>
+        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
+        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
+        <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
       </section>
       <div className="dashboard-main-row">
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
@@ -349,12 +348,6 @@ export default function Dashboard() {
             <div className="dashboard-periods" aria-label="Chart period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
           </div>
           <ChartLegend variant="incomeExpense"/>
-          <div className="dashboard-chart-readout" aria-live="polite">
-            <span>{displayedCashFlow?.fullLabel||'Latest month'}</span>
-            <span>Income <b>{formatKpiCurrency(displayedCashFlow?.income||0)}</b></span>
-            <span>Expenses <b>{formatKpiCurrency(displayedCashFlow?.cashExpenses||0)}</b></span>
-            <span>Net <b className={netTone?`amount-${netTone}`:''}>{formatKpiCurrency(netValue)}</b></span>
-          </div>
           <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
         </section>
         <section className="dashboard-module dashboard-rent-status" aria-label="Rent status">
@@ -379,8 +372,7 @@ export default function Dashboard() {
       <div className="dashboard-lower-row">
         <section className="dashboard-module" aria-label="Operating expenses">
           <h2>Expense breakdown</h2>
-          <p className="dashboard-module-kicker">{periodNames[cashPeriod]} · mortgage excluded</p>
-          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><div className="dashboard-expense-label"><strong>{item.label} ({Math.round(item.share*100)}%)</strong><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses in this range.</p>}
+          {expenseBreakdown.rows.length?<div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=><div className={`dashboard-expense-row${item.uncategorized?' is-uncategorized':''}`} key={item.label}><div className="dashboard-expense-label"><strong>{item.label} ({Math.round(item.share*100)}%)</strong><b>{formatKpiCurrency(item.amount)}</b></div><span className="dashboard-expense-track"><i style={{width:`${item.share*100}%`,background:item.color}}/></span></div>)}</div>:<p className="dashboard-empty">No operating expenses this month.</p>}
         </section>
         <RecentActivity variant="table" items={recentItems} ledgerHref={cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
       </div>
@@ -433,14 +425,18 @@ function supportingLine(tx:Transaction,category:string,vendor:string){
 }
 function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
   const delta=current-previous;
-  if(Math.abs(delta)<0.5) return {text:'No change from last month',tone:'neutral' as const};
-  if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const};
+  const neutral={text:'No change from last month',tone:'neutral' as const,delta:'',rest:''};
+  if(Math.abs(delta)<0.5) return neutral;
+  if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const,delta:'',rest:''};
   const pct=(delta/Math.abs(previous))*100;
-  const magnitude=`${Math.abs(pct).toFixed(1)}%`;
+  if(Math.abs(pct)<0.05) return neutral;
+  const signed=`${pct>0?'+':'−'}${Math.abs(pct).toFixed(1)}%`;
   const improved=direction==='higher-better'?pct>0:pct<0;
-  if(improved) return {text:`Improved ${magnitude} from last month`,tone:'positive' as const};
-  const word=direction==='higher-better'?'lower':'higher';
-  return {text:`${magnitude} ${word} than last month`,tone:'negative' as const};
+  return {delta:signed,rest:'from last month',text:`${signed} from last month`,tone:improved?'positive' as const:'negative' as const};
+}
+function SummaryChange({change}:{change:ReturnType<typeof monthOverMonth>}){
+  if(change.tone==='neutral') return <small>{change.text}</small>;
+  return <small><b className={`amount-${change.tone}`}>{change.delta}</b> {change.rest}</small>;
 }
 function expenseColor(key:string,uncategorized:boolean,index:number){
   if(uncategorized) return 'var(--dashboard-series-uncategorized)';

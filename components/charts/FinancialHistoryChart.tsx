@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { HistoryMode, MonthlyFinancialPoint } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -162,7 +162,7 @@ export default function FinancialHistoryChart({
         >
           {grouped && groupedAxis ? groupedAxis.ticks.map((tick) => {
             const y = zeroY - (tick / extent) * positiveHeight;
-            return <line key={tick} x1={pad.left} x2={width - pad.right} y1={y} y2={y} className={tick === 0 ? 'financial-history-zero' : 'financial-history-grid'} vectorEffect="non-scaling-stroke" />;
+            return <line key={tick} x1={pad.left} x2={width - pad.right} y1={y} y2={y} className="financial-history-grid" vectorEffect="non-scaling-stroke" />;
           }) : (
             <>
               <line x1={pad.left} x2={width - pad.right} y1={pad.top} y2={pad.top} className="financial-history-grid" vectorEffect="non-scaling-stroke" />
@@ -205,18 +205,18 @@ export default function FinancialHistoryChart({
                     y={upwardY(expenses)}
                     width={barWidth}
                     height={Math.max(2, zeroY - upwardY(expenses))}
-                    rx="4"
+                    rx="8"
                     className="financial-history-expense-series-bar"
-                    fill={activeMonth ? 'var(--chart-expense, #8b8794)' : 'var(--chart-quiet, #e6e5ea)'}
+                    fill={activeMonth ? 'var(--chart-expense, #9c98a3)' : 'var(--chart-quiet, #f1f0f3)'}
                   />
                   <rect
                     x={incomeX}
                     y={upwardY(income)}
                     width={barWidth}
                     height={Math.max(2, zeroY - upwardY(income))}
-                    rx="4"
+                    rx="8"
                     className="financial-history-income-series-bar"
-                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-quiet, #e6e5ea)'}
+                    fill={activeMonth ? 'var(--chart-income, #baa1f7)' : 'var(--chart-quiet, #f1f0f3)'}
                   />
                 </g>
               );
@@ -254,6 +254,21 @@ export default function FinancialHistoryChart({
           )}
           <rect x={pad.left} y={pad.top} width={innerWidth} height={plotHeight} className="financial-history-hit" />
         </svg>
+        {active && grouped && (
+          <div
+            className="financial-history-tooltip financial-history-tooltip-grouped"
+            data-edge={selected === 0 ? 'left' : selected === rows.length - 1 ? 'right' : 'center'}
+            style={{
+              left: `${(x(selected!) / width) * 100}%`,
+              '--dashboard-tooltip-top': `${(Math.min(upwardY(incomeValues[selected!] || 0), upwardY(expenseValues[selected!] || 0)) / height) * 100}%`,
+            } as CSSProperties}
+          >
+            <strong>{active.fullLabel}</strong>
+            <span><i>Income</i><b>{formatCurrency(active.income)}</b></span>
+            <span><i>Expenses</i><b>{formatCurrency(mode === 'cashFlow' ? active.cashExpenses : active.operatingExpenses)}</b></span>
+            <span><i>Net</i><b className={(mode === 'cashFlow' ? active.cashFlow : active.noi) > 0 ? 'amount-positive' : (mode === 'cashFlow' ? active.cashFlow : active.noi) < 0 ? 'amount-negative' : ''}>{formatCurrency(mode === 'cashFlow' ? active.cashFlow : active.noi)}</b></span>
+          </div>
+        )}
         {active && !grouped && (
           <div
             className="financial-history-tooltip"

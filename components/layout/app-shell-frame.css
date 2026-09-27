@@ -157,7 +157,7 @@ body {
 
 @media (hover: hover) and (pointer: fine) {
   .app-shell .nav-link:hover {
-    background: transparent !important;
+    background: var(--theme-surface-hover) !important;
     color: var(--text-primary) !important;
     font-weight: var(--weight-medium) !important;
   }
