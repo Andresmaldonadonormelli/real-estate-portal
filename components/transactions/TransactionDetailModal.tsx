@@ -18,7 +18,7 @@ function signed(amount: number) {
 }
 
 function ChaseMark() {
-  return <svg className="transaction-chase-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><polygon points="4.7,1 11.3,1 15,4.7 15,11.3 11.3,15 4.7,15 1,11.3 1,4.7" fill="#117ACA" /></svg>;
+  return <svg className="transaction-chase-mark" width="16" height="16" viewBox="0 0 512 512" aria-hidden="true"><path fill="#117ACA" d="M128 0h170.667L384 85.333V256h-85.333V128L213.333 42.667H128V0zM384 128h128v170.667L426.667 384H256v-85.333h128V213.333L341.333 128H384zM256 512H85.333L0 426.667V256h85.333v128l85.334 85.333H256V512zM0 256V85.333L85.333 0H256v85.333H128v85.334L170.667 256H0z" /></svg>;
 }
 
 function AccountLine({ chase, account }: { chase: boolean; account: string }) {
