@@ -1,6 +1,128 @@
-/* Actual property rows are quiet outlined cards. Touch devices never inherit hover state. */
-.compact-properties-list{display:grid!important;gap:var(--space-3)!important}
-.compact-property-row{border:1px solid var(--border-color)!important;border-radius:var(--radius-card)!important;background:transparent!important;box-shadow:none!important;transition:border-color var(--motion-fast),background var(--motion-fast)}
-@media(hover:hover) and (pointer:fine){.compact-property-row:hover{border-color:var(--border-strong)!important;background:var(--bg-secondary)!important}}
-.compact-property-row:focus-visible{outline:2px solid var(--focus-ring)!important;outline-offset:2px;background:transparent!important}
-@media(hover:none){.compact-property-row,.compact-property-row:hover,.compact-property-row:active,.compact-property-row:focus{background:transparent!important;border-color:var(--border-color)!important}}
+/* Portfolio properties, units, and improvements. One quiet list, no preview cards. */
+.properties-page .product-page-header{margin-bottom:var(--space-5)}
+.portfolio-area-tabs{margin-bottom:var(--space-5)}
+.portfolio-area-tabs-mobile{display:none}
+.portfolio-list{display:grid}
+.portfolio-columns{
+  display:grid;
+  padding:0 var(--space-3) var(--space-2);
+  color:var(--text-secondary);
+  font-size:var(--type-label-size);
+  line-height:var(--type-label-line);
+}
+.portfolio-property-grid,.portfolio-unit-grid,.portfolio-improve-grid{align-items:center;column-gap:var(--space-4)}
+.portfolio-property-grid{grid-template-columns:minmax(180px,1.7fr) minmax(108px,.7fr) minmax(108px,.75fr) minmax(120px,.8fr) minmax(148px,1.1fr)}
+.portfolio-unit-grid{grid-template-columns:minmax(72px,.6fr) minmax(150px,1.15fr) minmax(120px,1fr) minmax(88px,.6fr) minmax(180px,1.3fr)}
+.portfolio-improve-grid{grid-template-columns:minmax(120px,1.05fr) minmax(140px,1.35fr) minmax(108px,.85fr) minmax(72px,.55fr) minmax(150px,1.25fr) 132px}
+.portfolio-property-row,.portfolio-unit-row{
+  display:grid;
+  align-items:center;
+  column-gap:var(--space-4);
+  min-height:56px;
+  padding:var(--space-3);
+  border-top:1px solid var(--border-color);
+  color:var(--text-primary);
+  text-decoration:none;
+}
+.portfolio-property-identity{display:flex;align-items:center;gap:var(--space-3);min-width:0}
+.portfolio-thumb{width:40px;height:40px;flex:0 0 auto;border:1px solid var(--border-color);border-radius:var(--radius-control);object-fit:cover;background:var(--surface-subtle)}
+.portfolio-thumb-empty{display:block}
+.portfolio-property-copy{display:grid;min-width:0}
+.portfolio-property-copy strong,.portfolio-unit-name,.portfolio-improve-name{overflow:hidden;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);text-overflow:ellipsis;white-space:nowrap}
+.portfolio-property-copy span,.portfolio-group-title small,.portfolio-unit-lease,.portfolio-unit-tenant,.portfolio-figure-label,.portfolio-improve-property,.portfolio-improve-benefit{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.portfolio-property-copy span,.portfolio-improve-property,.portfolio-improve-benefit,.portfolio-unit-lease{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.portfolio-occupancy,.portfolio-figure strong,.portfolio-unit-rent,.portfolio-improve-cost{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
+.portfolio-figure{display:grid;justify-items:start}
+.portfolio-figure-label{display:none}
+.portfolio-watch{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.portfolio-watch[data-tone='clear']{color:var(--text-secondary)}
+.portfolio-watch[data-tone='move-in']{color:var(--text-primary)}
+.portfolio-watch[data-tone='warning'],.portfolio-unit-status[data-kind='vacant'],.portfolio-unit-status[data-kind='ending'],.portfolio-unit-days{color:var(--warning)}
+.portfolio-unit-status[data-kind='occupied']{color:var(--positive)}
+.portfolio-unit-status[data-kind='move-in']{color:var(--text-primary)}
+.portfolio-unit-state{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:baseline;min-width:0}
+.portfolio-unit-status,.portfolio-unit-days,.portfolio-improve-status{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.portfolio-group{display:grid}
+.portfolio-group+.portfolio-group{margin-top:var(--space-6)}
+.portfolio-group-title{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:baseline;margin:0 0 var(--space-2);padding:0 var(--space-3)}
+.portfolio-group-title span{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
+.portfolio-empty{margin:var(--space-2) 0 0;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.portfolio-improve-row{border-top:1px solid var(--border-color)}
+.portfolio-improve-open{
+  display:grid;
+  grid-template-columns:subgrid;
+  grid-column:1 / 6;
+  align-items:center;
+  column-gap:var(--space-4);
+  width:100%;
+  min-height:56px;
+  padding:var(--space-3);
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.portfolio-improve-model{
+  padding-right:var(--space-3);
+  color:var(--text-secondary);
+  font-size:var(--type-label-size);
+  line-height:var(--type-label-line);
+  white-space:nowrap;
+}
+.portfolio-improve-status[data-status='active']{color:var(--text-primary)}
+.portfolio-improve-status[data-status='idea'],.portfolio-improve-status[data-status='done']{color:var(--text-secondary)}
+.portfolio-improve-overlay{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:var(--space-4);background:var(--theme-overlay)}
+.portfolio-improve-dialog{width:min(520px,100%);max-height:calc(100dvh - var(--space-8));overflow:auto;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}
+.portfolio-improve-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-5) var(--space-5) 0}
+.portfolio-improve-head h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
+.portfolio-form{display:grid;gap:var(--space-3);padding:var(--space-4) var(--space-5) var(--space-5)}
+.portfolio-form label,.portfolio-form .ui-select{display:grid;gap:var(--space-2);width:100%;color:var(--text-primary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.portfolio-form input{width:100%;min-height:var(--control-height-desktop);padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--input-bg);color:var(--text-primary);font:var(--font-button)}
+.portfolio-form-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-3)}
+.portfolio-form-actions{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.portfolio-text-button{min-height:44px;padding:0;border:0;background:transparent;color:var(--text-secondary);font:var(--font-button);cursor:pointer}
+@media (min-width:768px){
+  .portfolio-improve-property{grid-column:1}
+  .portfolio-improve-name{grid-column:2}
+  .portfolio-improve-status{grid-column:3}
+  .portfolio-improve-cost{grid-column:4}
+  .portfolio-improve-benefit{grid-column:5}
+}
+@media (hover:hover) and (pointer:fine){
+  .portfolio-property-row:hover,.portfolio-unit-row:hover,.portfolio-improve-row:hover{background:var(--surface-hover)}
+  .portfolio-improve-model:hover{color:var(--text-primary)}
+}
+@media (max-width:767px){
+  .portfolio-area-tabs-desktop{display:none}
+  .portfolio-area-tabs-mobile{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .portfolio-area-tabs-mobile button{width:100%}
+  .portfolio-columns{display:none}
+  .portfolio-property-row,.portfolio-unit-row,.portfolio-improve-open{min-height:44px;padding:var(--space-4) 0}
+  .portfolio-property-row{grid-template-columns:1fr 1fr;row-gap:var(--space-2)}
+  .portfolio-property-identity{grid-column:1 / -1;grid-row:1}
+  .portfolio-occupancy{grid-column:1;grid-row:2}
+  .portfolio-watch{grid-column:2;grid-row:2;justify-self:end;text-align:right}
+  .portfolio-property-row>.portfolio-figure:nth-of-type(1){grid-column:1;grid-row:3}
+  .portfolio-property-row>.portfolio-figure:nth-of-type(2){grid-column:2;grid-row:3;justify-self:end;text-align:right}
+  .portfolio-figure-label{display:block}
+  .portfolio-unit-row{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--space-1)}
+  .portfolio-unit-name{grid-column:1;grid-row:1}
+  .portfolio-unit-state{grid-column:2;grid-row:1;justify-self:end;text-align:right}
+  .portfolio-unit-tenant{grid-column:1;grid-row:2}
+  .portfolio-unit-rent{grid-column:2;grid-row:2;justify-self:end}
+  .portfolio-unit-lease{grid-column:1 / -1;grid-row:3}
+  .portfolio-group-title{padding:0}
+  .portfolio-improve-row,.portfolio-improve-open{display:grid;grid-template-columns:1fr 1fr;row-gap:var(--space-1)}
+  .portfolio-improve-open{grid-column:1 / -1;padding-right:0}
+  .portfolio-improve-name{grid-column:1 / -1;grid-row:1}
+  .portfolio-improve-property{grid-column:1;grid-row:2}
+  .portfolio-improve-status{grid-column:2;grid-row:2;justify-self:end;text-align:right}
+  .portfolio-improve-cost{grid-column:1;grid-row:3}
+  .portfolio-improve-benefit{grid-column:2;grid-row:3;justify-self:end;text-align:right}
+  .portfolio-improve-model{grid-column:1 / -1;grid-row:2;min-height:44px;padding:0 0 var(--space-3)}
+  .portfolio-form-pair{grid-template-columns:1fr}
+  .portfolio-improve-overlay{place-items:end stretch;padding:0}
+  .portfolio-improve-dialog{width:100%;max-height:calc(100dvh - env(safe-area-inset-top));border-radius:var(--radius-card) var(--radius-card) 0 0}
+  .portfolio-form input,.portfolio-form .ui-select select{min-height:var(--control-height-mobile)}
+}

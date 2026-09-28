@@ -1,19 +1,20 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
-import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { categoryKey } from '@/lib/accounting';
-import MiniSparkline from '@/components/charts/MiniSparkline';
-import { buildMonthlyFinancialHistory } from '@/lib/financialHistory';
-import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
-import { PageAction, PageHeader } from '@/components/common/ProductControls';
+import type { HistoryTransaction } from '@/lib/financialHistory';
+import type { PortfolioUnit } from '@/lib/portfolioAttention';
+import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
+import { PageAction, PageHeader, SegmentedControl, UnderlineTabs } from '@/components/common/ProductControls';
+import { PropertiesList, UnitsList } from '@/components/property/PortfolioLists';
+import PortfolioImprove from '@/components/property/PortfolioImprove';
+
+type PortfolioTab = 'properties' | 'units' | 'improve';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -27,8 +28,10 @@ const emptyUnit = {
 export default function PropertiesPage() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [units, setUnits] = useState<PortfolioUnit[]>([]);
+  const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
+  const [tab, setTab] = useState<PortfolioTab>('properties');
+  const [improveAdd, setImproveAdd] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPropertyForm, setShowPropertyForm] = useState(false);
@@ -51,14 +54,14 @@ export default function PropertiesPage() {
     try {
       const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
-        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('properties:unit-details',async()=>await supabase.from('units').select(UNIT_DETAIL_FIELDS).is('archived_at',null).order('unit_number')),
         cachedSupabaseRequest('properties:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(13)).order('transaction_date',{ascending:false})),
       ]), 8000, 'Properties took too long to load. Please retry.');
       if (propError || unitError || txError) throw (propError || unitError || txError);
       const propertyRows = (props || []) as Property[];
       setProperties(propertyRows);
-      setUnits((unitRows || []) as Unit[]);
-      setTransactions(txRows || []);
+      setUnits((unitRows || []) as PortfolioUnit[]);
+      setTransactions((txRows || []) as HistoryTransaction[]);
       setLoading(false);
       void (async()=>{
         const urls: Record<string,string> = {};
@@ -74,7 +77,7 @@ export default function PropertiesPage() {
   useEffect(() => { loadData(); }, []);
 
   const unitsByProperty = useMemo(() => {
-    return units.reduce<Record<string, Unit[]>>((acc, unit) => {
+    return units.reduce<Record<string, PortfolioUnit[]>>((acc, unit) => {
       (acc[unit.property_id] ||= []).push(unit);
       return acc;
     }, {});
@@ -214,7 +217,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="mobile-page-shell properties-page">
-      <PageHeader title="Properties" action={<PageAction onClick={startAddProperty}>Add property</PageAction>}/>
+      <PageHeader title="Properties" action={tab === 'improve' && properties.length > 0 ? <PageAction onClick={() => setImproveAdd(value => value + 1)}>Add improvement</PageAction> : <PageAction onClick={startAddProperty}>Add property</PageAction>}/>
 
       {error && <ErrorBox message={error} />}
       {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (
@@ -224,52 +227,13 @@ export default function PropertiesPage() {
           <button onClick={startAddProperty} className="workspace-primary-button">Add property</button>
         </div>
       ) : (
-        <div className="compact-properties-list">
-          {properties.map((property,index) => {
-            const propertyUnits = unitsByProperty[property.id] || [];
-            const occupied = propertyUnits.filter((u) => u.occupied).length;
-            const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);
-            const potentialRent = propertyUnits.reduce((sum,u)=>sum+Number(u.current_rent||0),0);
-            const year = new Date().getFullYear();
-            const propertyTx = transactions.filter(t=>t.property_id===property.id && Number(String(t.transaction_date||'').slice(0,4))===year);
-            let income=0, expenses=0, operatingExpenses=0;
-            for(const tx of propertyTx){
-              const amount=Math.abs(Number(tx.amount||0));
-              if(tx.type==='income') income+=amount;
-              if(tx.type==='expense'){
-                expenses+=amount;
-                const key=categoryKey(tx.category||'');
-                if(!['mortgage-interest','mortgage-principal','mortgage','capex','distribution'].includes(key)) operatingExpenses+=amount;
-              }
-            }
-            const cashFlow=income-expenses;
-            const fullyVacant=propertyUnits.length>0&&occupied===0;
-            const today=new Date();today.setHours(0,0,0,0);
-            const vacancyDates=propertyUnits.map(unit=>(unit as Unit&{lease_end_date?:string|null}).lease_end_date).filter(Boolean).map(value=>new Date(`${value}T12:00:00`)).filter(date=>date<=today);
-            const vacancyStart=vacancyDates.length?new Date(Math.max(...vacancyDates.map(date=>date.getTime()))):(property.purchase_date?new Date(`${property.purchase_date}T12:00:00`):null);
-            const vacancyDays=vacancyStart?Math.max(0,Math.floor((today.getTime()-vacancyStart.getTime())/86400000)):0;
-            const holdingCosts=fullyVacant?propertyTx.filter(tx=>tx.type==='expense'&&(!vacancyStart||new Date(`${tx.transaction_date}T12:00:00`)>=vacancyStart)).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0):0;
-            const expenseRatio=income>0 ? operatingExpenses/income : null;
-            const hasFinancialActivity=propertyTx.some(tx=>Math.abs(Number(tx.amount||0))>0);
-            const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
-            const sparklineRows=buildMonthlyFinancialHistory(transactions as any[],'1Y',property.id);
-            return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card">
-              <div className="property-preview-left">
-                <div className="property-preview-identity">
-                  {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb" width="96" height="96" loading={index===0?'eager':'lazy'} fetchPriority={index===0?'high':'auto'} decoding="async"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
-                  <div><strong>{property.address}</strong><span>{property.city}, {property.state}</span></div>
-                </div>
-                <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span>{occupied>0&&<span>{formatCurrency(monthlyRent)}/mo rent</span>}</div>
-              </div>
-              <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/></div>
-              <div className="property-preview-result">
-                <span>{fullyVacant?'Holding costs':'YTD cash flow'}</span>
-                <strong className={fullyVacant?'amount-negative':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{fullyVacant?formatCurrency(holdingCosts):formatCurrency(cashFlow)}</strong>
-                <small>{fullyVacant?`Vacant for ${vacancyDays} days`:health.detail}</small>
-              </div>
-            </Link>;
-          })}
-        </div>
+        <>
+          <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
+          <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} imageUrls={imageUrls} />}
+          {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} />}
+          {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
+        </>
       )}
 
       {showPropertyForm && (
@@ -341,33 +305,6 @@ function ErrorBox({ message }: { message: string }) { return <div style={{ margi
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
   return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 'var(--type-section-title-size)', lineHeight:'var(--type-section-title-line)' }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
-}
-
-function getPropertyHealth({occupied,total,cashFlow,expenseRatio,hasFinancialActivity}:{occupied:number;total:number;cashFlow:number;expenseRatio:number|null;hasFinancialActivity:boolean}){
-  // Financial activity takes precedence over vacancy. A vacant property with posted
-  // expenses already has real performance and should not be shown as Pending.
-  if(hasFinancialActivity && cashFlow<0){
-    if(expenseRatio!=null){
-      const pct=Math.round(expenseRatio*100);
-      return {tone:'red',fill:Math.max(0,Math.min(100,pct)),label:'Negative cash flow',detail:`${pct}% operating expense ratio`};
-    }
-    return {tone:'red',fill:100,label:'Negative cash flow',detail:'Recorded expenses exceed income'};
-  }
-  if(total===0 || occupied===0){
-    if(hasFinancialActivity) return {tone:'yellow',fill:0,label:'Financial activity recorded',detail:'No positive cash flow yet'};
-    return {tone:'vacant',fill:0,label:'Vacant',detail:'Performance pending'};
-  }
-  if(occupied<total){
-    const occupancyPct=Math.round((occupied/Math.max(total,1))*100);
-    return {tone:'red',fill:occupancyPct,label:'Vacancy needs attention',detail:`${occupancyPct}% occupied`};
-  }
-  if(expenseRatio==null) return {tone:'yellow',fill:0,label:'Building performance history',detail:'More posted activity needed'};
-  const pct=Math.round(expenseRatio*100);
-  const fill=Math.max(0,Math.min(100,pct));
-  if(expenseRatio>0.8) return {tone:'red',fill,label:'Expenses are very high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.65) return {tone:'orange',fill,label:'Expenses high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.5) return {tone:'yellow',fill,label:'Performance to watch',detail:`${pct}% operating expense ratio`};
-  return {tone:'green',fill,label:'Performing well',detail:`${pct}% operating expense ratio`};
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };
