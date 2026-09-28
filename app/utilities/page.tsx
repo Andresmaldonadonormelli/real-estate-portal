@@ -1,9 +1,8 @@
 "use client";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Bolt,
   ChevronDown,
-  ChevronRight,
   CircleEllipsis,
   Droplets,
   Flame,
@@ -49,7 +48,7 @@ export default function UtilitiesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<UtilityWithProperties[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [selected, setSelected] = useState("");
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState<UtilityWithProperties | null>(null);
   const [detail, setDetail] = useState<UtilityWithProperties | null>(null);
@@ -94,8 +93,33 @@ export default function UtilitiesPage() {
           ? byUtility.get(x.id)!
           : [x.property_id].filter(Boolean),
       }));
+      const propertyRows = (p.data || []) as Property[];
       setItems(hydrated);
-      setProperties((p.data || []) as Property[]);
+      setProperties(propertyRows);
+      void (async () => {
+        const urls: Record<string, string> = {};
+        await Promise.all(
+          propertyRows
+            .filter((property) => property.image_path)
+            .map(async (property) => {
+              try {
+                const signed = await supabase.storage
+                  .from("property-images")
+                  .createSignedUrl(property.image_path!, 3600, {
+                    transform: {
+                      width: 192,
+                      height: 192,
+                      resize: "cover",
+                      quality: 80,
+                    },
+                  });
+                if (signed.data?.signedUrl)
+                  urls[property.id] = signed.data.signedUrl;
+              } catch {}
+            }),
+        );
+        setImageUrls(urls);
+      })();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load utilities");
     } finally {
@@ -106,22 +130,14 @@ export default function UtilitiesPage() {
     load();
   }, []);
 
-  const filtered = useMemo(
-    () => items.filter((x) => !selected || x.property_ids.includes(selected)),
-    [items, selected],
-  );
-  const grouped = useMemo(
+  const rows = useMemo(
     () =>
-      properties
-        .filter((p) => !selected || p.id === selected)
-        .map((property) => ({
-          property,
-          utilities: filtered.filter((x) =>
-            x.property_ids.includes(property.id),
-          ),
-        }))
-        .filter((group) => group.utilities.length > 0),
-    [properties, filtered, selected],
+      properties.flatMap((property) =>
+        items
+          .filter((x) => x.property_ids.includes(property.id))
+          .map((utility) => ({ property, utility })),
+      ),
+    [properties, items],
   );
 
   const propertyName = (id: string) =>
@@ -131,9 +147,7 @@ export default function UtilitiesPage() {
     setDetail(null);
     setShowDetails(false);
     setForm({ ...empty });
-    setPropertyIds(
-      selected ? [selected] : properties[0]?.id ? [properties[0].id] : [],
-    );
+    setPropertyIds(properties[0]?.id ? [properties[0].id] : []);
     setShow(true);
   }
   function edit(x: UtilityWithProperties) {
@@ -157,12 +171,6 @@ export default function UtilitiesPage() {
   }
   function openDetail(x: UtilityWithProperties) {
     setDetail(x);
-  }
-  function cardKey(e: KeyboardEvent<HTMLDivElement>, x: UtilityWithProperties) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      openDetail(x);
-    }
   }
   function toggleProperty(id: string) {
     setPropertyIds((ids) =>
@@ -256,57 +264,66 @@ export default function UtilitiesPage() {
     <div className="mobile-page-shell utilities-page">
       <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
       {error && <div style={errorBox}>{error}</div>}
-      <div className="utilities-toolbar">
-        <ProductSelect aria-label="Property" value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">All properties</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.address}
-              </option>
-            ))}
-        </ProductSelect>
-      </div>
 
       {loading ? (
         <PageSkeleton variant="utilities" />
-      ) : grouped.length === 0 ? (
-        <div className="card utilities-empty">No utility accounts yet.</div>
       ) : (
-        <div className="utility-property-groups">
-          {grouped.map(({ property, utilities }) => (
-            <section key={property.id} className="utility-property-group">
-              <div className="utility-property-head">
-                <h2>{property.address}</h2>
-                <small>
-                  {utilities.length}{" "}
-                  {utilities.length === 1 ? "utility" : "utilities"}
-                </small>
+        <div className="portfolio-panel">
+          <div className="portfolio-panel-head">
+            <strong>Utilities</strong>
+            <span>{rows.length}</span>
+          </div>
+          {rows.length === 0 ? (
+            <p className="portfolio-empty">No utility accounts yet.</p>
+          ) : (
+            <>
+              <div className="portfolio-columns portfolio-utility-grid" aria-hidden="true">
+                <span>Property</span>
+                <span>Utility</span>
+                <span>Provider</span>
+                <span>Responsibility</span>
+                <span>Autopay</span>
+                <span>Account</span>
               </div>
-              <div className="utility-grid">
-                {utilities.map((x) => (
-                  <div
-                    key={`${property.id}-${x.id}`}
-                    className="utility-directory-card utility-directory-row"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openDetail(x)}
-                    onKeyDown={(e) => cardKey(e, x)}
-                    aria-label={`Open ${x.utility_type} utility details`}
-                  >
-                    <div className="utility-card-icon">
-                      {utilityIcon(x.utility_type)}
-                    </div>
-                    <div className="utility-card-copy">
-                      <div className="utility-card-type">{x.utility_type}</div>
-                      <div className="utility-card-provider">{x.provider}</div>
-                      <div className="utility-card-meta">{x.responsibility} · Autopay {x.autopay ? "on" : "off"}{x.account_number ? ` · ${maskedAccount(x.account_number)}` : ""}</div>
-                    </div>
-                    <ChevronRight className="utility-card-chevron" size={18} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+              {rows.map(({ property, utility }, index) => (
+                <button
+                  key={`${property.id}-${utility.id}`}
+                  type="button"
+                  className="portfolio-utility-row portfolio-utility-grid"
+                  onClick={() => openDetail(utility)}
+                >
+                  <span className="portfolio-property-identity">
+                    {imageUrls[property.id] ? (
+                      <img
+                        src={imageUrls[property.id]}
+                        alt=""
+                        className="portfolio-thumb"
+                        width="40"
+                        height="40"
+                        loading={index === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="portfolio-thumb portfolio-thumb-empty" aria-hidden="true" />
+                    )}
+                    <span className="portfolio-property-copy">
+                      <strong>{property.address}</strong>
+                      <span>
+                        {property.city}, {property.state}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="portfolio-utility-type">{utility.utility_type}</span>
+                  <span className="portfolio-utility-provider">{utility.provider}</span>
+                  <span className="portfolio-utility-responsibility">{utility.responsibility}</span>
+                  <span className="portfolio-utility-autopay">{utility.autopay ? "On" : "Off"}</span>
+                  <span className="portfolio-utility-account">
+                    {utility.account_number ? maskedAccount(utility.account_number) : "—"}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
 

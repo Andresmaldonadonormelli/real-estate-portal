@@ -34,10 +34,7 @@ export default function PageSkeleton({ variant = 'ledger' }: { variant?: Variant
 
   if (variant === 'utilities') {
     return <div aria-label="Loading utilities" role="status">
-      <Block style={{ width:300, height:42, marginBottom:18 }} />
-      <div className="skeleton-grid skeleton-grid-3">
-        {[0,1,2].map(i => <Block key={i} style={{ height:210 }} />)}
-      </div>
+      <Block style={{ height: 280, borderRadius: 'var(--radius-card)' }} />
     </div>;
   }
 
