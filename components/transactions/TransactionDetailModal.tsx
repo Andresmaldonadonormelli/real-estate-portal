@@ -47,7 +47,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
   const unit = units.find((item) => item.id === current.unit_id);
   const payout = useMemo(() => buildPayoutBreakdown(current, property?.management_fee_percent, transactions), [current, property?.management_fee_percent, transactions]);
   const needsReview = Boolean(current.needs_review) || /needs review|uncategor/i.test(current.category || '');
-  const status = current.status === 'pending' ? 'Pending' : needsReview ? 'Needs review' : 'Confirmed';
+  const status = current.status === 'pending' ? 'Pending' : needsReview || (payout && !payout.confirmed) ? 'Needs review' : 'Confirmed';
   const imported = current.source === 'plaid';
   const sourceLabel = imported ? `Imported from ${current.source_institution || 'bank'}${current.source_account_mask ? ` ••••${current.source_account_mask}` : ''}` : '';
   const account = imported ? `${current.source_institution || 'Bank'}${current.source_account_mask ? ` ••••${current.source_account_mask}` : ''}` : '';
