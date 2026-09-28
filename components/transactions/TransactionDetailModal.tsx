@@ -17,6 +17,14 @@ function signed(amount: number) {
   return text;
 }
 
+function ChaseMark() {
+  return <svg className="transaction-chase-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><polygon points="4.7,1 11.3,1 15,4.7 15,11.3 11.3,15 4.7,15 1,11.3 1,4.7" fill="#117ACA" /></svg>;
+}
+
+function AccountLine({ chase, account }: { chase: boolean; account: string }) {
+  return <span className="transaction-account-line">{chase ? <ChaseMark /> : null}{account}</span>;
+}
+
 function displayCategory(category?: string | null) {
   if (!category || /needs review|uncategor/i.test(category)) return 'Uncategorized';
   return category;
@@ -49,6 +57,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
   const status = statusKey === 'pending' ? 'Pending' : statusKey === 'review' ? 'Needs review' : 'Confirmed';
   const imported = current.source === 'plaid';
   const account = imported ? `${current.source_institution || 'Bank'}${current.source_account_mask ? ` ••••${current.source_account_mask}` : ''}` : '';
+  const chase = imported && /chase/i.test(current.source_institution || '');
   const importStatus = current.source_connection_status === 'unlinked' ? 'Unlinked account' : imported ? 'Imported' : current.source === 'recurring' ? 'Recurring' : 'Entered manually';
   const heroAmount = payout ? payout.net : Number(current.amount || 0);
   const categoryLabel = displayCategory(current.category);
@@ -137,7 +146,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
         </div>
         <span>{categoryLabel}</span>
         <span>{when} · {where}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}</span>
-        {account && <span className="transaction-detail-bank">{account}</span>}
+        {account && <span className="transaction-detail-bank"><AccountLine chase={chase} account={account} /></span>}
       </div>
       {payout && <section className="transaction-payout-card">
         <h3>Payout breakdown</h3>
@@ -153,7 +162,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
       <dl className="transaction-facts">
         <div><dt>Property</dt><dd>{property?.address || 'Portfolio'}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}</dd></div>
         <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
-        {account && <div><dt>Account</dt><dd>{account}</dd></div>}
+        {account && <div><dt>Account</dt><dd><AccountLine chase={chase} account={account} /></dd></div>}
         {imported && <div><dt>Imported date</dt><dd>{when}</dd></div>}
         <div><dt>Source</dt><dd>{importStatus}</dd></div>
       </dl>

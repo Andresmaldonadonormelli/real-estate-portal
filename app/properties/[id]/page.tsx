@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, CalendarDays, ChevronRight, Home, PencilLine, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -93,8 +93,10 @@ async function syncLegacyUnitLeases(propertyId:string,unitRows:any[],docRows:any
 
 export default function PropertyWorkspacePage(){
   const params=useParams<{id:string}>();
+  const searchParams=useSearchParams();
   const propertyId=String(params?.id || '');
   const [tab,setTab]=useState<Tab>('overview');
+  const requestedTab=searchParams.get('tab');
   const [property,setProperty]=useState<Property|null>(null);
   const [units,setUnits]=useState<Unit[]>([]);
   const [transactions,setTransactions]=useState<Tx[]>([]);
@@ -105,6 +107,10 @@ export default function PropertyWorkspacePage(){
   const [editingProperty,setEditingProperty]=useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Tx|null>(null);
   const [detailEditing,setDetailEditing]=useState(false);
+
+  useEffect(()=>{
+    if(requestedTab==='overview'||requestedTab==='improve'||requestedTab==='units'||requestedTab==='documents') setTab(requestedTab);
+  },[requestedTab]);
 
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');

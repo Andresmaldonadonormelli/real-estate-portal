@@ -631,8 +631,8 @@
   height: 18px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--theme-action);
-  color: var(--theme-action-text);
+  background: var(--negative);
+  color: #fff;
   font-size: var(--type-label-size);
   line-height: 18px;
   font-weight: var(--weight-semibold);
@@ -699,6 +699,29 @@
   height: 44px;
   border-radius: var(--theme-control-radius, 8px);
   color: var(--text-primary);
+}
+.dashboard-drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.dashboard-drawer-tabs button {
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+.dashboard-drawer-tabs button[aria-selected='true'] {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--theme-card);
 }
 .dashboard-drawer-mark {
   align-self: flex-start;
@@ -933,6 +956,15 @@
   }
   .dashboard-drawer-list li:hover {
     background: var(--surface-hover);
+  }
+  .dashboard-drawer-tabs button:not([aria-selected='true']):hover {
+    background: var(--theme-surface-hover);
+    color: var(--text-primary);
+  }
+}
+@media (max-width: 767px) {
+  .dashboard-drawer-tabs button {
+    min-height: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

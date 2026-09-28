@@ -21,6 +21,11 @@ function closest(rows: Transaction[], target: number | null) {
   return [...rows].sort((a, b) => Math.abs(Math.abs(Number(a.amount || 0)) - target) - Math.abs(Math.abs(Number(b.amount || 0)) - target))[0];
 }
 
+/** Match a property notification to a property already loaded for the current page. */
+export function resolveNotificationProperty(detail: string, properties: Property[]) {
+  return properties.find((property) => addressMatches(property.address, detail)) || null;
+}
+
 /** Match a static notification to a transaction already loaded for the current page. */
 export function resolveNotificationTransaction(item: NotificationQuery, transactions: Transaction[], properties: Property[]) {
   if (!item.match) return null;
