@@ -174,7 +174,7 @@ body {
     min-height: 36px;
     padding: 0 10px;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 12px !important;
     background: transparent;
     color: var(--text-secondary);
     font-size: var(--type-label-size);
@@ -183,6 +183,9 @@ body {
     text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .app-shell .side-nav a.property-nav-link {
+    color: var(--text-secondary);
   }
   .app-shell .property-nav-link.active {
     background: var(--theme-card) !important;
