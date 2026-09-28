@@ -68,6 +68,7 @@ export function settleRentCollection(input: {
   });
 
   const feePercent = Number(input.feePercent || 0);
+  const gap = Math.max(0, input.expected - input.net);
   const payoutDeposit = input.deposits.find((tx) => isPropertyManagementDeposit(tx, feePercent));
   const managed = Boolean(payoutDeposit) || (feePercent > 0 && input.deposits.some((tx) => Math.abs(Number(tx.amount || 0)) > 0.5));
   if (payoutDeposit) {
@@ -78,16 +79,17 @@ export function settleRentCollection(input: {
       if (!already && row.amount > 0.5) items.push({ label, amount: row.amount });
     });
   }
+  const namedPool = () => items.reduce((sum, item) => sum + item.amount, 0);
   if (managed && feePercent > 0 && !items.some((item) => item.label === 'Management fee')) {
     const basis = Math.abs(Number((payoutDeposit || input.deposits[0])?.amount || 0));
+    const room = gap - namedPool();
     const fee = estimatePayoutSplit(basis, feePercent).fee;
-    if (fee > 0.5) items.push({ label: 'Management fee', amount: Math.min(fee, Math.max(0, input.expected - input.net)) });
+    if (fee > 0.5 && room > 0.5) items.push({ label: 'Management fee', amount: Math.min(fee, room) });
   }
 
   const depositMentionsMowing = input.deposits.some(isMowingTransaction);
   const mentioned = depositMentionsMowing || input.expenses.some(isMowingTransaction);
-  const gap = Math.max(0, input.expected - input.net);
-  const pool = items.reduce((sum, item) => sum + item.amount, 0);
+  const pool = namedPool();
   if (input.net > 0.5 && gap > pool + 0.5 && (managed || depositMentionsMowing)) {
     const hasFee = items.some((item) => item.label === 'Management fee');
     const label = mentioned ? 'mowing' : hasFee ? 'Other' : 'Management fee';
