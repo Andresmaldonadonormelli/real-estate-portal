@@ -128,13 +128,18 @@ export function unitAttention(unit: PortfolioUnit, now = new Date()): UnitAttent
   };
 }
 
-export function occupancyLabel(units: PortfolioUnit[], now = new Date()) {
-  if (!units.length) return 'No units';
+export function occupancyCounts(units: PortfolioUnit[], now = new Date()) {
   const occupied = units.filter(unit => {
     const kind = unitAttention(unit, now).kind;
     return kind === 'occupied' || kind === 'ending';
   }).length;
-  return `${occupied}/${units.length} occupied`;
+  return { occupied, total: units.length };
+}
+
+export function occupancyLabel(units: PortfolioUnit[], now = new Date()) {
+  const { occupied, total } = occupancyCounts(units, now);
+  if (!total) return 'No units';
+  return `${occupied}/${total} occupied`;
 }
 
 export function propertyWatch(units: PortfolioUnit[], now = new Date()): { label: string; tone: WatchTone } {

@@ -179,7 +179,8 @@ export default function PortfolioImprove({ properties, userId, addSignal }: { pr
     setOpen(false);
   }
 
-  return <div className="portfolio-improve">
+  return <div className="portfolio-improve portfolio-panel">
+    <div className="portfolio-panel-head"><strong>Improve</strong><span>{items.length}</span></div>
     {!items.length ? <p className="portfolio-empty">No improvements yet. Add one when you want to compare a project against a property.</p> : <>
       {active.length ? <ImproveGroup title="To do next" items={active} propertyName={propertyName} onEdit={edit} showHeader /> : <p className="portfolio-empty">Nothing in progress. Completed improvements stay below.</p>}
       {completed.length ? <ImproveGroup title="Completed" items={completed} propertyName={propertyName} onEdit={edit} showHeader={!active.length} /> : null}
