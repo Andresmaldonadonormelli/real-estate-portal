@@ -155,22 +155,6 @@ export default function PropertiesPage() {
     setShowUnitForm(true);
   }
 
-  function startEditUnit(unit: Unit) {
-    setEditingUnit(unit);
-    setUnitForm({
-      property_id: unit.property_id,
-      unit_number: unit.unit_number || '',
-      bedroom_count: String(unit.bedroom_count ?? ''),
-      bathroom_count: String(unit.bathroom_count ?? ''),
-      sqft: String(unit.sqft ?? ''),
-      current_rent: String(unit.current_rent ?? ''),
-      tenant_name: unit.tenant_name || '',
-      occupied: Boolean(unit.occupied),
-      recurring_rent_enabled: unit.recurring_rent_enabled !== false,
-    });
-    setShowUnitForm(true);
-  }
-
   async function saveUnit(e: FormEvent) {
     e.preventDefault();
     setSaving(true); setError('');
@@ -234,7 +218,7 @@ export default function PropertiesPage() {
         <>
           <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
           <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} onAddTenant={property => startAddUnit(property.id)} onEditUnit={unit => startEditUnit(unit as Unit)} />}
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} onAddTenant={property => startAddUnit(property.id)} />}
           {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
           {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
         </>

@@ -112,7 +112,7 @@ function trailingStats(transactions: HistoryTransaction[], property: Property) {
   };
 }
 
-export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing, onAddTenant, onEditUnit }: {
+export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing, onAddTenant }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   transactions: HistoryTransaction[];
@@ -120,7 +120,6 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
   imageUrls: Record<string, string>;
   onAddFinancing: (property: Property) => void;
   onAddTenant: (property: Property) => void;
-  onEditUnit: (unit: PortfolioUnit) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const rentHeading = `${monthName()} rent`;
@@ -173,26 +172,6 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
             <div><strong>{stats.coverage}</strong><span>Debt-service coverage</span></div>
           </div>
           <section className="portfolio-detail-section">
-            <div className="portfolio-detail-section-head">
-              <h3>Units</h3>
-              <button type="button" className="portfolio-detail-action" onClick={() => onAddTenant(property)}>Add tenant</button>
-            </div>
-            {units.length ? units.map(unit => {
-              const attention = unitAttention(unit);
-              const leaseEnd = formatLeaseDate(unit.lease_end_date);
-              return <button key={unit.id} type="button" className="portfolio-detail-unit" onClick={() => onEditUnit(unit)}>
-                <strong>{unit.unit_number}</strong>
-                <span aria-hidden="true">·</span>
-                <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
-                <span aria-hidden="true">·</span>
-                <span>{attention.tenantLabel}</span>
-                <span aria-hidden="true">·</span>
-                <span>{formatCurrency(Number(unit.current_rent || 0))}</span>
-                {leaseEnd && <><span aria-hidden="true">·</span><span>Ends {leaseEnd}</span></>}
-              </button>;
-            }) : <p className="portfolio-detail-empty">No units yet.</p>}
-          </section>
-          <section className="portfolio-detail-section">
             {financed ? <div className="portfolio-mortgage-row">
               <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
               <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
@@ -216,6 +195,8 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
               {docs.latest && <><span aria-hidden="true">·</span><span>Latest {docs.latest}</span></>}
               <span aria-hidden="true">·</span>
               <Link href={`/properties/${property.id}?tab=documents`}>View documents</Link>
+              <span aria-hidden="true">·</span>
+              <button type="button" className="portfolio-detail-action" onClick={() => onAddTenant(property)}>Add tenant</button>
             </p>
           </section>
         </div>}

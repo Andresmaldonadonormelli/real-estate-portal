@@ -73,18 +73,11 @@
 .portfolio-stat-band span{display:block;margin-top:2px;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .portfolio-detail-section{padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-color)}
 .portfolio-property-block:last-child .portfolio-detail-section:last-child{border-bottom:0}
-.portfolio-detail-section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);min-height:32px;margin-bottom:var(--space-2)}
-.portfolio-detail-section h3,.portfolio-detail-section-head h3{margin:0;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-medium)}
 .portfolio-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-3) var(--space-4);margin:0}
 .portfolio-detail-grid div{display:grid;gap:2px}
 .portfolio-detail-grid dt{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .portfolio-detail-grid dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-medium)}
 .portfolio-detail-grid dd.is-quiet{color:var(--text-secondary);font-weight:var(--weight-regular)}
-.portfolio-detail-unit{display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:32px;padding:var(--space-1) 0 0;border:0;border-top:1px solid var(--border-color);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.portfolio-detail-section .portfolio-detail-unit:first-of-type{padding-top:0;border-top:0}
-.portfolio-detail-unit strong,.portfolio-detail-unit>span:not([aria-hidden]){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.portfolio-detail-unit>[aria-hidden]{color:var(--text-secondary)}
-.portfolio-detail-unit .portfolio-unit-status{flex:0 0 auto}
 .portfolio-mortgage-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-3) var(--space-4)}
 .portfolio-mortgage-row>div{display:grid;gap:2px}
 .portfolio-mortgage-row dt{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
@@ -92,12 +85,7 @@
 .portfolio-mortgage-row .portfolio-detail-action{margin-top:0;margin-left:auto}
 .portfolio-summary-line{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:0;min-height:32px;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .portfolio-summary-line .portfolio-detail-action,.portfolio-summary-line a{margin-top:0;color:var(--text-primary);font-weight:var(--weight-medium);text-decoration:none}
-.portfolio-detail-unit-top{display:flex;align-items:center;justify-content:flex-start;gap:var(--space-2);min-width:0}
-.portfolio-detail-unit-top strong{overflow:hidden;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);text-overflow:ellipsis;white-space:nowrap}
-.portfolio-detail-unit-meta{margin:0;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
-.portfolio-detail-empty{margin:0;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .portfolio-detail-action{display:inline-flex;align-items:center;min-height:32px;margin-top:var(--space-1);padding:0;border:0;background:transparent;color:var(--text-primary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-medium);cursor:pointer}
-.portfolio-detail-section-head .portfolio-detail-action{margin-top:0}
 .portfolio-facts{display:grid;gap:var(--space-2);margin:0}
 .portfolio-facts div{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
 .portfolio-facts dt{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
@@ -183,7 +171,7 @@
   .portfolio-improve-benefit{grid-column:5}
 }
 @media (hover:hover) and (pointer:fine){
-  .portfolio-property-row:hover,.portfolio-unit-row:hover,.portfolio-improve-row:hover,.portfolio-utility-row:hover,.portfolio-detail-unit:hover{background:var(--surface-hover)}
+  .portfolio-property-row:hover,.portfolio-unit-row:hover,.portfolio-improve-row:hover,.portfolio-utility-row:hover{background:var(--surface-hover)}
   .portfolio-improve-model:hover{color:var(--text-primary)}
 }
 @media (max-width:767px){
@@ -193,7 +181,7 @@
   .portfolio-columns{display:none}
   .portfolio-property-row,.portfolio-unit-row,.portfolio-improve-open,.portfolio-utility-row{min-height:44px;padding:var(--space-4)}
   .portfolio-stat-band{grid-template-columns:1fr 1fr}
-  .portfolio-detail-action,.portfolio-doc-line a,.portfolio-summary-line a,.portfolio-detail-unit,.portfolio-summary-line{min-height:44px}
+  .portfolio-detail-action,.portfolio-doc-line a,.portfolio-summary-line a,.portfolio-summary-line{min-height:44px}
   .portfolio-dialog-overlay{place-items:end stretch;padding:0}
   .portfolio-dialog{width:100%;max-height:calc(100dvh - env(safe-area-inset-top));border-bottom:0;border-radius:var(--radius-card) var(--radius-card) 0 0}
   .utility-drawer{width:100%;border-left:0}
