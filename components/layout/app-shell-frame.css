@@ -129,26 +129,6 @@ body {
   .app-shell .nav-property-link svg {
     flex: 0 0 auto;
   }
-  .app-shell .nav-property-toggle {
-    display: grid;
-    place-items: center;
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    margin-right: 4px;
-    padding: 0;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-  .app-shell .nav-property-toggle svg {
-    transition: transform var(--motion-fast);
-  }
-  .app-shell .nav-property-toggle[aria-expanded='true'] svg {
-    transform: rotate(180deg);
-  }
   .app-shell .property-nav-list {
     position: relative;
     display: grid;

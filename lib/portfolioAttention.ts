@@ -11,7 +11,7 @@ export type PortfolioUnit = {
 };
 
 export type UnitKind = 'move-in' | 'ending' | 'occupied' | 'vacant';
-export type WatchTone = 'clear' | 'move-in' | 'warning';
+export type WatchTone = 'clear' | 'move-in' | 'warning' | 'vacant';
 
 export type UnitAttention = {
   kind: UnitKind;
@@ -142,21 +142,85 @@ export function occupancyLabel(units: PortfolioUnit[], now = new Date()) {
   return `${occupied}/${total} occupied`;
 }
 
+function watchDate(key: string, now: Date) {
+  const [year, month, day] = key.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', year === now.getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function moveInWhen(unit: PortfolioUnit, attention: UnitAttention, now: Date) {
+  if (attention.moveInDays !== null && attention.moveInDays <= 0) return 'today';
+  const start = dateKey(unit.lease_start_date);
+  return start ? watchDate(start, now) : '';
+}
+
 export function propertyWatch(units: PortfolioUnit[], now = new Date()): { label: string; tone: WatchTone } {
-  const items = units.map(unit => unitAttention(unit, now));
-  const moveIns = items.filter(item => item.kind === 'move-in' && item.moveInDays !== null).sort((a, b) => a.moveInDays! - b.moveInDays!);
-  if (moveIns[0]) return { label: moveIns[0].label, tone: 'move-in' };
-  const endings = items.filter(item => item.kind === 'ending' && item.leaseEndDays !== null).sort((a, b) => a.leaseEndDays! - b.leaseEndDays!);
-  if (endings[0]) return { label: endings[0].label, tone: 'warning' };
-  const vacant = items.filter(item => item.kind === 'vacant');
-  if (vacant.length) {
-    const known = vacant.map(item => item.vacancyDays).filter((days): days is number => days !== null);
-    const count = `${plural(vacant.length, 'unit')} vacant`;
-    if (!known.length) return { label: count, tone: 'warning' };
-    const longest = Math.max(...known);
-    return { label: `${count} · ${plural(longest, 'day')}`, tone: 'warning' };
+  if (!units.length) return { label: '—', tone: 'clear' };
+  const items = units.map(unit => ({ unit, attention: unitAttention(unit, now) }));
+  const vacant = items.filter(item => item.attention.kind === 'vacant');
+  const moveIns = items.filter(item => item.attention.kind === 'move-in').sort((a, b) => (a.attention.moveInDays ?? 0) - (b.attention.moveInDays ?? 0));
+  const endings = items.filter(item => item.attention.kind === 'ending' && item.attention.leaseEndDays !== null).sort((a, b) => a.attention.leaseEndDays! - b.attention.leaseEndDays!);
+  if (vacant.length && moveIns.length) {
+    const when = moveInWhen(moveIns[0].unit, moveIns[0].attention, now);
+    const noun = moveIns.length === 1 ? 'move-in' : 'move-ins';
+    return { label: `${vacant.length} vacant · ${moveIns.length} ${noun}${when ? ` ${when}` : ''}`, tone: 'vacant' };
   }
-  return { label: 'All clear', tone: 'clear' };
+  if (vacant.length) {
+    const known = vacant.map(item => item.attention.vacancyDays).filter((days): days is number => days !== null);
+    const count = `${plural(vacant.length, 'unit')} vacant`;
+    if (!known.length) return { label: count, tone: 'vacant' };
+    return { label: `${count} · ${plural(Math.max(...known), 'day')}`, tone: 'vacant' };
+  }
+  if (moveIns.length) {
+    const when = moveInWhen(moveIns[0].unit, moveIns[0].attention, now);
+    const noun = moveIns.length === 1 ? 'move-in' : 'move-ins';
+    return { label: `${moveIns.length} ${noun}${when ? ` ${when}` : ''}`, tone: 'move-in' };
+  }
+  if (endings[0]) return { label: endings[0].attention.label, tone: 'warning' };
+  if (units.length === 2) return { label: 'Both occupied', tone: 'clear' };
+  return { label: `${plural(units.length, 'unit')} occupied`, tone: 'clear' };
+}
+
+function clampDate(year: number, monthIndex: number, day: number) {
+  const last = new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(year, monthIndex, Math.min(day, last));
+}
+
+function dateToKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function nextMortgagePaymentLabel(start: string | null | undefined, now = new Date()) {
+  const key = dateKey(start);
+  if (!key) return '—';
+  const day = Number(key.slice(8, 10));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let due = clampDate(today.getFullYear(), today.getMonth(), day);
+  if (due < today) due = clampDate(today.getFullYear(), today.getMonth() + 1, day);
+  return formatLeaseDate(dateToKey(due));
+}
+
+function remainingTerm(months: number) {
+  if (months <= 0) return 'Term ended';
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  const yearLabel = years ? `${years} yr` : '';
+  const monthLabel = rem ? `${rem} mo` : '';
+  return `${[yearLabel, monthLabel].filter(Boolean).join(' ')} left`;
+}
+
+export function mortgagePayoffLabel(start: string | null | undefined, termYears: number | null | undefined, now = new Date()) {
+  const key = dateKey(start);
+  const term = Number(termYears || 0);
+  if (!key || !term) return '—';
+  const [year, month, day] = key.split('-').map(Number);
+  const end = clampDate(year + term, month - 1, day);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let months = (end.getFullYear() - today.getFullYear()) * 12 + (end.getMonth() - today.getMonth());
+  if (end.getDate() < today.getDate()) months -= 1;
+  return `${formatLeaseDate(dateToKey(end))} · ${remainingTerm(months)}`;
 }
 
 export function formatLeaseDate(value?: string | null) {

@@ -11,7 +11,7 @@ import type { HistoryTransaction } from '@/lib/financialHistory';
 import type { PortfolioUnit } from '@/lib/portfolioAttention';
 import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
 import { PageAction, PageHeader, SegmentedControl, UnderlineTabs } from '@/components/common/ProductControls';
-import { PropertiesList, UnitsList } from '@/components/property/PortfolioLists';
+import { PropertiesList, UnitsList, type PortfolioDocument } from '@/components/property/PortfolioLists';
 import PortfolioImprove from '@/components/property/PortfolioImprove';
 
 type PortfolioTab = 'properties' | 'units' | 'improve';
@@ -30,6 +30,7 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<PortfolioUnit[]>([]);
   const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
+  const [documents, setDocuments] = useState<PortfolioDocument[]>([]);
   const [tab, setTab] = useState<PortfolioTab>('properties');
   const [improveAdd, setImproveAdd] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -52,16 +53,18 @@ export default function PropertiesPage() {
     setLoading(true);
     setError('');
     try {
-      const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }] = await withTimeout(Promise.all([
+      const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }, { data: docRows, error: docError }] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
         cachedSupabaseRequest('properties:unit-details',async()=>await supabase.from('units').select(UNIT_DETAIL_FIELDS).is('archived_at',null).order('unit_number')),
         cachedSupabaseRequest('properties:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(13)).order('transaction_date',{ascending:false})),
+        cachedSupabaseRequest('properties:documents',async()=>await supabase.from('documents').select('id,property_id,document_date,created_at').is('archived_at',null)),
       ]), 8000, 'Properties took too long to load. Please retry.');
-      if (propError || unitError || txError) throw (propError || unitError || txError);
+      if (propError || unitError || txError || docError) throw (propError || unitError || txError || docError);
       const propertyRows = (props || []) as Property[];
       setProperties(propertyRows);
       setUnits((unitRows || []) as PortfolioUnit[]);
       setTransactions((txRows || []) as HistoryTransaction[]);
+      setDocuments((docRows || []) as PortfolioDocument[]);
       setLoading(false);
       void (async()=>{
         const urls: Record<string,string> = {};
@@ -230,7 +233,7 @@ export default function PropertiesPage() {
         <>
           <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
           <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} imageUrls={imageUrls} />}
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} />}
           {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
           {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
         </>
