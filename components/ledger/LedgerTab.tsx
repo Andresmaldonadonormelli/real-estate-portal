@@ -14,6 +14,7 @@ import { withTimeout } from '@/lib/async';
 import { Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X, Landmark } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
+import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
 import { cachedSupabaseRequest, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 import { SegmentedControl } from '@/components/common/ProductControls';
@@ -52,6 +53,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [formEditing, setFormEditing] = useState(false);
   const [form, setForm] = useState(emptyTx);
   const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState({ search:'', type:'', category:'', min:'', max:'' });
@@ -117,8 +119,8 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';
   const unitName=(id?:string|null)=>units.find(u=>u.id===id)?.unit_number||'';
 
-  function openAdd(){setEditing(null);setShowForm(true);}
-  async function openEdit(tx:Transaction){setEditing(tx);setShowForm(true);if(tx.is_new_import){setTransactions(rows=>rows.map(row=>row.id===tx.id?{...row,is_new_import:false,import_acknowledged_at:new Date().toISOString()}:row));await supabase.from('transactions').update({is_new_import:false,import_acknowledged_at:new Date().toISOString()}).eq('id',tx.id)}}
+  function openAdd(){setEditing(null);setFormEditing(true);setShowForm(true);}
+  async function openEdit(tx:Transaction){setEditing(tx);setFormEditing(false);setShowForm(true);if(tx.is_new_import){setTransactions(rows=>rows.map(row=>row.id===tx.id?{...row,is_new_import:false,import_acknowledged_at:new Date().toISOString()}:row));await supabase.from('transactions').update({is_new_import:false,import_acknowledged_at:new Date().toISOString()}).eq('id',tx.id)}}
 
   async function saveTx(e:FormEvent){
     e.preventDefault(); setSaving(true); setError(''); setNotice('');
@@ -234,7 +236,8 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       })}
     </div>}
 
-    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async (message,id,phase)=>{const archivedId=id||editing?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {showForm&&editing&&!formEditing&&<TransactionDetailModal transaction={editing} properties={properties} units={units} transactions={transactions} onClose={()=>{setShowForm(false);setEditing(null);setFormEditing(false)}} onEdit={()=>setFormEditing(true)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async (message,id,phase)=>{const archivedId=id||editing.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {showForm&&(!editing||formEditing)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={formEditing?editing as any:null} onClose={()=>{if(formEditing&&editing){setFormEditing(false);return;}setShowForm(false);setEditing(null);setFormEditing(false)}} onSaved={async message=>{await loadData();setToast(message||'Transaction saved');setShowForm(false);setEditing(null);setFormEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||editing?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {showImport&&<UiModal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
       <p style={{fontSize:14,color:'var(--text-secondary)'}}>Import a Doorvest ledger export in bulk. Re-importing the same CSV is safe because duplicate rows are skipped.</p>

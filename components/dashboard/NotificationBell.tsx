@@ -5,16 +5,18 @@ import { createPortal } from 'react-dom';
 import { Bell, X } from 'lucide-react';
 
 const SAMPLE_NOTIFICATIONS = [
-  { id: 'transfer', title: 'Bank transfer received', detail: '15334 Triskett', amount: '+$2,377', tone: 'positive' as const, time: '2h ago' },
+  { id: 'transfer', title: 'Bank transfer received', detail: '15334 Triskett', amount: '+$2,377', tone: 'positive' as const, time: '2h ago', match: 'payout' as const },
   { id: 'rent', title: 'Rent still outstanding', detail: 'W134', amount: '$1,200 remaining', tone: 'negative' as const, time: '1d ago' },
   { id: 'lease', title: 'Lease ends in 30 days', detail: '214 Maple · Unit 1', amount: '', tone: '' as const, time: '2d ago' },
-  { id: 'review', title: 'Transaction needs review', detail: '3765 W134th · Uncategorized', amount: '', tone: '' as const, time: '3h ago' },
-  { id: 'expense', title: 'Large expense posted', detail: 'Harbor Plumbing', amount: '-$280', tone: 'negative' as const, time: '6h ago' },
+  { id: 'review', title: 'Transaction needs review', detail: '3765 W134th · Uncategorized', amount: '', tone: '' as const, time: '3h ago', match: 'review' as const },
+  { id: 'expense', title: 'Large expense posted', detail: 'Harbor Plumbing', amount: '-$280', tone: 'negative' as const, time: '6h ago', match: 'expense' as const },
 ];
+
+export type DashboardNotification = (typeof SAMPLE_NOTIFICATIONS)[number];
 
 const SLIDE_MS = 280;
 
-export default function NotificationBell() {
+export default function NotificationBell({ onOpenTransaction }: { onOpenTransaction?: (item: DashboardNotification) => void }) {
   const [open, setOpen] = useState(false);
   const [present, setPresent] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -62,7 +64,7 @@ export default function NotificationBell() {
         <ul className="dashboard-drawer-list">
           {SAMPLE_NOTIFICATIONS.map((item) => (
             <li key={item.id} data-unread={unread.includes(item.id) ? 'true' : 'false'}>
-              <button type="button">
+              <button type="button" onClick={() => { if (!('match' in item)) return; setOpen(false); onOpenTransaction?.(item); }}>
                 <span className="dashboard-drawer-title">
                   <strong>{item.title}</strong>
                   <time>{item.time}</time>

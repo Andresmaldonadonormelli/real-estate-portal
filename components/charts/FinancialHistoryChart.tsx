@@ -257,7 +257,6 @@ export default function FinancialHistoryChart({
         {active && grouped && (
           <div
             className="financial-history-tooltip financial-history-tooltip-grouped"
-            data-edge={selected === 0 ? 'left' : selected === rows.length - 1 ? 'right' : 'center'}
             style={{
               left: `${(x(selected!) / width) * 100}%`,
               '--dashboard-tooltip-top': `${(Math.min(upwardY(incomeValues[selected!] || 0), upwardY(expenseValues[selected!] || 0)) / height) * 100}%`,

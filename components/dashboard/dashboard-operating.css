@@ -177,14 +177,8 @@
   color: var(--text-secondary);
   font-size: var(--type-label-size) !important;
   line-height: var(--type-label-line) !important;
-  transform: translate(-50%, calc(-100% - 8px));
+  transform: translate(-50%, calc(-100% - 8px)) !important;
   pointer-events: none;
-}
-.dashboard-operating .financial-history-tooltip-grouped[data-edge="left"] {
-  transform: translate(0, calc(-100% - 8px));
-}
-.dashboard-operating .financial-history-tooltip-grouped[data-edge="right"] {
-  transform: translate(-100%, calc(-100% - 8px));
 }
 .dashboard-operating .financial-history-tooltip-grouped > strong {
   grid-column: 1 / -1;
@@ -402,11 +396,11 @@
 }
 .dashboard-expense-total {
   display: block;
-  margin-top: var(--space-2);
-  font-size: var(--type-section-title-size);
-  line-height: var(--type-section-title-line);
+  margin-top: var(--space-1);
+  color: var(--text-primary);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 .dashboard-expense-list {
@@ -454,12 +448,22 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+.dashboard-expense-row[data-spent='false'] strong,
+.dashboard-expense-row[data-spent='false'] b {
+  color: var(--text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+  font-weight: var(--weight-medium);
+}
 .dashboard-expense-track {
   display: block;
-  height: 6px;
+  height: 8px;
   overflow: hidden;
   border-radius: 2px;
   background: var(--dashboard-series-track);
+}
+.dashboard-expense-row[data-spent='false'] .dashboard-expense-track {
+  height: 2px;
 }
 .dashboard-expense-track i {
   display: block;
