@@ -24,8 +24,8 @@ export default function BottomNav() {
 
   return createPortal(
     <nav className="bottom-nav">
-      {items.map(({href,label,icon:Icon})=>{const active=pathname===href||pathname.startsWith(href+'/')||(href==='/ledger'&&pathname.startsWith('/actions'));return <Link key={href} href={href} className={`bottom-nav-link ${active?'active':''}`}>{href==='/'?<OverviewIcon active={active} size={20}/>:<Icon size={20} strokeWidth={1.75} fill={active?'currentColor':'none'}/>}<span>{label}</span></Link>})}
-      <Link href="/account" className={`bottom-nav-link ${pathname.startsWith('/account')||pathname.startsWith('/archive')?'active':''}`}><Ellipsis size={20} strokeWidth={1.75} fill={pathname.startsWith('/account')||pathname.startsWith('/archive')?'currentColor':'none'}/><span>More</span></Link>
+      {items.map(({href,label,icon:Icon})=>{const active=pathname===href||pathname.startsWith(href+'/')||(href==='/ledger'&&pathname.startsWith('/actions'));return <Link key={href} href={href} className={`bottom-nav-link ${active?'active':''}`}>{href==='/'?<OverviewIcon active={active} size={26}/>:<Icon size={26} strokeWidth={1.75} fill={active?'currentColor':'none'}/>}<span>{label}</span></Link>})}
+      <Link href="/account" className={`bottom-nav-link ${pathname.startsWith('/account')||pathname.startsWith('/archive')?'active':''}`}><Ellipsis size={26} strokeWidth={1.75} fill={pathname.startsWith('/account')||pathname.startsWith('/archive')?'currentColor':'none'}/><span>More</span></Link>
     </nav>,
     document.body
   );

@@ -28,17 +28,17 @@ export default function SideNav() {
       <strong>Portfolio</strong>
     </div>
     <div className="side-nav-scroll">
-      <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><OverviewIcon active={pathname==='/'} size={18}/>Overview</Link>
-      <button type="button" className={`nav-link nav-disclosure ${pathname.startsWith('/properties')?'active':''}`} aria-expanded={propertiesOpen} onClick={()=>setPropertiesOpen(open=>!open)}><Building2 size={18} strokeWidth={1.75} fill={pathname.startsWith('/properties')?'currentColor':'none'}/><span>Properties</span><ChevronDown size={16} aria-hidden="true"/></button>
+      <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><OverviewIcon active={pathname==='/'} size={23}/>Overview</Link>
+      <button type="button" className={`nav-link nav-disclosure ${pathname.startsWith('/properties')?'active':''}`} aria-expanded={propertiesOpen} onClick={()=>setPropertiesOpen(open=>!open)}><Building2 size={23} strokeWidth={1.75} fill={pathname.startsWith('/properties')?'currentColor':'none'}/><span>Properties</span><ChevronDown size={16} aria-hidden="true"/></button>
       {propertiesOpen&&<div className="property-nav-list">
         <Link href="/properties" className={`property-nav-link ${pathname==='/properties'?'active':''}`}>All properties</Link>
         {properties.map(property=><Link key={property.id} href={`/properties/${property.id}`} className={`property-nav-link ${pathname===`/properties/${property.id}`?'active':''}`}>{shortPropertyName(property.address)}</Link>)}
       </div>}
-      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={18} strokeWidth={1.75} fill={pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'currentColor':'none'}/><span>Transactions</span></Link>
-      <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Lightbulb size={18} strokeWidth={1.75} fill={pathname.startsWith('/utilities')?'currentColor':'none'}/>Utilities</Link>
+      <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={23} strokeWidth={1.75} fill={pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'currentColor':'none'}/><span>Transactions</span></Link>
+      <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Lightbulb size={23} strokeWidth={1.75} fill={pathname.startsWith('/utilities')?'currentColor':'none'}/>Utilities</Link>
     </div>
     <div className="side-nav-footer">
-      <Link href="/account" className={`nav-link ${pathname.startsWith('/account')||pathname.startsWith('/archive')?'active':''}`}><UserRound size={18} strokeWidth={1.75} fill={pathname.startsWith('/account')||pathname.startsWith('/archive')?'currentColor':'none'}/>Account</Link>
+      <Link href="/account" className={`nav-link ${pathname.startsWith('/account')||pathname.startsWith('/archive')?'active':''}`}><UserRound size={23} strokeWidth={1.75} fill={pathname.startsWith('/account')||pathname.startsWith('/archive')?'currentColor':'none'}/>Account</Link>
     </div>
   </nav>;
 }
