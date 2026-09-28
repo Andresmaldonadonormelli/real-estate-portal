@@ -181,40 +181,35 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
               const attention = unitAttention(unit);
               const leaseEnd = formatLeaseDate(unit.lease_end_date);
               return <button key={unit.id} type="button" className="portfolio-detail-unit" onClick={() => onEditUnit(unit)}>
-                <div className="portfolio-detail-unit-top">
-                  <strong>{unit.unit_number}</strong>
-                  <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
-                </div>
-                <span className="portfolio-unit-tenant">{attention.tenantLabel}</span>
-                <span className="portfolio-detail-unit-meta">{formatCurrency(Number(unit.current_rent || 0))}{leaseEnd ? ` · Ends ${leaseEnd}` : ''}</span>
+                <strong>{unit.unit_number}</strong>
+                <span aria-hidden="true">·</span>
+                <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
+                <span aria-hidden="true">·</span>
+                <span>{attention.tenantLabel}</span>
+                <span aria-hidden="true">·</span>
+                <span>{formatCurrency(Number(unit.current_rent || 0))}</span>
+                {leaseEnd && <><span aria-hidden="true">·</span><span>Ends {leaseEnd}</span></>}
               </button>;
             }) : <p className="portfolio-detail-empty">No units yet.</p>}
           </section>
           <section className="portfolio-detail-section">
-            <div className="portfolio-detail-section-head">
-              <h3>Mortgage</h3>
-              {financed && <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Edit</button>}
-            </div>
-            {financed ? <dl className="portfolio-detail-grid">
+            {financed ? <div className="portfolio-mortgage-row">
               <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
               <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
               <Fact label="Monthly payment" value={moneyOrDash(property.monthly_mortgage_payment)} />
               <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />
               <Fact label="Payoff" value={mortgagePayoffLabel(property.mortgage_start_date, property.mortgage_term_years)} />
-            </dl> : <>
-              <p className="portfolio-detail-empty">Mortgage details not added</p>
+              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Edit</button>
+            </div> : <p className="portfolio-summary-line">
+              <span>Mortgage details not added</span>
+              <span aria-hidden="true">·</span>
               <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Add financing</button>
-            </>}
+            </p>}
           </section>
           <section className="portfolio-detail-section">
-            <div className="portfolio-detail-section-head"><h3>Property details</h3></div>
-            <dl className="portfolio-detail-grid">
-              <Fact label="Property manager" value="Not added" quiet />
-              <Fact label="Ownership entity" value="Not added" quiet />
-              <Fact label="Acquired" value={acquired || 'Not added'} quiet={!acquired} />
-              {property.purchase_price != null && <Fact label="Purchase price" value={formatCurrency(Number(property.purchase_price))} />}
-            </dl>
-            <p className="portfolio-doc-line">
+            <p className="portfolio-summary-line">
+              {acquired && <><span>Acquired {acquired}</span><span aria-hidden="true">·</span></>}
+              {property.purchase_price != null && <><span>Purchase price {formatCurrency(Number(property.purchase_price))}</span><span aria-hidden="true">·</span></>}
               <span>Documents</span>
               <span aria-hidden="true">·</span>
               <span>{docs.count}</span>
