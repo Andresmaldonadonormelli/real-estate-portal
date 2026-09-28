@@ -139,7 +139,7 @@ export function occupancyCounts(units: PortfolioUnit[], now = new Date()) {
 export function occupancyLabel(units: PortfolioUnit[], now = new Date()) {
   const { occupied, total } = occupancyCounts(units, now);
   if (!total) return 'No units';
-  return `${occupied}/${total} occupied`;
+  return `${occupied} of ${total} occupied`;
 }
 
 function watchDate(key: string, now: Date) {

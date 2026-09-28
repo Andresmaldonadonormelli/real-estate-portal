@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import type { Property } from '@/lib/types';
 import type { HistoryTransaction } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
-import { formatLeaseDate, leaseRangeLabel, mortgagePayoffLabel, nextMortgagePaymentLabel, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
+import { formatLeaseDate, leaseRangeLabel, mortgagePayoffLabel, nextMortgagePaymentLabel, occupancyCounts, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
 import { cashFlowThisMonth, rentThisMonth } from '@/lib/portfolioMonth';
 
 export type PortfolioDocument = {
@@ -15,9 +15,6 @@ export type PortfolioDocument = {
   document_date?: string | null;
   created_at?: string | null;
 };
-
-const SAMPLE_MANAGER = 'Sample manager';
-const SAMPLE_ENTITY = 'Sample Holdings LLC';
 
 function signedMoney(amount: number) {
   const rounded = Math.round(amount);
@@ -41,9 +38,23 @@ function statusLabel(kind: UnitKind, label: string, vacancyDays: number | null) 
   return label;
 }
 
-function unitCountLabel(count: number) {
-  if (!count) return 'No units';
-  return count === 1 ? '1 unit' : `${count} units`;
+function OccupancyRing({ units }: { units: PortfolioUnit[] }) {
+  const { occupied, total } = occupancyCounts(units);
+  if (!total) return <span className="portfolio-occupancy">No units</span>;
+  const size = 28;
+  const stroke = 3;
+  const radius = (size - stroke) / 2;
+  const center = size / 2;
+  const length = 2 * Math.PI * radius;
+  const ratio = occupied / total;
+  const label = `${occupied} of ${total} occupied`;
+  return <span className="portfolio-occupancy">
+    <svg className="portfolio-occupancy-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle className="portfolio-occupancy-track" cx={center} cy={center} r={radius} fill="none" stroke="currentColor" strokeWidth={stroke} />
+      {ratio > 0 && <circle className="portfolio-occupancy-arc" cx={center} cy={center} r={radius} fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap={ratio < 1 ? 'round' : 'butt'} strokeDasharray={ratio < 1 ? `${length * ratio} ${length}` : undefined} transform={`rotate(-90 ${center} ${center})`} />}
+    </svg>
+    <span>{label}</span>
+  </span>;
 }
 
 function monthName(now = new Date()) {
@@ -61,27 +72,36 @@ function moneyOrDash(value?: number | null) {
 }
 
 function documentSummary(docs: PortfolioDocument[]) {
-  if (!docs.length) return { count: 'No documents', latest: '' };
+  if (!docs.length) return { count: 'No files', latest: '' };
   const latest = docs.reduce((best, doc) => {
     const key = (doc.document_date || doc.created_at || '').slice(0, 10);
     return key > best ? key : best;
   }, '');
   return {
-    count: docs.length === 1 ? '1 document' : `${docs.length} documents`,
+    count: docs.length === 1 ? '1 file' : `${docs.length} files`,
     latest: latest ? formatLeaseDate(latest) : '',
   };
 }
 
-function Fact({ label, value, sample = false }: { label: string; value: string; sample?: boolean }) {
-  return <div><dt>{label}</dt><dd className={sample ? 'is-sample' : undefined}>{value}</dd></div>;
+function hasMortgage(property: Property) {
+  const balance = Number(property.mortgage_balance || 0);
+  const payment = Number(property.monthly_mortgage_payment || 0);
+  const rate = property.mortgage_interest_rate;
+  const hasRate = rate !== null && rate !== undefined && Number.isFinite(Number(rate));
+  return balance > 0 || payment > 0 || hasRate || Boolean(property.mortgage_start_date);
 }
 
-export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls }: {
+function Fact({ label, value, quiet = false }: { label: string; value: string; quiet?: boolean }) {
+  return <div><dt>{label}</dt><dd className={quiet ? 'is-quiet' : undefined}>{value}</dd></div>;
+}
+
+export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   transactions: HistoryTransaction[];
   documents: PortfolioDocument[];
   imageUrls: Record<string, string>;
+  onAddFinancing: (property: Property) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const rentHeading = `${monthName()} rent`;
@@ -108,11 +128,12 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
       const open = expandedId === property.id;
       const detailId = `property-detail-${property.id}`;
       const docs = documentSummary(docsByProperty[property.id] || []);
-      const acquired = formatLeaseDate(property.purchase_date) || '—';
+      const acquired = formatLeaseDate(property.purchase_date);
+      const financed = hasMortgage(property);
       return <div key={property.id} className="portfolio-property-block">
         <button type="button" className="portfolio-property-row portfolio-property-grid" aria-expanded={open} aria-controls={detailId} onClick={() => setExpandedId(current => current === property.id ? null : property.id)}>
           <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
-          <span className="portfolio-unit-count">{unitCountLabel(units.length)}</span>
+          <OccupancyRing units={units} />
           <span className="portfolio-figure">
             <span className="portfolio-figure-label">{rentHeading}</span>
             <strong>{formatCurrency(rentThisMonth(transactions, property.id))}</strong>
@@ -138,35 +159,38 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
                 <span className="portfolio-unit-tenant">{attention.tenantLabel}</span>
                 <span className="portfolio-detail-unit-meta">{formatCurrency(Number(unit.current_rent || 0))}{leaseEnd ? ` · Ends ${leaseEnd}` : ''}</span>
               </div>;
-            }) : <p className="portfolio-doc-latest">No units yet.</p>}
+            }) : <p className="portfolio-detail-empty">No units yet.</p>}
           </section>
           <section className="portfolio-detail-col">
             <h3>Mortgage</h3>
-            <dl className="portfolio-facts">
+            {financed ? <dl className="portfolio-facts">
               <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
               <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
               <Fact label="Monthly payment" value={moneyOrDash(property.monthly_mortgage_payment)} />
               <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />
               <Fact label="Payoff" value={mortgagePayoffLabel(property.mortgage_start_date, property.mortgage_term_years)} />
-            </dl>
+            </dl> : <>
+              <p className="portfolio-detail-empty">Mortgage details not added</p>
+              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Add financing</button>
+            </>}
           </section>
-          <div className="portfolio-detail-stack">
-            <section className="portfolio-detail-col">
-              <h3>Property details</h3>
-              <dl className="portfolio-facts">
-                <Fact label="Property manager" value={SAMPLE_MANAGER} sample />
-                <Fact label="Ownership entity" value={SAMPLE_ENTITY} sample />
-                <Fact label="Acquired" value={acquired} />
-                {property.purchase_price != null && <Fact label="Purchase price" value={formatCurrency(Number(property.purchase_price))} />}
-              </dl>
-            </section>
-            <section className="portfolio-detail-col">
-              <h3>Documents</h3>
-              <p className="portfolio-doc-count">{docs.count}</p>
-              {docs.latest && <p className="portfolio-doc-latest">Latest {docs.latest}</p>}
-              <Link className="portfolio-doc-link" href={`/properties/${property.id}?tab=documents`}>View documents</Link>
-            </section>
-          </div>
+          <section className="portfolio-detail-col">
+            <h3>Property details</h3>
+            <dl className="portfolio-facts">
+              <Fact label="Property manager" value="Not added" quiet />
+              <Fact label="Ownership entity" value="Not added" quiet />
+              <Fact label="Acquired" value={acquired || 'Not added'} quiet={!acquired} />
+              {property.purchase_price != null && <Fact label="Purchase price" value={formatCurrency(Number(property.purchase_price))} />}
+            </dl>
+            <p className="portfolio-doc-line">
+              <span>Documents</span>
+              <span aria-hidden="true">·</span>
+              <span>{docs.count}</span>
+              {docs.latest && <><span aria-hidden="true">·</span><span>Latest {docs.latest}</span></>}
+              <span aria-hidden="true">·</span>
+              <Link href={`/properties/${property.id}?tab=documents`}>View documents</Link>
+            </p>
+          </section>
         </div>}
       </div>;
     })}

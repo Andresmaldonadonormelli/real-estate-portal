@@ -96,82 +96,6 @@ body {
   .app-shell .nav-disclosure[aria-expanded='true'] svg:last-child {
     transform: rotate(180deg);
   }
-  .app-shell .nav-property-row {
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-    border-radius: 12px;
-    color: var(--text-secondary);
-  }
-  .app-shell .nav-property-row.active {
-    background: var(--theme-card);
-    color: var(--text-primary);
-  }
-  .app-shell .nav-property-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 40px;
-    padding: 0 var(--space-3);
-    color: inherit;
-    font-size: var(--type-small-size);
-    line-height: var(--type-small-line);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-  }
-  .app-shell .nav-property-link span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .app-shell .nav-property-link svg {
-    flex: 0 0 auto;
-  }
-  .app-shell .property-nav-list {
-    position: relative;
-    display: grid;
-    gap: 2px;
-    margin: 2px 0 var(--space-2);
-    padding: 2px 0 2px 34px;
-  }
-  .app-shell .property-nav-list::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 16px;
-    left: 22px;
-    width: 10px;
-    border-left: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    border-bottom-left-radius: 8px;
-    pointer-events: none;
-  }
-  .app-shell .property-nav-link {
-    display: flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 10px;
-    overflow: hidden;
-    border-radius: 12px !important;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: var(--type-label-size);
-    line-height: var(--type-label-line);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .app-shell .side-nav a.property-nav-link {
-    color: var(--text-secondary);
-  }
-  .app-shell .property-nav-link.active {
-    background: var(--theme-card) !important;
-    color: var(--text-primary) !important;
-    font-weight: var(--weight-medium) !important;
-  }
   .app-shell .side-nav-footer {
     margin-top: auto;
     padding: var(--space-3) 0 0;
@@ -226,30 +150,10 @@ body {
     background: var(--theme-card) !important;
     color: var(--text-primary) !important;
   }
-  .app-shell .nav-property-row:hover {
-    background: var(--theme-surface-hover);
-    color: var(--text-primary);
-  }
-  .app-shell .property-nav-link:hover {
-    background: var(--theme-surface-hover) !important;
-    color: var(--text-primary) !important;
-  }
-  .app-shell .nav-property-row.active:hover {
-    background: var(--theme-card);
-    color: var(--text-primary);
-  }
-  .app-shell .property-nav-link.active:hover {
-    background: var(--theme-card) !important;
-    color: var(--text-primary) !important;
-  }
 }
 
 [data-theme="dark"] .app-shell .nav-link.active,
-[data-theme="dark"] .app-shell .nav-link.active:hover,
-[data-theme="dark"] .app-shell .nav-property-row.active,
-[data-theme="dark"] .app-shell .nav-property-row.active:hover,
-[data-theme="dark"] .app-shell .property-nav-link.active,
-[data-theme="dark"] .app-shell .property-nav-link.active:hover {
+[data-theme="dark"] .app-shell .nav-link.active:hover {
   background: var(--theme-surface-hover) !important;
   color: var(--theme-text-primary) !important;
   border: 0 !important;

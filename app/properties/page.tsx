@@ -94,7 +94,7 @@ export default function PropertiesPage() {
     setShowPropertyForm(true);
   }
 
-  function startEditProperty(property: Property) {
+  function startEditProperty(property: Property, financing = false) {
     setEditingProperty(property);
     setPropertyImage(null);
     setPropertyForm({
@@ -107,7 +107,7 @@ export default function PropertiesPage() {
       management_fee_percent: String(property.management_fee_percent ?? 0),
       mortgage_recurring_enabled: false,
     });
-    setShowPropertyDetails(false);
+    setShowPropertyDetails(financing);
     setShowPropertyForm(true);
   }
 
@@ -233,7 +233,7 @@ export default function PropertiesPage() {
         <>
           <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
           <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} />}
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} />}
           {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
           {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
         </>
