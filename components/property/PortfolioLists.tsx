@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import type { Property } from '@/lib/types';
-import type { HistoryTransaction } from '@/lib/financialHistory';
+import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
 import { formatLeaseDate, leaseRangeLabel, mortgagePayoffLabel, nextMortgagePaymentLabel, occupancyCounts, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
 import { cashFlowThisMonth, rentThisMonth } from '@/lib/portfolioMonth';
@@ -95,13 +95,32 @@ function Fact({ label, value, quiet = false }: { label: string; value: string; q
   return <div><dt>{label}</dt><dd className={quiet ? 'is-quiet' : undefined}>{value}</dd></div>;
 }
 
-export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing }: {
+function trailingStats(transactions: HistoryTransaction[], property: Property) {
+  const months = buildMonthlyFinancialHistory(transactions, '1Y', property.id);
+  const income = months.reduce((sum, row) => sum + row.income, 0);
+  const operating = months.reduce((sum, row) => sum + row.operatingExpenses, 0);
+  const cash = months.reduce((sum, row) => sum + row.cashExpenses, 0);
+  const noi = income - operating;
+  const debtService = Math.max(0, cash - operating);
+  const price = Number(property.purchase_price);
+  return {
+    noiText: formatCurrency(noi),
+    noiTone: noi > 0 ? 'positive' : noi < 0 ? 'negative' : '',
+    cap: price > 0 ? `${(noi / price * 100).toFixed(1)}%` : '—',
+    expense: income > 0 ? `${(operating / income * 100).toFixed(1)}%` : '—',
+    coverage: debtService > 0 ? `${(noi / debtService).toFixed(2)}×` : '—',
+  };
+}
+
+export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing, onAddTenant, onEditUnit }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   transactions: HistoryTransaction[];
   documents: PortfolioDocument[];
   imageUrls: Record<string, string>;
   onAddFinancing: (property: Property) => void;
+  onAddTenant: (property: Property) => void;
+  onEditUnit: (unit: PortfolioUnit) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const rentHeading = `${monthName()} rent`;
@@ -130,6 +149,7 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
       const docs = documentSummary(docsByProperty[property.id] || []);
       const acquired = formatLeaseDate(property.purchase_date);
       const financed = hasMortgage(property);
+      const stats = open ? trailingStats(transactions, property) : null;
       return <div key={property.id} className="portfolio-property-block">
         <button type="button" className="portfolio-property-row portfolio-property-grid" aria-expanded={open} aria-controls={detailId} onClick={() => setExpandedId(current => current === property.id ? null : property.id)}>
           <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
@@ -145,25 +165,37 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
           <span className="portfolio-watch" data-tone={watch.tone}>{watch.label}</span>
           <ChevronDown className="portfolio-row-chevron" size={16} aria-hidden="true" />
         </button>
-        {open && <div id={detailId} className="portfolio-property-detail" role="region" aria-label={`${property.address} details`}>
-          <section className="portfolio-detail-col portfolio-detail-units">
-            <h3>Units</h3>
+        {open && stats && <div id={detailId} className="portfolio-property-detail" role="region" aria-label={`${property.address} details`}>
+          <div className="portfolio-stat-band">
+            <div><strong className={stats.noiTone === 'positive' ? 'amount-positive' : stats.noiTone === 'negative' ? 'amount-negative' : ''}>{stats.noiText}</strong><span>Trailing NOI</span></div>
+            <div><strong>{stats.cap}</strong><span>Cap rate</span></div>
+            <div><strong>{stats.expense}</strong><span>Expense ratio</span></div>
+            <div><strong>{stats.coverage}</strong><span>Debt-service coverage</span></div>
+          </div>
+          <section className="portfolio-detail-section">
+            <div className="portfolio-detail-section-head">
+              <h3>Units</h3>
+              <button type="button" className="portfolio-detail-action" onClick={() => onAddTenant(property)}>Add tenant</button>
+            </div>
             {units.length ? units.map(unit => {
               const attention = unitAttention(unit);
               const leaseEnd = formatLeaseDate(unit.lease_end_date);
-              return <div key={unit.id} className="portfolio-detail-unit">
+              return <button key={unit.id} type="button" className="portfolio-detail-unit" onClick={() => onEditUnit(unit)}>
                 <div className="portfolio-detail-unit-top">
                   <strong>{unit.unit_number}</strong>
                   <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
                 </div>
                 <span className="portfolio-unit-tenant">{attention.tenantLabel}</span>
                 <span className="portfolio-detail-unit-meta">{formatCurrency(Number(unit.current_rent || 0))}{leaseEnd ? ` · Ends ${leaseEnd}` : ''}</span>
-              </div>;
+              </button>;
             }) : <p className="portfolio-detail-empty">No units yet.</p>}
           </section>
-          <section className="portfolio-detail-col">
-            <h3>Mortgage</h3>
-            {financed ? <dl className="portfolio-facts">
+          <section className="portfolio-detail-section">
+            <div className="portfolio-detail-section-head">
+              <h3>Mortgage</h3>
+              {financed && <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Edit</button>}
+            </div>
+            {financed ? <dl className="portfolio-detail-grid">
               <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
               <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
               <Fact label="Monthly payment" value={moneyOrDash(property.monthly_mortgage_payment)} />
@@ -174,9 +206,9 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
               <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Add financing</button>
             </>}
           </section>
-          <section className="portfolio-detail-col">
-            <h3>Property details</h3>
-            <dl className="portfolio-facts">
+          <section className="portfolio-detail-section">
+            <div className="portfolio-detail-section-head"><h3>Property details</h3></div>
+            <dl className="portfolio-detail-grid">
               <Fact label="Property manager" value="Not added" quiet />
               <Fact label="Ownership entity" value="Not added" quiet />
               <Fact label="Acquired" value={acquired || 'Not added'} quiet={!acquired} />

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -233,7 +234,7 @@ export default function PropertiesPage() {
         <>
           <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
           <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} />}
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} onAddTenant={property => startAddUnit(property.id)} onEditUnit={unit => startEditUnit(unit as Unit)} />}
           {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
           {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
         </>
@@ -306,8 +307,26 @@ function Metric({ label, value }: { label: string; value: string }) { return <di
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'grid', gap: 'var(--space-2)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{label}{children}</label>; }
 function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 'var(--space-5)', padding: 'var(--space-3)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 'var(--radius-control)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{message}</div>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
-  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 'var(--type-section-title-size)', lineHeight:'var(--type-section-title-line)' }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const old = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = old; };
+  }, []);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="portfolio-dialog-overlay" onMouseDown={e => { if (e.currentTarget === e.target) onClose(); }}>
+      <div className="portfolio-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="portfolio-dialog-head">
+          <h2>{title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18} /></button>
+        </div>
+        <div className="portfolio-dialog-body">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };

@@ -1,16 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  Bolt,
-  ChevronDown,
-  CircleEllipsis,
-  Droplets,
-  Flame,
-  Trash2,
-  Waves,
-  Wifi,
-  X,
-} from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthContext";
 import PageSkeleton from "@/components/common/PageSkeleton";
@@ -48,7 +39,6 @@ export default function UtilitiesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<UtilityWithProperties[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState<UtilityWithProperties | null>(null);
   const [detail, setDetail] = useState<UtilityWithProperties | null>(null);
@@ -93,33 +83,8 @@ export default function UtilitiesPage() {
           ? byUtility.get(x.id)!
           : [x.property_id].filter(Boolean),
       }));
-      const propertyRows = (p.data || []) as Property[];
       setItems(hydrated);
-      setProperties(propertyRows);
-      void (async () => {
-        const urls: Record<string, string> = {};
-        await Promise.all(
-          propertyRows
-            .filter((property) => property.image_path)
-            .map(async (property) => {
-              try {
-                const signed = await supabase.storage
-                  .from("property-images")
-                  .createSignedUrl(property.image_path!, 3600, {
-                    transform: {
-                      width: 192,
-                      height: 192,
-                      resize: "cover",
-                      quality: 80,
-                    },
-                  });
-                if (signed.data?.signedUrl)
-                  urls[property.id] = signed.data.signedUrl;
-              } catch {}
-            }),
-        );
-        setImageUrls(urls);
-      })();
+      setProperties((p.data || []) as Property[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load utilities");
     } finally {
@@ -130,15 +95,17 @@ export default function UtilitiesPage() {
     load();
   }, []);
 
-  const rows = useMemo(
+  const groups = useMemo(
     () =>
-      properties.flatMap((property) =>
-        items
-          .filter((x) => x.property_ids.includes(property.id))
-          .map((utility) => ({ property, utility })),
-      ),
+      properties
+        .map((property) => ({
+          property,
+          utilities: items.filter((x) => x.property_ids.includes(property.id)),
+        }))
+        .filter((group) => group.utilities.length > 0),
     [properties, items],
   );
+  const utilityCount = groups.reduce((sum, group) => sum + group.utilities.length, 0);
 
   const propertyName = (id: string) =>
     properties.find((p) => p.id === id)?.address || "Unknown property";
@@ -271,56 +238,46 @@ export default function UtilitiesPage() {
         <div className="portfolio-panel">
           <div className="portfolio-panel-head">
             <strong>Utilities</strong>
-            <span>{rows.length}</span>
+            <span>{utilityCount}</span>
           </div>
-          {rows.length === 0 ? (
+          {groups.length === 0 ? (
             <p className="portfolio-empty">No utility accounts yet.</p>
           ) : (
             <>
               <div className="portfolio-columns portfolio-utility-grid" aria-hidden="true">
-                <span>Property</span>
+                <span />
                 <span>Utility</span>
                 <span>Provider</span>
                 <span>Responsibility</span>
                 <span>Autopay</span>
                 <span>Account</span>
               </div>
-              {rows.map(({ property, utility }, index) => (
-                <button
-                  key={`${property.id}-${utility.id}`}
-                  type="button"
-                  className="portfolio-utility-row portfolio-utility-grid"
-                  onClick={() => openDetail(utility)}
-                >
-                  <span className="portfolio-property-identity">
-                    {imageUrls[property.id] ? (
-                      <img
-                        src={imageUrls[property.id]}
-                        alt=""
-                        className="portfolio-thumb"
-                        width="40"
-                        height="40"
-                        loading={index === 0 ? "eager" : "lazy"}
-                        decoding="async"
-                      />
-                    ) : (
-                      <span className="portfolio-thumb portfolio-thumb-empty" aria-hidden="true" />
-                    )}
-                    <span className="portfolio-property-copy">
-                      <strong>{property.address}</strong>
-                      <span>
-                        {property.city}, {property.state}
-                      </span>
+              {groups.map(({ property, utilities }) => (
+                <section key={property.id} className="portfolio-utility-group">
+                  <div className="portfolio-utility-property">
+                    {property.address}
+                    <span>
+                      {property.city}, {property.state}
                     </span>
-                  </span>
-                  <span className="portfolio-utility-type">{utility.utility_type}</span>
-                  <span className="portfolio-utility-provider">{utility.provider}</span>
-                  <span className="portfolio-utility-responsibility">{utility.responsibility}</span>
-                  <span className="portfolio-utility-autopay">{utility.autopay ? "On" : "Off"}</span>
-                  <span className="portfolio-utility-account">
-                    {utility.account_number ? maskedAccount(utility.account_number) : "—"}
-                  </span>
-                </button>
+                  </div>
+                  {utilities.map((utility) => (
+                    <button
+                      key={`${property.id}-${utility.id}`}
+                      type="button"
+                      className="portfolio-utility-row portfolio-utility-grid"
+                      onClick={() => openDetail(utility)}
+                    >
+                      <UtilityMark type={utility.utility_type} />
+                      <span className="portfolio-utility-type">{utility.utility_type}</span>
+                      <span className="portfolio-utility-provider">{utility.provider}</span>
+                      <span className="portfolio-utility-responsibility">{utility.responsibility}</span>
+                      <span className="portfolio-utility-autopay">{utility.autopay ? "On" : "Off"}</span>
+                      <span className="portfolio-utility-account">
+                        {utility.account_number ? maskedAccount(utility.account_number) : "—"}
+                      </span>
+                    </button>
+                  ))}
+                </section>
               ))}
             </>
           )}
@@ -328,54 +285,34 @@ export default function UtilitiesPage() {
       )}
 
       {detail && (
-        <Modal title={detail.utility_type} onClose={() => setDetail(null)}>
-          <div className="utility-detail-view">
-            <div className="utility-detail-hero">
-              <div className="utility-detail-icon">
-                {utilityIcon(detail.utility_type)}
-              </div>
-              <div>
-                <div className="utility-detail-provider">{detail.provider}</div>
-                <div className="utility-detail-properties">
-                  {detail.property_ids.map(propertyName).join(" · ")}
-                </div>
-              </div>
-            </div>
-            <div className="utility-detail-list">
-              {detail.account_number && (
-                <DetailRow l="Account number" v={detail.account_number} />
-              )}{" "}
-              {detail.username_email && (
-                <DetailRow l="Username / email" v={detail.username_email} />
-              )}
-              <DetailRow l="Autopay" v={detail.autopay ? "On" : "Off"} />
-              <DetailRow l="Responsibility" v={detail.responsibility} />
-              {detail.billing_cycle && (
-                <DetailRow l="Billing cycle" v={detail.billing_cycle} />
-              )}{" "}
-              {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
-            </div>
-            <div className="utility-detail-actions">
-              {detail.login_url && (
-                <Button
-                  onClick={() =>
-                    window.open(
-                      detail.login_url!,
-                      "_blank",
-                      "noopener,noreferrer",
-                    )
-                  }
-                  variant="secondary"
-                >
-                  Open provider
-                </Button>
-              )}
-              <Button onClick={() => edit(detail)}>
-                Edit utility
-              </Button>
+        <Drawer title={detail.utility_type} onClose={() => setDetail(null)}>
+          <div className="utility-drawer-hero">
+            <UtilityMark type={detail.utility_type} />
+            <div>
+              <strong>{detail.provider}</strong>
+              <span>{detail.property_ids.map(propertyName).join(" · ")}</span>
             </div>
           </div>
-        </Modal>
+          <dl className="utility-drawer-facts">
+            {detail.account_number && <DetailRow l="Account number" v={detail.account_number} />}
+            {detail.username_email && <DetailRow l="Username / email" v={detail.username_email} />}
+            <DetailRow l="Autopay" v={detail.autopay ? "On" : "Off"} />
+            <DetailRow l="Responsibility" v={detail.responsibility} />
+            {detail.billing_cycle && <DetailRow l="Billing cycle" v={detail.billing_cycle} />}
+            {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
+          </dl>
+          <div className="utility-drawer-actions">
+            {detail.login_url && (
+              <Button
+                onClick={() => window.open(detail.login_url!, "_blank", "noopener,noreferrer")}
+                variant="secondary"
+              >
+                Open provider
+              </Button>
+            )}
+            <Button onClick={() => edit(detail)}>Edit utility</Button>
+          </div>
+        </Drawer>
       )}
 
       {show && (
@@ -561,24 +498,18 @@ export default function UtilitiesPage() {
   );
 }
 
-function utilityIcon(type: string) {
-  const props = { size: 20, strokeWidth: 2 };
-  switch (type) {
-    case "Electric":
-      return <Bolt {...props} />;
-    case "Gas":
-      return <Flame {...props} />;
-    case "Water":
-      return <Droplets {...props} />;
-    case "Sewer":
-      return <Waves {...props} />;
-    case "Internet":
-      return <Wifi {...props} />;
-    case "Trash":
-      return <Trash2 {...props} />;
-    default:
-      return <CircleEllipsis {...props} />;
-  }
+const utilityMarks: Record<string, string> = {
+  Electric: "/utilities/electric.png",
+  Gas: "/utilities/gas.png",
+  Water: "/utilities/water.png",
+};
+function UtilityMark({ type }: { type: string }) {
+  const src = utilityMarks[type];
+  return src ? (
+    <img src={src} alt="" className="portfolio-utility-mark" width="40" height="40" />
+  ) : (
+    <span className="portfolio-utility-mark is-empty" aria-hidden="true" />
+  );
 }
 function maskedAccount(v: string) {
   const clean = v.trim();
@@ -586,9 +517,9 @@ function maskedAccount(v: string) {
 }
 function DetailRow({ l, v }: { l: string; v: string }) {
   return (
-    <div className="utility-detail-row">
-      <span>{l}</span>
-      <strong>{v}</strong>
+    <div>
+      <dt>{l}</dt>
+      <dd>{v}</dd>
     </div>
   );
 }
@@ -613,6 +544,18 @@ function Field({
     </label>
   );
 }
+function useOverlayLock() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = old;
+    };
+  }, []);
+  return mounted;
+}
 function Modal({
   title,
   onClose,
@@ -622,36 +565,57 @@ function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    const old = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = old;
-    };
-  }, []);
-  return (
+  const mounted = useOverlayLock();
+  if (!mounted) return null;
+  return createPortal(
     <div
-      className="mobile-sheet-overlay"
+      className="portfolio-dialog-overlay"
       onMouseDown={(e) => {
         if (e.currentTarget === e.target) onClose();
       }}
     >
-      <div className="card mobile-sheet" role="dialog" aria-modal="true">
-        <div className="mobile-sheet-head">
-          <div className="mobile-sheet-handle" />
+      <div className="portfolio-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="portfolio-dialog-head">
           <h2>{title}</h2>
-          <button
-            onClick={onClose}
-            type="button"
-            className="sheet-close-button"
-            aria-label="Close"
-          >
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
             <X size={18} />
           </button>
         </div>
-        <div className="mobile-sheet-body">{children}</div>
+        <div className="portfolio-dialog-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+function Drawer({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const mounted = useOverlayLock();
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      className="utility-drawer-overlay"
+      onMouseDown={(e) => {
+        if (e.currentTarget === e.target) onClose();
+      }}
+    >
+      <aside className="utility-drawer" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="utility-drawer-head">
+          <h2>{title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </aside>
+    </div>,
+    document.body,
   );
 }
 const input: React.CSSProperties = {
