@@ -14,7 +14,11 @@ import RotatingMascot from '@/components/layout/RotatingMascot';
 export default function SideNav() {
   const pathname = usePathname();
   const [properties,setProperties]=useState<Property[]>([]);
-  const [propertiesOpen,setPropertiesOpen]=useState(false);
+  const onProperties=pathname.startsWith('/properties');
+  const [propertiesOpen,setPropertiesOpen]=useState(onProperties);
+  const propertiesListActive=pathname==='/properties';
+
+  useEffect(()=>{ if(pathname.startsWith('/properties')) setPropertiesOpen(true); },[pathname]);
 
   useEffect(()=>{ let alive=true; (async()=>{
     const result=await cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address'));
@@ -29,10 +33,15 @@ export default function SideNav() {
     </div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname==='/'?'active':''}`}><OverviewIcon active={pathname==='/'} size={23}/>Overview</Link>
-      <button type="button" className={`nav-link nav-disclosure ${pathname.startsWith('/properties')?'active':''}`} aria-expanded={propertiesOpen} onClick={()=>setPropertiesOpen(open=>!open)}><Building2 size={23} strokeWidth={1.75} fill={pathname.startsWith('/properties')?'currentColor':'none'}/><span>Properties</span><ChevronDown size={16} aria-hidden="true"/></button>
+      <div className={`nav-property-row ${propertiesListActive?'active':''}`}>
+        <Link href="/properties" className="nav-property-link" aria-current={propertiesListActive?'page':undefined}><Building2 size={23} strokeWidth={1.75} fill={propertiesListActive?'currentColor':'none'}/><span>Properties</span></Link>
+        <button type="button" className="nav-property-toggle" aria-expanded={propertiesOpen} aria-label={propertiesOpen?'Hide properties':'Show properties'} onClick={()=>setPropertiesOpen(open=>!open)}><ChevronDown size={16} aria-hidden="true"/></button>
+      </div>
       {propertiesOpen&&<div className="property-nav-list">
-        <Link href="/properties" className={`property-nav-link ${pathname==='/properties'?'active':''}`}>All properties</Link>
-        {properties.map(property=><Link key={property.id} href={`/properties/${property.id}`} className={`property-nav-link ${pathname===`/properties/${property.id}`?'active':''}`}>{shortPropertyName(property.address)}</Link>)}
+        {properties.map(property=>{
+          const active=pathname===`/properties/${property.id}`;
+          return <Link key={property.id} href={`/properties/${property.id}`} className={`property-nav-link ${active?'active':''}`} aria-current={active?'page':undefined}>{shortPropertyName(property.address)}</Link>;
+        })}
       </div>}
       <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'active':''}`}><WalletCards size={23} strokeWidth={1.75} fill={pathname.startsWith('/ledger')||pathname.startsWith('/actions')?'currentColor':'none'}/><span>Transactions</span></Link>
       <Link href="/utilities" className={`nav-link ${pathname.startsWith('/utilities')?'active':''}`}><Lightbulb size={23} strokeWidth={1.75} fill={pathname.startsWith('/utilities')?'currentColor':'none'}/>Utilities</Link>
