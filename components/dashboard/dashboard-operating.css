@@ -405,12 +405,12 @@
 }
 .dashboard-expense-list {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-4);
   margin-top: var(--space-4);
 }
 .dashboard-expense-row {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .dashboard-expense-label {
@@ -451,19 +451,13 @@
 .dashboard-expense-row[data-spent='false'] strong,
 .dashboard-expense-row[data-spent='false'] b {
   color: var(--text-secondary);
-  font-size: var(--type-label-size);
-  line-height: var(--type-label-line);
-  font-weight: var(--weight-medium);
 }
 .dashboard-expense-track {
   display: block;
-  height: 8px;
+  height: 12px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--dashboard-series-track);
-}
-.dashboard-expense-row[data-spent='false'] .dashboard-expense-track {
-  height: 2px;
 }
 .dashboard-expense-track i {
   display: block;

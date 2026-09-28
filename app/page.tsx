@@ -16,6 +16,7 @@ import TransactionDetailModal from '@/components/transactions/TransactionDetailM
 import { resolveNotificationTransaction } from '@/lib/notificationMatch';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
+import { settleRentCollection } from '@/lib/rentCollection';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import NotificationBell from '@/components/dashboard/NotificationBell';
 import RecentActivity from '@/components/dashboard/RecentActivity';
@@ -236,26 +237,17 @@ export default function Dashboard() {
   const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
   const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
   const rentPicture=useMemo(()=>{
-    const monthDeductions=postedScoped.filter(tx=>tx.type==='expense'&&tx.transaction_date.startsWith(currentMonth)&&isApprovedDeduction(tx.category||''));
-    const settle=(expected:number,net:number,deductionTxs:Transaction[])=>{
-      const pool=deductionTxs.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      const gap=Math.max(0,expected-net);
-      const applied=Math.min(gap,pool);
-      const reasons:string[]=[];
-      let covered=0;
-      const rank=(tx:Transaction)=>{const key=categoryKey(tx.category||'');const order=['management','maintenance','leasing','legal','utilities','review','neutral'];const index=order.indexOf(key);return index<0?99:index;};
-      [...deductionTxs].sort((a,b)=>rank(a)-rank(b)||Math.abs(Number(b.amount||0))-Math.abs(Number(a.amount||0))).forEach(tx=>{
-        if(covered>=applied-0.5) return;
-        const label=deductionReason(tx);
-        if(!reasons.includes(label)) reasons.push(label);
-        covered+=Math.abs(Number(tx.amount||0));
-      });
-      return {expected,net,gross:net+applied,deductions:applied,unpaid:Math.max(0,gap-applied),reason:reasons.slice(0,3).join(' + ')};
-    };
+    const monthExpenses=postedScoped.filter(tx=>tx.type==='expense'&&tx.transaction_date.startsWith(currentMonth));
+    const settleProperty=(propertyId:string,expected:number)=>settleRentCollection({
+      expected,
+      net:monthRent.filter(tx=>tx.property_id===propertyId).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),
+      expenses:monthExpenses.filter(tx=>tx.property_id===propertyId),
+      deposits:monthRent.filter(tx=>tx.property_id===propertyId),
+      feePercent:properties.find(property=>property.id===propertyId)?.management_fee_percent,
+    });
     if(cashPropertyId){
       const expected=scopedUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
-      const net=monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      const settled=settle(expected,net,monthDeductions);
+      const settled=settleProperty(cashPropertyId,expected);
       const covered=settled.unpaid<0.5&&expected>0.5;
       const rows=scopedUnits.map(unit=>{
         const occupied=Boolean(unit.occupied);
@@ -271,8 +263,7 @@ export default function Dashboard() {
       if(!propertyUnits.length) return [];
       const occupiedCount=propertyUnits.filter(unit=>unit.occupied).length;
       const expected=propertyUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
-      const net=monthRent.filter(tx=>tx.property_id===property.id).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
-      const settled=settle(expected,net,monthDeductions.filter(tx=>tx.property_id===property.id));
+      const settled=settleProperty(property.id,expected);
       const status=occupiedCount===0?'Vacant':occupiedCount<propertyUnits.length?'Mixed':settled.unpaid<0.5?'Paid':'Outstanding';
       const statusLabel=status==='Mixed'?`${occupiedCount}/${propertyUnits.length} occupied`:status;
       return [{id:property.id,name:shortPropertyName(property.address),occupancy:`${occupiedCount}/${propertyUnits.length} units occupied`,status,statusLabel,reason:settled.deductions>0.5?settled.reason:'',expected:settled.expected,net:settled.net,gross:settled.gross,deductions:settled.deductions,unpaid:settled.unpaid}];
@@ -402,22 +393,6 @@ function dashboardExpenseGroup(category:string){
   if(['mortgage-interest','mortgage-principal','mortgage','insurance','taxes','capex','distribution'].includes(key)) return '';
   if(key==='maintenance'||key==='management'||key==='utilities') return key;
   return 'other';
-}
-function isApprovedDeduction(category:string){
-  if(!category||/needs review|uncategor/i.test(category)) return false;
-  const key=categoryKey(category);
-  return ['management','maintenance','utilities','leasing','legal','review','neutral'].includes(key);
-}
-function deductionReason(tx:Transaction){
-  const key=categoryKey(tx.category||'');
-  const text=`${tx.description||''} ${tx.payee_source||''}`;
-  if(key==='management') return 'Management fee';
-  if(key==='maintenance'&&/mow|lawn|landscap/i.test(text)) return 'mowing';
-  if(key==='maintenance') return 'Repairs';
-  if(key==='utilities') return 'Utilities';
-  if(key==='leasing') return 'Leasing fee';
-  if(key==='legal') return 'Legal';
-  return 'Other';
 }
 function rentRowStatus(received:number,expected:number,vacant=false){
   if(vacant&&received<0.5) return 'Vacant' as const;

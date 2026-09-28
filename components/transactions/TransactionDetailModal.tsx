@@ -5,10 +5,8 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import type { Property, Transaction, Unit } from '@/lib/types';
-import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import { buildPayoutBreakdown, estimatePayoutSplit } from '@/lib/managementPayout';
-import { ProductSelect } from '@/components/common/ProductControls';
 
 type EditableTx = Transaction & { needs_review?: boolean | null };
 
@@ -19,13 +17,13 @@ function signed(amount: number) {
   return text;
 }
 
-function typeLabel(transaction: EditableTx, payout: boolean) {
-  if (payout) return 'Net property-management payout';
-  const key = categoryKey(transaction.category || '');
-  if (transaction.type === 'income' && key === 'rent') return 'Rent received';
-  if (transaction.type === 'income') return 'Income';
-  if (transaction.type === 'transfer') return 'Transfer';
-  return 'Expense';
+function displayCategory(category?: string | null) {
+  if (!category || /needs review|uncategor/i.test(category)) return 'Uncategorized';
+  return category;
+}
+
+function formatDetailDate(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function TransactionDetailModal({ transaction, properties, units, transactions, onClose, onEdit, onSaved, onArchived, onArchiveFailed }: {
@@ -47,16 +45,23 @@ export default function TransactionDetailModal({ transaction, properties, units,
   const unit = units.find((item) => item.id === current.unit_id);
   const payout = useMemo(() => buildPayoutBreakdown(current, property?.management_fee_percent, transactions), [current, property?.management_fee_percent, transactions]);
   const needsReview = Boolean(current.needs_review) || /needs review|uncategor/i.test(current.category || '');
-  const status = current.status === 'pending' ? 'Pending' : needsReview || (payout && !payout.confirmed) ? 'Needs review' : 'Confirmed';
+  const statusKey = current.status === 'pending' ? 'pending' : needsReview || (payout && !payout.confirmed) ? 'review' : 'confirmed';
+  const status = statusKey === 'pending' ? 'Pending' : statusKey === 'review' ? 'Needs review' : 'Confirmed';
   const imported = current.source === 'plaid';
-  const sourceLabel = imported ? `Imported from ${current.source_institution || 'bank'}${current.source_account_mask ? ` ••••${current.source_account_mask}` : ''}` : '';
   const account = imported ? `${current.source_institution || 'Bank'}${current.source_account_mask ? ` ••••${current.source_account_mask}` : ''}` : '';
   const importStatus = current.source_connection_status === 'unlinked' ? 'Unlinked account' : imported ? 'Imported' : current.source === 'recurring' ? 'Recurring' : 'Entered manually';
   const heroAmount = payout ? payout.net : Number(current.amount || 0);
-  const showCategory = !payout || needsReview;
+  const categoryLabel = displayCategory(current.category);
+  const when = formatDetailDate(current.transaction_date);
+  const where = property ? shortPropertyName(property.address) : 'Portfolio';
 
   useEffect(() => { setCurrent(transaction); }, [transaction]);
   useEffect(() => { const previous = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = previous; }; }, []);
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) { if (event.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   async function confirmBreakdown() {
     if (!payout || payout.confirmed || !property) return;
@@ -104,20 +109,6 @@ export default function TransactionDetailModal({ transaction, properties, units,
     onClose();
   }
 
-  async function resolveCategory(category: string) {
-    const key = categoryKey(category);
-    const type = ['rent', 'other-income', 'refund'].includes(key) ? 'income' : ['contribution', 'distribution', 'non-operating'].includes(key) ? 'transfer' : 'expense';
-    setSaving(true); setError('');
-    const review = categoryNeedsReview(category);
-    const result = await supabase.from('transactions').update({ category, type, needs_review: review }).eq('id', current.id);
-    if (result.error) setError(result.error.message);
-    else {
-      setCurrent((row) => ({ ...row, category, type, needs_review: review }));
-      await onSaved('Category updated');
-    }
-    setSaving(false);
-  }
-
   async function archive() {
     if (!confirm('Delete this transaction?')) return;
     setSaving(true); setError('');
@@ -133,39 +124,43 @@ export default function TransactionDetailModal({ transaction, properties, units,
     setSaving(false);
   }
 
-  return <div className="quick-add-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
-    <div className="quick-add-modal transaction-detail-modal" role="dialog" aria-modal="true" aria-labelledby="transaction-detail-title">
+  return <div className="quick-add-overlay transaction-detail-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
+    <div className="transaction-detail-panel" role="dialog" aria-modal="true" aria-labelledby="transaction-detail-title">
       <header className="transaction-detail-head">
-        <div>
-          <h2 id="transaction-detail-title">Transaction details</h2>
-          {sourceLabel && <p className="transaction-detail-source">{sourceLabel}</p>}
-        </div>
+        <h2 id="transaction-detail-title">Transaction details</h2>
         <button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19} /></button>
       </header>
-      <div className="transaction-detail-hero">
-        <strong className={heroAmount > 0.5 ? 'amount-positive' : heroAmount < -0.5 ? 'amount-negative' : ''}>{signed(heroAmount)}</strong>
-        <span>{typeLabel(current, Boolean(payout))}</span>
-        <time>{new Date(`${current.transaction_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+      <div className="transaction-detail-summary">
+        <div className="transaction-detail-summary-top">
+          <strong className={heroAmount > 0.5 ? 'amount-positive' : heroAmount < -0.5 ? 'amount-negative' : ''}>{signed(heroAmount)}</strong>
+          <span className="transaction-status-chip" data-status={statusKey}>{status}</span>
+        </div>
+        <span>{categoryLabel}</span>
+        <span>{when} · {where}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}</span>
+        {account && <span className="transaction-detail-bank">{account}</span>}
       </div>
-      {payout && <dl className="transaction-payout">
-        <div><dt>Gross rent collected</dt><dd className="amount-positive">{signed(payout.gross)}</dd></div>
-        {payout.fee > 0.5 && <div><dt>Management fee</dt><dd className="amount-negative">{signed(-payout.fee)}</dd></div>}
-        {payout.deductions.map((row) => <div key={row.label}><dt>{row.label}</dt><dd className="amount-negative">{signed(-row.amount)}</dd></div>)}
-        <div className="is-net"><dt>Net deposit</dt><dd>{signed(payout.net)}</dd></div>
-      </dl>}
+      {payout && <section className="transaction-payout-card">
+        <h3>Payout breakdown</h3>
+        <dl className="transaction-payout">
+          <div><dt>Gross rent</dt><dd className="amount-positive">{signed(payout.gross)}</dd></div>
+          {payout.fee > 0.5 && <div><dt>Management fee</dt><dd className="amount-negative">{signed(-payout.fee)}</dd></div>}
+          {payout.deductions.map((row) => <div key={row.label}><dt>{row.label}</dt><dd className="amount-negative">{signed(-row.amount)}</dd></div>)}
+          <div className="is-net"><dt>Net deposit</dt><dd>{signed(payout.net)}</dd></div>
+        </dl>
+        {!payout.confirmed && <button type="button" className="product-secondary-button" disabled={saving} onClick={() => void confirmBreakdown()}>{saving ? 'Confirming…' : 'Confirm breakdown'}</button>}
+      </section>}
       {error && <div className="quick-add-error">{error}</div>}
       <dl className="transaction-facts">
         <div><dt>Property</dt><dd>{property?.address || 'Portfolio'}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}</dd></div>
-        <div><dt>Status</dt><dd>{status}</dd></div>
+        <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
         {account && <div><dt>Account</dt><dd>{account}</dd></div>}
+        {imported && <div><dt>Imported date</dt><dd>{when}</dd></div>}
         <div><dt>Source</dt><dd>{importStatus}</dd></div>
-        {showCategory && <div><dt>Category</dt><dd>{needsReview ? <ProductSelect className="needs-category" aria-label="Category" value={current.category || 'Needs Review'} onChange={(event) => void resolveCategory(event.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</ProductSelect> : current.category}</dd></div>}
       </dl>
-      <div className="transaction-detail-actions">
-        {payout && !payout.confirmed && <button type="button" className="quick-add-submit" disabled={saving} onClick={() => void confirmBreakdown()}>{saving ? 'Confirming…' : 'Confirm breakdown'}</button>}
-        <button type="button" className="product-secondary-button" onClick={onEdit}>Edit transaction</button>
+      <div className="transaction-detail-footer">
+        <button type="button" className="quick-add-submit" onClick={onEdit}>Edit transaction</button>
+        <button type="button" className="transaction-detail-delete" disabled={saving} onClick={() => void archive()}>Delete transaction</button>
       </div>
-      <button type="button" className="transaction-detail-delete" disabled={saving} onClick={() => void archive()}>Delete transaction</button>
     </div>
   </div>;
 }
