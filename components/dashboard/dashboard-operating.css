@@ -986,7 +986,7 @@
   .dashboard-summary strong,
   .dashboard-summary strong.amount-positive,
   .dashboard-summary strong.amount-negative {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-size: var(--type-card-title-size);
     line-height: var(--type-card-title-line);
     letter-spacing: -0.02em;
@@ -1003,6 +1003,7 @@
     min-height: 36px;
     min-width: 36px;
     padding: 0 6px;
+    color: var(--text-primary);
   }
   .dashboard-chart-module {
     overflow: hidden;
