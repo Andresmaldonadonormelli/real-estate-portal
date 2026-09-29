@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Archive, LogOut, UserRound, X } from 'lucide-react';
+import { NotificationInboxProvider } from '@/components/dashboard/notificationInbox';
 import BottomNav from './BottomNav';
 import SideNav from './SideNav';
 import ThemeToggle from './ThemeToggle';
@@ -26,6 +27,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => { setShowNav(false); }, [pathname]);
 
   return (
+    <NotificationInboxProvider>
     <div className="app-frame">
       <div className="app-shell">
         {!isMobile && <SideNav />}
@@ -44,5 +46,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       )}
     </div>
+    </NotificationInboxProvider>
   );
 }

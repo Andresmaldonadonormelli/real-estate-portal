@@ -10,7 +10,7 @@
   .main-content{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
   .bottom-nav{position:fixed!important;inset:auto 0 0!important;z-index:1000!important;min-height:64px;padding-bottom:env(safe-area-inset-bottom)!important;background:var(--theme-page)!important}
   .bottom-nav-link{font-size:var(--type-label-size)}
-  .pulse-page,.properties-page,.property-workspace,.ledger-v230-page,.utilities-page,.actions-page,.account-page{padding:var(--space-6) var(--space-4) calc(90px + env(safe-area-inset-bottom))!important}
+  .pulse-page,.properties-page,.property-workspace,.ledger-v230-page,.utilities-page,.actions-page,.account-page,.notifications-page,.more-page{padding:var(--space-6) var(--space-4) calc(90px + env(safe-area-inset-bottom))!important}
   .pulse-page-header,.properties-page-head,.product-page-header{margin-bottom:var(--space-6)}
   .product-page-action{min-height:var(--control-height-mobile);padding:0 var(--space-3)}
   .product-select{width:100%}.product-select select{height:var(--control-height-mobile)}
