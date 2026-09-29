@@ -4,7 +4,7 @@
   .dashboard-stats-top .card:last-child { grid-column:auto; }
   .recent-activity-copy { display:grid; gap:1px; }
   .recent-activity-row { gap:10px; }
-  .recent-activity-copy strong { font-size:13px; }
+  .recent-activity-copy strong { font-size:var(--type-compact-size); }
   .recent-ledger-button { width:100%; }
 }
 
@@ -20,7 +20,7 @@
 
 .daily-insight{position:relative;min-height:142px;padding:var(--space-5);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--bg-secondary);box-shadow:var(--card-shadow)}
 
-.daily-insight-icon{width:34px;height:34px;display:grid;place-items:center;margin-bottom:var(--space-4);border-radius:10px;background:var(--surface-subtle);color:var(--text-secondary)}
+.daily-insight-icon{width:34px;height:34px;display:grid;place-items:center;margin-bottom:var(--space-4);border-radius:var(--radius-control);background:var(--surface-subtle);color:var(--text-secondary)}
 
 .daily-insight[data-tone="positive"] .daily-insight-icon{background:var(--positive-soft);color:var(--positive)}
 

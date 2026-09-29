@@ -92,8 +92,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg-primary)' }}>
         <div className="card" style={{ width: '100%', maxWidth: 420, padding: 28 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>RE Portal</div>
-          <h1 style={{ fontSize: 30, marginBottom: 8, fontWeight: 600 }}>
+          <div style={{ fontSize:'var(--type-compact-size)', color: 'var(--text-secondary)', marginBottom: 8 }}>RE Portal</div>
+          <h1 style={{ fontSize:'var(--type-page-title-size)', marginBottom: 8, fontWeight:'var(--weight-semibold)' }}>
             {mode === 'signin' ? 'Sign in' : 'Create account'}
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
@@ -101,16 +101,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>
+            <label style={{ display: 'grid', gap: 6, fontSize:'var(--type-compact-size)' }}>
               Email
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" style={inputStyle} />
             </label>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>
+            <label style={{ display: 'grid', gap: 6, fontSize:'var(--type-compact-size)' }}>
               Password
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} style={inputStyle} />
             </label>
 
-            {message && <div style={{ fontSize: 13, lineHeight: 1.45, padding: 12, borderRadius: 8, background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>{message}</div>}
+            {message && <div style={{ fontSize:'var(--type-compact-size)', lineHeight: 1.45, padding: 12, borderRadius:'var(--radius-control-compact)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>{message}</div>}
 
             <button type="submit" disabled={submitting} style={primaryButtonStyle}>
               {submitting ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -128,5 +128,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   return <AuthSessionProvider session={session}>{children}</AuthSessionProvider>;
 }
 
-const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 13px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 16 };
-const primaryButtonStyle: React.CSSProperties = { padding: '12px 16px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', fontSize: 15, fontWeight: 600, cursor: 'pointer' };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 13px', border: '1px solid var(--border-color)', borderRadius:'var(--radius-control-compact)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize:'var(--type-body-size)' };
+const primaryButtonStyle: React.CSSProperties = { padding: '12px 16px', border: 0, borderRadius:'var(--radius-control-compact)', background: 'var(--accent)', color: 'var(--accent-contrast)', fontSize:'var(--type-control-size)', fontWeight:'var(--weight-semibold)', cursor: 'pointer' };

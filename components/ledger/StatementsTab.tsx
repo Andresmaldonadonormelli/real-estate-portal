@@ -26,7 +26,7 @@ export default function StatementsTab({ selectedPropertyId }:{ selectedPropertyI
   }),[transactions]);
 
   if(loading)return <PageSkeleton variant="ledger"/>;
-  if(error)return <div style={{padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:8}}>{error}</div>;
+  if(error)return <div style={{padding:12,color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:'var(--radius-control-compact)'}}>{error}</div>;
   if(!months.length)return <div className="ledger-open-empty">No statement data yet. Statements will populate from your ledger transactions.</div>;
   return <div className="statement-feed">{months.map(m=><div className="statement-feed-row" key={m.key}>
     <div className="statement-month"><div>{formatMonthYear(m.year,m.month)}</div><span>{m.count} transactions</span></div>

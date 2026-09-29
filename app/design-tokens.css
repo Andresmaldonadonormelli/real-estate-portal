@@ -1,15 +1,14 @@
 /*
   RE PORTAL DESIGN TOKENS
   ------------------------------------------------------------
-  Change recurring visual decisions here. Components should consume
-  semantic variables instead of hard-coded color values.
+  Semantic tokens are the source of truth. Legacy names (--theme-*,
+  --bg-*, --text-*, --positive, --chart-*) alias these so existing
+  styles keep the approved light and dark colors.
 */
 
 :root {
-  /* Typography: seven roles only */
   --font-family-primary: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --type-display-size: 56px;
-  --type-display-line: 1.07;
+
   --type-page-title-size: 36px;
   --type-page-title-line: 1.2;
   --type-section-title-size: 24px;
@@ -20,14 +19,23 @@
   --type-body-line: 1.5;
   --type-small-size: 14px;
   --type-small-line: 1.45;
+  --type-compact-size: 13px;
+  --type-compact-line: 1.4;
   --type-label-size: 12px;
   --type-label-line: 1.35;
+  --type-display-size: 56px;
+  --type-display-line: 1.07;
+  --type-kpi-size: var(--type-page-title-size);
+  --type-kpi-line: var(--type-page-title-line);
+  --type-kpi-weight: var(--weight-semibold);
+  --type-table-header-size: var(--type-label-size);
+  --type-table-header-line: var(--type-label-line);
+
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  /* Shared control / CTA type token (Inter). Desktop 16px, mobile 15px. */
   --type-control-size: 16px;
   --type-control-line: 1.5;
   --type-control-weight: var(--weight-medium);
@@ -36,20 +44,16 @@
   --type-button-line: var(--type-control-line);
   --type-button-weight: var(--type-control-weight);
 
-  /* Typography shorthands consumed by controls and content. */
   --font-button: var(--type-button-weight) var(--type-button-size)/var(--type-button-line) var(--font-family-primary);
   --font-button-strong: var(--type-control-weight-strong) var(--type-button-size)/var(--type-button-line) var(--font-family-primary);
   --font-body: var(--weight-regular) var(--type-body-size)/var(--type-body-line) var(--font-family-primary);
   --font-small: var(--weight-regular) var(--type-small-size)/var(--type-small-line) var(--font-family-primary);
   --font-label: var(--weight-regular) var(--type-label-size)/var(--type-label-line) var(--font-family-primary);
+  --font-compact: var(--weight-regular) var(--type-compact-size)/var(--type-compact-line) var(--font-family-primary);
 
-  /* Compatibility aliases still consumed by legacy screens. */
-  --type-body-lg-size: var(--type-body-size);
   --type-caption-size: var(--type-label-size);
   --type-caption-line: var(--type-label-line);
-  --type-kpi-md-size: var(--type-section-title-size);
 
-  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -59,202 +63,352 @@
   --space-8: 32px;
   --space-10: 40px;
 
-  /* Shape, controls and motion */
+  --radius-bar: 4px;
+  --radius-control-compact: 8px;
   --radius-control: 12px;
-  --radius-card: 20px;
-  --radius-large: 24px;
-  --radius-pill: 999px;
+  --radius-module: 16px;
   --radius-navigation: 18px;
+  --radius-card: 20px;
+  --radius-shell: 22px;
+  --radius-large: 24px;
+  --radius-sheet: var(--radius-large);
+  --radius-pill: 999px;
+  --radius: var(--radius-control-compact);
+  --radius-lg: var(--radius-control);
+
   --control-height-desktop: 40px;
   --control-height-mobile: 48px;
+  --control-height: var(--control-height-desktop);
+  --control-height-segment: 34px;
+  --control-height-tab: 42px;
+  --control-height-nav: 44px;
+  --bar-height: 64px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-nav: 23px;
+  --icon-nav-mobile: 26px;
   --motion-fast: 160ms;
+  --border-width: 1px;
 
-  /* Source palette (raw). Prefer semantic tokens below in UI. */
-  --palette-lilac: #baa1f7;
-  --palette-green: #35ff69;
-  --palette-red: #db5461;
-  --palette-yellow: #eeba0b;
-  --palette-near-black: #020202;
+  --shadow-card: none;
+  --shadow-overlay: none;
+  --shadow-toast: 0 14px 38px rgba(0, 0, 0, 0.16);
+  --shadow-slider: 0 2px 7px rgba(0, 0, 0, 0.22);
 
-  /* Light surfaces and text */
-  --theme-page: #f4f3f7;
-  --theme-sidebar: var(--theme-page);
-  --theme-card: #ffffff;
-  --theme-surface: #ffffff;
-  --theme-surface-subtle: #f3f3f5;
-  --theme-surface-hover: #ececee;
-  --theme-elevated: #ffffff;
-  --theme-input: #f6f6f7;
-  --theme-text-primary: #171918;
-  --theme-text-secondary: #68706c;
-  --theme-text-muted: #929995;
-  --theme-text-inverse: #ffffff;
-  --theme-border: rgba(18, 22, 20, 0.10);
-  --theme-border-strong: rgba(18, 22, 20, 0.18);
-  --theme-overlay: rgba(9, 12, 10, 0.48);
-  --theme-shadow-card: none;
-  --theme-shell-radius: 22px;
-  --theme-module-radius: 16px;
-  --theme-control-radius: 8px;
-  --theme-bar-radius: 4px;
-  --dashboard-series-uncategorized: #c9840a;
-  --dashboard-expense-maintenance: #e07a12;
-  --dashboard-expense-management: #7a45d6;
-  --dashboard-expense-utilities: #3b6fe0;
-  --dashboard-expense-other: #5e6872;
-  --dashboard-expense-uncategorized: #c9840a;
-  --dashboard-series-track: #ececee;
-  --dashboard-series-maintenance: #d97706;
-  --dashboard-series-management: #7a45d6;
-  --dashboard-series-utilities: #3b6fe0;
-  --dashboard-series-insurance: #3d56d6;
-  --dashboard-series-taxes: #c49214;
-  --dashboard-series-legal: #c44b86;
-  --dashboard-series-leasing: #1f9a5c;
-  --theme-section-radius: var(--theme-module-radius);
+  /* Light color */
+  --color-page: #f4f3f7;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f3f3f5;
+  --color-surface-hover: #ececee;
+  --color-surface-raised: #ffffff;
+  --color-input: #f6f6f7;
+  --color-text-primary: #171918;
+  --color-text-secondary: #68706c;
+  --color-text-muted: #929995;
+  --color-text-inverse: #ffffff;
+  --color-border: rgba(18, 22, 20, 0.10);
+  --color-border-strong: rgba(18, 22, 20, 0.18);
+  --color-hover: var(--color-surface-hover);
+  --color-hover-control: #f6f8fa;
+  --color-active: #e6e6e9;
+  --color-active-text: #171918;
+  --color-overlay: rgba(9, 12, 10, 0.48);
+  --color-action: #020202;
+  --color-action-text: #ffffff;
+  --color-action-hover: #242424;
+  --color-media: #ffffff;
+  --color-link: #353633;
+  --color-accent-soft: #f0f0ed;
+  --color-skeleton: #e8eaec;
+  --color-skeleton-edge: #f2f3f4;
+  --color-slider-thumb: #ffffff;
+  --color-slider-thumb-border: rgba(0, 0, 0, 0.06);
+  --color-slider-fill: #111312;
+  --color-slider-track: #cfd2d0;
+
+  --color-brand: #6b4fd4;
+  --color-brand-strong: #5538c2;
+  --color-brand-soft: #efe9fc;
+  --color-brand-border: #d5c7f7;
+  --color-brand-fill: #baa1f7;
+  --color-on-brand: #ffffff;
+  --color-unread: #af69fa;
+  --color-focus: var(--color-brand);
+
+  --color-positive: #0e9a42;
+  --color-on-positive: #ffffff;
+  --color-positive-soft: #e7fbef;
+  --color-positive-border: #9ee9b5;
+  --color-negative: #ff6542;
+  --color-on-negative: #ffffff;
+  --color-negative-soft: #ffece7;
+  --color-negative-border: #ffc4b6;
+  --color-warning: #9a7600;
+  --color-warning-soft: #fbf5e0;
+  --color-warning-border: #efd789;
+  --color-information: #087cf0;
+
+  --chart-income: #af69fa;
+  --chart-expense: #8d8796;
+  --chart-expense-muted: #8d8a94;
+  --chart-muted: #c9c6d1;
+  --chart-quiet: #f1f0f3;
+  --chart-comparison: var(--chart-muted);
+  --chart-grid: rgba(23, 25, 24, 0.07);
+  --chart-zero: var(--color-border-strong);
+  --chart-guide: var(--color-text-primary);
+  --chart-axis: var(--color-text-secondary);
+  --chart-tooltip-surface: var(--color-page);
+  --chart-tooltip-border: var(--color-border);
+  --chart-category-neutral: #7d8480;
+
+  --chart-series-uncategorized: #c9840a;
+  --chart-series-track: #ececee;
+  --chart-series-maintenance: #d97706;
+  --chart-series-management: #7a45d6;
+  --chart-series-utilities: #3b6fe0;
+  --chart-series-insurance: #3d56d6;
+  --chart-series-taxes: #c49214;
+  --chart-series-legal: #c44b86;
+  --chart-series-leasing: #1f9a5c;
+  --chart-expense-maintenance: #e07a12;
+  --chart-expense-management: #7a45d6;
+  --chart-expense-utilities: #3b6fe0;
+  --chart-expense-other: #5e6872;
+  --chart-expense-uncategorized: #c9840a;
+
+  --color-category-maintenance: #e27613;
+  --color-category-management: #7c5bd6;
+  --color-category-mortgage: #3f7ee8;
+  --color-category-utilities: #1495af;
+  --color-category-insurance: #5869d6;
+  --color-category-taxes: #b98013;
+  --color-category-capex: #bd4c9d;
+  --color-category-legal: #7659c7;
+  --color-category-review: #b88700;
+
+  /* Legacy names resolve to the semantic tokens above. */
+  --theme-page: var(--color-page);
+  --theme-sidebar: var(--color-page);
+  --theme-card: var(--color-surface);
+  --theme-surface: var(--color-surface);
+  --theme-surface-subtle: var(--color-surface-subtle);
+  --theme-surface-hover: var(--color-surface-hover);
+  --theme-elevated: var(--color-surface-raised);
+  --theme-input: var(--color-input);
+  --theme-text-primary: var(--color-text-primary);
+  --theme-text-secondary: var(--color-text-secondary);
+  --theme-text-muted: var(--color-text-muted);
+  --theme-text-inverse: var(--color-text-inverse);
+  --theme-border: var(--color-border);
+  --theme-border-strong: var(--color-border-strong);
+  --theme-overlay: var(--color-overlay);
+  --theme-shadow-card: var(--shadow-card);
+  --theme-shell-radius: var(--radius-shell);
+  --theme-module-radius: var(--radius-module);
+  --theme-control-radius: var(--radius-control-compact);
+  --theme-bar-radius: var(--radius-bar);
+  --theme-section-radius: var(--radius-module);
   --theme-section-padding: var(--space-5);
   --theme-section-gap: var(--space-4);
-  --theme-chart-muted: #c9c6d1;
-  --theme-chart-quiet: #f1f0f3;
-  --theme-chart-income-quiet: var(--theme-chart-quiet);
-  --theme-chart-income: #AF69FA;
-  --theme-unread: #AF69FA;
-  --theme-chart-expense: #8d8796;
-  --theme-chart-expense-muted: #8d8a94;
-  --theme-chart-grid: rgba(23, 25, 24, 0.07);
+  --theme-chart-muted: var(--chart-muted);
+  --theme-chart-quiet: var(--chart-quiet);
+  --theme-chart-income-quiet: var(--chart-quiet);
+  --theme-chart-income: var(--chart-income);
+  --theme-unread: var(--color-unread);
+  --theme-chart-expense: var(--chart-expense);
+  --theme-chart-expense-muted: var(--chart-expense-muted);
+  --theme-chart-grid: var(--chart-grid);
+  --theme-brand: var(--color-brand);
+  --theme-brand-strong: var(--color-brand-strong);
+  --theme-brand-soft: var(--color-brand-soft);
+  --theme-brand-border: var(--color-brand-border);
+  --theme-brand-fill: var(--color-brand-fill);
+  --theme-on-brand: var(--color-on-brand);
+  --theme-action: var(--color-action);
+  --theme-action-text: var(--color-action-text);
+  --theme-action-hover: var(--color-action-hover);
+  --theme-nav-active: var(--color-active);
+  --theme-nav-active-text: var(--color-active-text);
+  --theme-focus: var(--color-focus);
+  --theme-income: var(--color-positive);
+  --theme-on-income: var(--color-on-positive);
+  --theme-income-soft: var(--color-positive-soft);
+  --theme-income-border: var(--color-positive-border);
+  --theme-expense: var(--color-negative);
+  --theme-expense-soft: var(--color-negative-soft);
+  --theme-expense-border: var(--color-negative-border);
+  --theme-warning: var(--color-warning);
+  --theme-warning-soft: var(--color-warning-soft);
+  --theme-warning-border: var(--color-warning-border);
+  --theme-noi: var(--color-brand);
+  --theme-maintenance: var(--color-category-maintenance);
+  --theme-management: var(--color-category-management);
+  --theme-mortgage: var(--color-category-mortgage);
+  --theme-utilities: var(--color-category-utilities);
+  --theme-insurance: var(--color-category-insurance);
+  --theme-taxes: var(--color-category-taxes);
+  --theme-capex: var(--color-category-capex);
+  --theme-legal: var(--color-category-legal);
+  --theme-review: var(--color-category-review);
+  --theme-control-hover: var(--color-hover-control);
+  --theme-status-on-positive: var(--color-on-positive);
+  --cash-flow-result: var(--color-information);
 
-  /* Brand / selected accents from lilac (accessible on light surfaces) */
-  --theme-brand: #6b4fd4;
-  --theme-brand-strong: #5538c2;
-  --theme-brand-soft: #efe9fc;
-  --theme-brand-border: #d5c7f7;
-  --theme-brand-fill: var(--palette-lilac);
-  --theme-on-brand: #ffffff;
+  --dashboard-series-uncategorized: var(--chart-series-uncategorized);
+  --dashboard-expense-maintenance: var(--chart-expense-maintenance);
+  --dashboard-expense-management: var(--chart-expense-management);
+  --dashboard-expense-utilities: var(--chart-expense-utilities);
+  --dashboard-expense-other: var(--chart-expense-other);
+  --dashboard-expense-uncategorized: var(--chart-expense-uncategorized);
+  --dashboard-series-track: var(--chart-series-track);
+  --dashboard-series-maintenance: var(--chart-series-maintenance);
+  --dashboard-series-management: var(--chart-series-management);
+  --dashboard-series-utilities: var(--chart-series-utilities);
+  --dashboard-series-insurance: var(--chart-series-insurance);
+  --dashboard-series-taxes: var(--chart-series-taxes);
+  --dashboard-series-legal: var(--chart-series-legal);
+  --dashboard-series-leasing: var(--chart-series-leasing);
 
-  /* Monochrome actions */
-  --theme-action: var(--palette-near-black);
-  --theme-action-text: #ffffff;
-  --theme-action-hover: #242424;
-  --theme-nav-active: #e6e6e9;
-  --theme-nav-active-text: #171918;
-  --theme-focus: var(--theme-brand);
-
-  /* Semantic financial states — accessible text colors + soft tints from source palette */
-  --theme-income: #0e9a42;
-  --theme-on-income: #ffffff;
-  --theme-income-soft: #e7fbef;
-  --theme-income-border: #9ee9b5;
-  --theme-expense-series-1: #0b7a32;
-  --theme-expense-series-2: #12a846;
-  --theme-expense-series-3: #3dbe6a;
-  --theme-expense-series-4: #8fd9a8;
-  --theme-expense: #FF6542;
-  --theme-expense-soft: #ffece7;
-  --theme-expense-border: #ffc4b6;
-  --theme-warning: #9a7600;
-  --theme-warning-soft: #fbf5e0;
-  --theme-warning-border: #efd789;
-  --theme-noi: #6b4fd4;
-
-  /* Accounting categories */
-  --theme-maintenance: #e27613;
-  --theme-management: #7c5bd6;
-  --theme-mortgage: #3f7ee8;
-  --theme-utilities: #1495af;
-  --cash-flow-result: #087cf0;
-  --theme-insurance: #5869d6;
-  --theme-taxes: #b98013;
-  --theme-capex: #bd4c9d;
-  --theme-legal: #7659c7;
-  --theme-review: #b88700;
-
-  /* Secondary / tertiary control hover surface */
-  --theme-control-hover: #F6F8FA;
-
-  /* Compatibility aliases resolve through the active theme. */
-  --expense-series-1: var(--theme-maintenance);
-  --expense-series-2: var(--theme-management);
-  --expense-series-3: var(--theme-mortgage);
-  --expense-series-4: var(--theme-utilities);
+  --bg-primary: var(--color-page);
+  --bg-secondary: var(--color-surface);
+  --bg-card: var(--color-surface-raised);
+  --card-bg: var(--color-surface);
+  --surface: var(--color-surface);
+  --surface-subtle: var(--color-surface-subtle);
+  --surface-hover: var(--color-hover);
+  --surface-elevated: var(--color-surface-raised);
+  --input-bg: var(--color-input);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-tertiary: var(--color-text-muted);
+  --border-color: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --border-subtle: var(--color-border);
+  --overlay-color: var(--color-overlay);
+  --card-shadow: var(--shadow-card);
+  --link: var(--color-link);
+  --positive: var(--color-positive);
+  --positive-soft: var(--color-positive-soft);
+  --positive-border: var(--color-positive-border);
+  --negative: var(--color-negative);
+  --negative-soft: var(--color-negative-soft);
+  --negative-border: var(--color-negative-border);
+  --danger: var(--color-negative);
+  --danger-soft: var(--color-negative-soft);
+  --warning: var(--color-warning);
+  --warning-soft: var(--color-warning-soft);
+  --warning-border: var(--color-warning-border);
+  --brand: var(--color-brand);
+  --brand-accent: var(--color-brand);
+  --brand-accent-soft: var(--color-brand-soft);
+  --brand-accent-border: var(--color-brand-border);
+  --brand-accent-fill: var(--color-brand-fill);
+  --accent: var(--color-action);
+  --accent-dark: var(--color-action);
+  --accent-contrast: var(--color-action-text);
+  --accent-soft: var(--color-accent-soft);
+  --action-hover: var(--color-action-hover);
+  --focus-ring: var(--color-focus);
+  --nav-active-bg: var(--color-active);
+  --nav-active-text: var(--color-active-text);
+  --control-hover: var(--color-hover-control);
+  --control-bg: var(--color-surface);
+  --control-border: var(--color-border);
+  --category-rent: var(--color-positive);
+  --category-maintenance: var(--color-category-maintenance);
+  --category-management: var(--color-category-management);
+  --category-mortgage: var(--color-category-mortgage);
+  --category-utilities: var(--color-category-utilities);
+  --category-insurance: var(--color-category-insurance);
+  --category-taxes: var(--color-category-taxes);
+  --category-capex: var(--color-category-capex);
+  --category-legal: var(--color-category-legal);
+  --category-review: var(--color-category-review);
+  --category-neutral: var(--chart-category-neutral);
+  --skeleton-bg: var(--color-skeleton);
+  --skeleton-edge: var(--color-skeleton-edge);
+  --chart-income-quiet: var(--chart-quiet);
+  --range-fill-color: var(--color-slider-fill);
+  --range-track: var(--color-slider-track);
 }
 
 [data-theme="dark"] {
-  --theme-page: #0c0b10;
-  --theme-sidebar: #0c0b10;
-  --theme-card: #16141c;
-  --theme-surface: #16141c;
-  --theme-surface-subtle: #1e1e22;
-  --theme-surface-hover: #2a2a2e;
-  --theme-elevated: #1c1c20;
-  --theme-input: #141416;
-  --theme-text-primary: #f4f5f3;
-  --theme-text-secondary: #aeb5b1;
-  --theme-text-muted: #7f8782;
-  --theme-text-inverse: #101210;
-  --theme-border: rgba(255, 255, 255, 0.10);
-  --theme-border-strong: rgba(255, 255, 255, 0.18);
-  --theme-overlay: rgba(0, 0, 0, 0.66);
-  --theme-shadow-card: none;
-  --theme-chart-muted: #3a3742;
-  --theme-chart-quiet: #1e1c26;
-  --theme-chart-income-quiet: var(--theme-chart-quiet);
-  --theme-chart-income: #c084fc;
-  --theme-unread: #AF69FA;
-  --theme-chart-grid: rgba(255, 255, 255, 0.08);
-  --dashboard-series-uncategorized: #f0c14a;
-  --dashboard-expense-maintenance: #f0a04a;
-  --dashboard-expense-management: #c4a2ff;
-  --dashboard-expense-utilities: #8eb0ff;
-  --dashboard-expense-other: #b7b4bf;
-  --dashboard-expense-uncategorized: #f0c14a;
-  --dashboard-series-track: #2a2832;
-  --dashboard-series-maintenance: #f0a04a;
-  --dashboard-series-management: #c4a2ff;
-  --dashboard-series-utilities: #8eb0ff;
-  --dashboard-series-insurance: #9aabff;
-  --dashboard-series-taxes: #f0c15a;
-  --dashboard-series-legal: #f0a0c4;
-  --dashboard-series-leasing: #6dcea0;
-  --theme-chart-expense: #4D495C;
-  --theme-chart-expense-muted: #8a8596;
-  --theme-brand: #c4b0ff;
-  --theme-brand-strong: #d6c8ff;
-  --theme-brand-soft: rgba(186, 161, 247, 0.16);
-  --theme-brand-border: rgba(186, 161, 247, 0.34);
-  --theme-brand-fill: var(--palette-lilac);
-  --theme-on-brand: #120c24;
-  --theme-action: #f3f4f2;
-  --theme-action-text: #101210;
-  --theme-action-hover: #dfe3df;
-  --theme-nav-active: #2a2a2e;
-  --theme-nav-active-text: #f4f5f3;
-  --theme-focus: var(--theme-brand);
-  --theme-income: #3dce74;
-  --theme-on-income: #062412;
-  --theme-income-soft: rgba(61, 190, 106, 0.16);
-  --theme-income-border: rgba(61, 190, 106, 0.34);
-  --theme-expense-series-1: #0b7a32;
-  --theme-expense-series-2: #12a846;
-  --theme-expense-series-3: #3dbe6a;
-  --theme-expense-series-4: #8fd9a8;
-  --theme-expense: #ff7d64;
-  --theme-expense-soft: rgba(255, 101, 66, 0.16);
-  --theme-expense-border: rgba(255, 125, 100, 0.40);
-  --theme-warning: #eeba0b;
-  --theme-warning-soft: rgba(238, 186, 11, 0.14);
-  --theme-warning-border: rgba(238, 186, 11, 0.34);
-  --theme-noi: #c4b0ff;
-  --theme-maintenance: #ff9638;
-  --theme-management: #9c79ff;
-  --theme-mortgage: #69a0ff;
-  --theme-utilities: #3ac1dc;
-  --cash-flow-result: #c4b0ff;
-  --theme-insurance: #8291ff;
-  --theme-taxes: #f3b447;
-  --theme-capex: #ed74c8;
-  --theme-legal: #a382ff;
-  --theme-review: #f4c84a;
-  --theme-control-hover: #2a2a2e;
+  --color-page: #0c0b10;
+  --color-surface: #16141c;
+  --color-surface-subtle: #1e1e22;
+  --color-surface-hover: #2a2a2e;
+  --color-surface-raised: #1c1c20;
+  --color-input: #141416;
+  --color-text-primary: #f4f5f3;
+  --color-text-secondary: #aeb5b1;
+  --color-text-muted: #7f8782;
+  --color-text-inverse: #101210;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-hover-control: #2a2a2e;
+  --color-active: #2a2a2e;
+  --color-active-text: #f4f5f3;
+  --color-overlay: rgba(0, 0, 0, 0.66);
+  --color-action: #f3f4f2;
+  --color-action-text: #101210;
+  --color-action-hover: #dfe3df;
+  --color-link: #e6e6e1;
+  --color-accent-soft: rgba(255, 255, 255, 0.075);
+  --color-skeleton: #1a1d1b;
+  --color-skeleton-edge: #252927;
+  --color-slider-thumb: #f7f7f7;
+  --color-slider-thumb-border: rgba(255, 255, 255, 0.08);
+  --shadow-slider: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --color-slider-fill: #f4f5f4;
+  --color-slider-track: #343837;
+  --color-brand: #c4b0ff;
+  --color-brand-strong: #d6c8ff;
+  --color-brand-soft: rgba(186, 161, 247, 0.16);
+  --color-brand-border: rgba(186, 161, 247, 0.34);
+  --color-on-brand: #120c24;
+  --color-positive: #3dce74;
+  --color-on-positive: #062412;
+  --color-positive-soft: rgba(61, 190, 106, 0.16);
+  --color-positive-border: rgba(61, 190, 106, 0.34);
+  --color-negative: #ff7d64;
+  --color-negative-soft: rgba(255, 101, 66, 0.16);
+  --color-negative-border: rgba(255, 125, 100, 0.40);
+  --color-warning: #eeba0b;
+  --color-warning-soft: rgba(238, 186, 11, 0.14);
+  --color-warning-border: rgba(238, 186, 11, 0.34);
+  --color-information: #c4b0ff;
+  --chart-income: #c084fc;
+  --chart-expense: #4d495c;
+  --chart-expense-muted: #8a8596;
+  --chart-muted: #3a3742;
+  --chart-quiet: #1e1c26;
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-category-neutral: #8b928e;
+  --chart-series-uncategorized: #f0c14a;
+  --chart-series-track: #2a2832;
+  --chart-series-maintenance: #f0a04a;
+  --chart-series-management: #c4a2ff;
+  --chart-series-utilities: #8eb0ff;
+  --chart-series-insurance: #9aabff;
+  --chart-series-taxes: #f0c15a;
+  --chart-series-legal: #f0a0c4;
+  --chart-series-leasing: #6dcea0;
+  --chart-expense-maintenance: #f0a04a;
+  --chart-expense-management: #c4a2ff;
+  --chart-expense-utilities: #8eb0ff;
+  --chart-expense-other: #b7b4bf;
+  --chart-expense-uncategorized: #f0c14a;
+  --color-category-maintenance: #ff9638;
+  --color-category-management: #9c79ff;
+  --color-category-mortgage: #69a0ff;
+  --color-category-utilities: #3ac1dc;
+  --color-category-insurance: #8291ff;
+  --color-category-taxes: #f3b447;
+  --color-category-capex: #ed74c8;
+  --color-category-legal: #a382ff;
+  --color-category-review: #f4c84a;
 }
 
 @media (max-width: 767px) {
@@ -263,5 +417,7 @@
     --type-page-title-size: 32px;
     --type-section-title-size: 22px;
     --type-control-size: 15px;
+    --control-height: var(--control-height-mobile);
+    --control-height-segment: var(--control-height-mobile);
   }
 }

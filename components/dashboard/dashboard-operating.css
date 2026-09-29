@@ -51,7 +51,7 @@
   min-width: 0;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--border-color);
-  border-radius: var(--theme-module-radius, 16px);
+  border-radius: var(--radius-module);
   background: var(--theme-card);
   box-shadow: none;
 }
@@ -83,9 +83,9 @@
   font-weight: var(--weight-medium);
 }
 .dashboard-summary strong {
-  font-size: var(--type-page-title-size);
-  line-height: var(--type-page-title-line);
-  font-weight: var(--weight-semibold);
+  font-size: var(--type-kpi-size);
+  line-height: var(--type-kpi-line);
+  font-weight: var(--type-kpi-weight);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -191,7 +191,7 @@
   min-width: 0 !important;
   padding: 8px 10px !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: var(--theme-control-radius, 8px);
+  border-radius: var(--radius-control-compact);
   background: var(--theme-card) !important;
   box-shadow: none;
   color: var(--text-secondary);
@@ -242,7 +242,7 @@
   min-height: 20px;
   padding: 0 6px;
   border: 1px solid var(--border-color);
-  border-radius: var(--theme-control-radius, 8px);
+  border-radius: var(--radius-control-compact);
   background: var(--theme-card);
   color: var(--text-secondary);
   font-size: var(--type-label-size);
@@ -344,7 +344,7 @@
   display: block;
   height: 14px;
   overflow: hidden;
-  border-radius: var(--theme-bar-radius, 4px);
+  border-radius: var(--radius-bar);
   background: var(--dashboard-series-track);
 }
 .dashboard-rent-track i {
@@ -600,7 +600,7 @@
   margin: 0;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--border-color);
-  border-radius: var(--theme-module-radius, 16px);
+  border-radius: var(--radius-module);
   background: var(--theme-card);
 }
 .dashboard-operating .pulse-section-title h2 {
@@ -638,7 +638,7 @@
   width: 40px;
   height: 40px;
   border: 1px solid var(--border-color);
-  border-radius: var(--theme-control-radius, 8px);
+  border-radius: var(--radius-control-compact);
   background: var(--theme-card);
   color: var(--text-primary);
   cursor: pointer;
@@ -652,7 +652,7 @@
   padding: 0 4px;
   border-radius: var(--radius-pill);
   background: var(--negative);
-  color: #fff;
+  color: var(--color-on-negative);
   font-size: var(--type-label-size);
   line-height: 18px;
   font-weight: var(--weight-semibold);
@@ -719,7 +719,7 @@
   width: 44px;
   height: 44px;
   border: 0;
-  border-radius: var(--theme-control-radius, 8px);
+  border-radius: var(--radius-control-compact);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -801,7 +801,7 @@
   width: 7px;
   height: 7px;
   border-radius: var(--radius-pill);
-  background: var(--theme-unread, #AF69FA);
+  background: var(--color-unread);
 }
 .dashboard-drawer-list strong {
   font-size: var(--type-small-size);
