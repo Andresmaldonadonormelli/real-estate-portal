@@ -24,9 +24,10 @@
 .more-detail{display:grid;gap:var(--space-1);padding:var(--space-4)}
 .more-detail strong{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
 .more-detail span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
-.more-panel>.account-sign-out{margin:0 var(--space-4) var(--space-4)}
+.more-panel>.account-sign-out{min-height:44px;margin:0 var(--space-4) var(--space-4)}
 .more-settings{display:grid;gap:var(--space-3);padding-bottom:var(--space-4)}
 .more-settings .appearance-menu{padding:0 var(--space-4)}
+.more-settings .appearance-options button{min-height:44px}
 .more-panel .connected-accounts-setting{padding:var(--space-4);border-bottom:0}
 @media (max-width:767px){
   .account-desktop{display:none}
