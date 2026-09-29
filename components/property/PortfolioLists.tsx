@@ -106,8 +106,14 @@ function PropertyDetail({ open, id, label, children }: { open: boolean; id: stri
         setShown(true);
         return;
       }
-      const frame = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(frame);
+      let second = 0;
+      const frame = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => setShown(true));
+      });
+      return () => {
+        cancelAnimationFrame(frame);
+        cancelAnimationFrame(second);
+      };
     }
     setShown(false);
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
