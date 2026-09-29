@@ -31,7 +31,7 @@
   .property-chart-footer{gap:var(--space-2)}.property-chart-footer .property-chart-periods{gap:var(--space-4)}.property-chart-footer .property-chart-modes{width:max-content!important}.property-chart-modes button{padding:0 var(--space-2)}
   .property-overview-main{display:grid;min-width:0;gap:0}
   .property-pulse-rail{position:static}
-  .property-skeleton-overview{grid-template-columns:1fr;gap:var(--space-5)}.property-skeleton-chart{height:300px}.property-skeleton-pulse{height:260px}
+  .property-skeleton-overview{grid-template-columns:1fr;gap:var(--space-5)}.property-skeleton-plot{height:220px}.property-skeleton-pulse{position:static}
   .property-key-statistics>div{grid-template-columns:repeat(2,minmax(0,1fr))}
   .expense-chart-scroll{overflow-x:auto;overscroll-behavior-inline:contain}
   .expense-view-switch{width:max-content}

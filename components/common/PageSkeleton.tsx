@@ -2,49 +2,71 @@
 
 type Variant = 'dashboard' | 'properties' | 'ledger' | 'utilities' | 'account';
 
-function Block({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`skeleton-block ${className}`} style={style} aria-hidden="true" />;
+function Block({ className = '' }: { className?: string }) {
+  return <div className={`skeleton-block ${className}`} aria-hidden="true" />;
+}
+
+function PanelRows({ columns, rows, head = false }: { columns: number; rows: number; head?: boolean }) {
+  return <>
+    {head && <div className="module-skeleton-head"><Block /><Block /></div>}
+    <div className="module-skeleton-columns" aria-hidden="true">{Array.from({ length: columns }, (_, index) => <Block key={index} />)}</div>
+    {Array.from({ length: rows }, (_, row) => <div className="module-skeleton-row" key={row}>{Array.from({ length: columns }, (_, index) => <Block key={index} />)}</div>)}
+  </>;
 }
 
 export default function PageSkeleton({ variant = 'ledger' }: { variant?: Variant }) {
   if (variant === 'dashboard') {
     return <div className="dashboard-skeleton" aria-label="Loading dashboard" role="status">
-      <main className="dashboard-skeleton-main">
-        <Block className="dashboard-skeleton-kicker" />
-        <Block className="dashboard-skeleton-total" />
-        <Block className="dashboard-skeleton-detail" />
-        <Block className="dashboard-skeleton-detail" />
-        <Block className="dashboard-skeleton-chart" />
-        <div className="dashboard-skeleton-controls"><Block/><Block/></div>
-        <Block className="dashboard-skeleton-rent" />
-        {['brief','actions','activity'].map((section,index)=><section className={`dashboard-skeleton-section dashboard-skeleton-${section}`} key={section}>
+      <div className="dashboard-skeleton-health"><Block /></div>
+      <section className="dashboard-skeleton-module dashboard-skeleton-summary" aria-hidden="true">
+        {[0, 1, 2].map(card => <div key={card}><Block /><Block /><Block /></div>)}
+      </section>
+      <div className="dashboard-skeleton-main-row">
+        <section className="dashboard-skeleton-module dashboard-skeleton-chart">
           <Block className="dashboard-skeleton-heading" />
-          {index===0?<Block className="dashboard-skeleton-card"/>:<div className="dashboard-skeleton-rows">{[0,1].map(row=><Block key={row}/>)}</div>}
-        </section>)}
-      </main>
-      <aside className="dashboard-skeleton-rail"><Block className="dashboard-skeleton-rail-title"/>{[0,1,2].map(row=><Block key={row}/>)}</aside>
+          <Block className="dashboard-skeleton-value" />
+          <Block className="dashboard-skeleton-plot" />
+        </section>
+        <section className="dashboard-skeleton-module dashboard-skeleton-rent">
+          <Block className="dashboard-skeleton-heading" />
+          <Block className="dashboard-skeleton-line" />
+          <Block className="dashboard-skeleton-track" />
+          {[0, 1, 2].map(row => <Block className="dashboard-skeleton-row" key={row} />)}
+        </section>
+      </div>
+      <div className="dashboard-skeleton-lower-row">
+        <section className="dashboard-skeleton-module">
+          <Block className="dashboard-skeleton-heading" />
+          {[0, 1, 2, 3, 4].map(row => <Block className="dashboard-skeleton-row" key={row} />)}
+        </section>
+        <section className="dashboard-skeleton-module">
+          <Block className="dashboard-skeleton-heading" />
+          <div className="dashboard-skeleton-columns">{[0, 1, 2, 3, 4].map(column => <Block key={column} />)}</div>
+          {[0, 1, 2, 3, 4].map(row => <div className="dashboard-skeleton-table-row" key={row}>{[0, 1, 2, 3, 4].map(column => <Block key={column} />)}</div>)}
+        </section>
+      </div>
     </div>;
   }
 
   if (variant === 'properties') {
-    return <div aria-label="Loading properties" role="status" style={{ display:'grid', gap:18 }}>
-      {[0,1].map(i => <div key={i} className="skeleton-card-row" style={{ minHeight:160, alignItems:'flex-start' }}><Block style={{ width:150, height:108, flex:'0 0 auto' }} /><div style={{ flex:1 }}><Block style={{ width:'44%', height:22, marginBottom:10 }} /><Block style={{ width:'32%', height:13, marginBottom:20 }} /><div className="skeleton-grid skeleton-grid-3"><Block style={{height:50}}/><Block style={{height:50}}/><Block style={{height:50}}/></div></div></div>)}
+    return <div className="module-skeleton module-skeleton-property" aria-label="Loading properties" role="status">
+      <div className="module-skeleton-panel"><PanelRows columns={6} rows={4} /></div>
     </div>;
   }
 
   if (variant === 'utilities') {
-    return <div aria-label="Loading utilities" role="status">
-      <Block style={{ height: 280, borderRadius: 'var(--radius-card)' }} />
+    return <div className="module-skeleton module-skeleton-utility" aria-label="Loading utilities" role="status">
+      <div className="module-skeleton-panel"><PanelRows columns={6} rows={4} head /></div>
     </div>;
   }
 
   if (variant === 'account') {
-    return <div aria-label="Loading account" role="status"><Block style={{ height:96, marginBottom:16 }} /><Block style={{ width:96, height:40 }} /></div>;
+    return <div className="module-skeleton module-skeleton-account" aria-label="Loading account" role="status">
+      <div className="module-skeleton-panel"><PanelRows columns={2} rows={4} /></div>
+    </div>;
   }
 
-  return <div aria-label="Loading ledger" role="status">
-    <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:18 }}><Block style={{ width:104, height:40 }} /><Block style={{ width:138, height:40 }} /></div>
-    <Block style={{ height:74, marginBottom:14 }} />
-    <div style={{ display:'grid', gap:12 }}><Block style={{ height:126 }} /><Block style={{ height:126 }} /><Block style={{ height:126 }} /></div>
+  return <div className="module-skeleton module-skeleton-ledger" aria-label="Loading ledger" role="status">
+    <div className="module-skeleton-panel"><PanelRows columns={5} rows={6} /></div>
   </div>;
 }

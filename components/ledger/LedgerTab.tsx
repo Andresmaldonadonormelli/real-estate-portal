@@ -61,10 +61,16 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [showMore,setShowMore]=useState(false);
 
   useEffect(()=>{
-    if(!showFilters)return;
-    const previous=document.body.style.overflow;
-    document.body.style.overflow='hidden';
-    return()=>{document.body.style.overflow=previous};
+    const media=window.matchMedia('(max-width: 767px)');
+    let locked=false;
+    const sync=()=>{
+      const shouldLock=showFilters&&media.matches;
+      if(shouldLock&&!locked){document.body.style.overflow='hidden';locked=true;}
+      else if(!shouldLock&&locked){document.body.style.overflow='';locked=false;}
+    };
+    sync();
+    media.addEventListener('change',sync);
+    return()=>{media.removeEventListener('change',sync);if(locked)document.body.style.overflow='';};
   },[showFilters]);
 
   async function loadData() {
