@@ -195,9 +195,9 @@
   .portfolio-improve-model:hover{color:var(--text-primary)}
 }
 @media (max-width:767px){
-  .portfolio-area-tabs-desktop{display:none}
-  .portfolio-area-tabs-mobile{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
-  .portfolio-area-tabs-mobile button{width:100%}
+  .portfolio-area-tabs-mobile{display:none}
+  .portfolio-area-tabs-desktop{display:flex}
+  .portfolio-property-detail{background:var(--theme-card)}
   .portfolio-columns{display:none}
   .portfolio-property-row,.portfolio-unit-row,.portfolio-improve-open,.portfolio-utility-row{min-height:44px;padding:var(--space-4)}
   .portfolio-stat-band{grid-template-columns:1fr 1fr}
@@ -215,8 +215,8 @@
   .portfolio-figure-label{display:block}
   .portfolio-unit-row{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--space-2)}
   .portfolio-unit-row .portfolio-property-identity{grid-column:1;grid-row:1}
-  .portfolio-unit-name{grid-column:2;grid-row:1;justify-self:end}
-  .portfolio-unit-status{grid-column:1 / -1;grid-row:2;justify-self:start}
+  .portfolio-unit-status{grid-column:2;grid-row:1;justify-self:end}
+  .portfolio-unit-name{grid-column:1;grid-row:2;justify-self:start}
   .portfolio-unit-tenant,.portfolio-unit-tenant-action{grid-column:1;grid-row:3;justify-self:start}
   .portfolio-unit-rent{grid-column:2;grid-row:3;justify-self:end}
   .portfolio-unit-lease{grid-column:1 / -1;grid-row:4}

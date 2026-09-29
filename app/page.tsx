@@ -314,7 +314,7 @@ export default function Dashboard() {
   const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
   return <div className="dashboard-operating">
     <header className="dashboard-operating-header">
-      <strong className="dashboard-mobile-brand">Portfolio</strong>
+      <strong className="dashboard-mobile-brand">Overview</strong>
       <div className="dashboard-heading"><h1>{monthLabel} {overviewYear} overview</h1><p>Portfolio performance for the current month</p></div>
       <div className="dashboard-operating-controls">
         <div className="dashboard-filter-row">
@@ -324,14 +324,14 @@ export default function Dashboard() {
         <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{const match=resolveNotificationTransaction(item,transactions,properties);if(!match)return;setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);}} onOpenProperty={item=>{const property=resolveNotificationProperty(item.detail,properties);if(!property)return;router.push(`/properties/${property.id}${item.destination==='units'?'?tab=units':''}`);}} />
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
-      {!loading&&<div className="dashboard-mobile-context">
-        <div className="dashboard-property-chips" role="listbox" aria-label="Property">
-          <button type="button" aria-pressed={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>Portfolio</button>
-          {properties.map(property=><button type="button" key={property.id} aria-pressed={cashPropertyId===property.id} onClick={()=>setCashPropertyId(property.id)}>{propertyChipName(property.address)}</button>)}
-        </div>
-        <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>
-      </div>}
     </header>
+    {!loading&&<div className="dashboard-mobile-context">
+      <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>
+      <div className="dashboard-property-chips" role="tablist" aria-label="Property">
+        <button type="button" role="tab" aria-selected={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>Portfolio</button>
+        {properties.map(property=><button type="button" role="tab" key={property.id} aria-selected={cashPropertyId===property.id} onClick={()=>setCashPropertyId(property.id)}>{propertyChipName(property.address)}</button>)}
+      </div>
+    </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
       <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
