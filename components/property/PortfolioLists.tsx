@@ -61,14 +61,16 @@ function monthName(now = new Date()) {
   return now.toLocaleDateString('en-US', { month: 'long' });
 }
 
-function rateLabel(rate?: number | null) {
-  if (rate === null || rate === undefined || !Number.isFinite(Number(rate))) return '—';
-  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(Number(rate))}%`;
+function knownRate(rate?: number | null) {
+  const value = Number(rate);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(value)}%`;
 }
 
-function moneyOrDash(value?: number | null) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
-  return formatCurrency(Number(value));
+function knownMoney(value?: number | null) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return '';
+  return formatCurrency(amount);
 }
 
 function documentSummary(docs: PortfolioDocument[]) {
@@ -126,14 +128,13 @@ function PropertyDetail({ open, id, label, children }: { open: boolean; id: stri
   </div>;
 }
 
-export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing, onAddTenant }: {
+export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   transactions: HistoryTransaction[];
   documents: PortfolioDocument[];
   imageUrls: Record<string, string>;
   onAddFinancing: (property: Property) => void;
-  onAddTenant: (property: Property) => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const rentHeading = `${monthName()} rent`;
@@ -179,31 +180,27 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
         </button>
         <PropertyDetail open={open} id={detailId} label={`${property.address} details`}>
           <section className="portfolio-detail-section">
-            {financed ? <div className="portfolio-mortgage-row">
-              <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
-              <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
-              <Fact label="Monthly payment" value={moneyOrDash(property.monthly_mortgage_payment)} />
-              <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />
-              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Edit</button>
-            </div> : <p className="portfolio-summary-line">
-              <span>Mortgage details not added</span>
-              <span aria-hidden="true">·</span>
-              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Add financing</button>
-            </p>}
+            <div className="portfolio-detail-head">
+              <h3>Mortgage</h3>
+              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>{financed ? 'Edit mortgage' : 'Add financing'}</button>
+            </div>
+            {financed ? <dl className="portfolio-detail-facts">
+              {knownMoney(property.mortgage_balance) && <Fact label="Balance" value={knownMoney(property.mortgage_balance)} />}
+              {knownRate(property.mortgage_interest_rate) && <Fact label="Interest rate" value={knownRate(property.mortgage_interest_rate)} />}
+              {knownMoney(property.monthly_mortgage_payment) && <Fact label="Monthly payment" value={knownMoney(property.monthly_mortgage_payment)} />}
+              {property.mortgage_start_date && <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />}
+            </dl> : <p className="portfolio-detail-empty">Mortgage details not added</p>}
           </section>
           <section className="portfolio-detail-section">
-            <p className="portfolio-summary-line">
-              {acquired && <><span>Acquired {acquired}</span><span aria-hidden="true">·</span></>}
-              {property.purchase_price != null && <><span>Purchase price {formatCurrency(Number(property.purchase_price))}</span><span aria-hidden="true">·</span></>}
-              <span>Documents</span>
-              <span aria-hidden="true">·</span>
-              <span>{docs.count}</span>
-              {docs.latest && <><span aria-hidden="true">·</span><span>Latest {docs.latest}</span></>}
-              <span aria-hidden="true">·</span>
-              <Link href={`/properties/${property.id}?tab=documents`}>View documents</Link>
-              <span aria-hidden="true">·</span>
-              <button type="button" className="portfolio-detail-action" onClick={() => onAddTenant(property)}>Add tenant</button>
-            </p>
+            <div className="portfolio-detail-head"><h3>Property details</h3></div>
+            <dl className="portfolio-detail-facts">
+              {acquired && <Fact label="Acquired" value={acquired} />}
+              {knownMoney(property.purchase_price) && <Fact label="Purchase price" value={knownMoney(property.purchase_price)} />}
+              <div className="portfolio-detail-docs">
+                <Fact label="Documents" value={docs.count} />
+                <Link href={`/properties/${property.id}?tab=documents`}>View documents</Link>
+              </div>
+            </dl>
           </section>
         </PropertyDetail>
       </div>;
@@ -211,10 +208,11 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
   </div>;
 }
 
-export function UnitsList({ properties, unitsByProperty, imageUrls }: {
+export function UnitsList({ properties, unitsByProperty, imageUrls, onAddTenant }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   imageUrls: Record<string, string>;
+  onAddTenant: (property: Property) => void;
 }) {
   const rows = properties.flatMap(property => [...(unitsByProperty[property.id] || [])]
     .sort((a, b) => a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true }))
@@ -232,14 +230,18 @@ export function UnitsList({ properties, unitsByProperty, imageUrls }: {
       </div>
       {rows.map(({ property, unit }, index) => {
         const attention = unitAttention(unit);
-        return <Link key={unit.id} href={`/properties/${property.id}?tab=units`} className="portfolio-unit-row portfolio-unit-grid">
-          <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
-          <span className="portfolio-unit-name">{unit.unit_number}</span>
-          <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
-          <span className="portfolio-unit-tenant">{attention.tenantLabel}</span>
-          <span className="portfolio-unit-rent">{formatCurrency(Number(unit.current_rent || 0))}</span>
-          <span className="portfolio-unit-lease">{leaseRangeLabel(unit)}</span>
-        </Link>;
+        const vacant = attention.kind === 'vacant';
+        return <div key={unit.id} className="portfolio-unit-row portfolio-unit-grid">
+          <Link href={`/properties/${property.id}?tab=units`} className="portfolio-unit-open">
+            <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
+            <span className="portfolio-unit-name">{unit.unit_number}</span>
+            <span className="portfolio-unit-status" data-kind={attention.kind}>{statusLabel(attention.kind, attention.label, attention.vacancyDays)}</span>
+            {vacant ? <span className="portfolio-unit-tenant" /> : <span className="portfolio-unit-tenant">{attention.tenantLabel}</span>}
+            <span className="portfolio-unit-rent">{formatCurrency(Number(unit.current_rent || 0))}</span>
+            <span className="portfolio-unit-lease">{leaseRangeLabel(unit)}</span>
+          </Link>
+          {vacant && <button type="button" className="portfolio-unit-tenant-action" onClick={() => onAddTenant(property)}>Add tenant</button>}
+        </div>;
       })}
     </> : <p className="portfolio-empty">No units yet.</p>}
   </div>;

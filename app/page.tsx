@@ -7,7 +7,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
-import { formatCurrency, shortPropertyName } from '@/lib/formatters';
+import { formatCurrency, propertyChipName, shortPropertyName } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
@@ -314,7 +314,7 @@ export default function Dashboard() {
   const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
   return <div className="dashboard-operating">
     <header className="dashboard-operating-header">
-      <strong className="dashboard-mobile-brand">Portfolio</strong>
+      <strong className="dashboard-mobile-brand">Overview</strong>
       <div className="dashboard-heading"><h1>{monthLabel} {overviewYear} overview</h1><p>Portfolio performance for the current month</p></div>
       <div className="dashboard-operating-controls">
         <div className="dashboard-filter-row">
@@ -325,14 +325,21 @@ export default function Dashboard() {
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>
+    {!loading&&<div className="dashboard-mobile-context">
+      <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>
+      <div className="dashboard-property-chips" role="tablist" aria-label="Property">
+        <button type="button" role="tab" aria-selected={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>Portfolio</button>
+        {properties.map(property=><button type="button" role="tab" key={property.id} aria-selected={cashPropertyId===property.id} onClick={()=>setCashPropertyId(property.id)}>{propertyChipName(property.address)}</button>)}
+      </div>
+    </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
-        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
-        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
-        <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
-      </section>
       <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
+      <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
+        <div><span><span className="dashboard-kpi-full">Rent collected</span><span className="dashboard-kpi-short">Rent</span></span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
+        <div><span><span className="dashboard-kpi-full">Operating expenses</span><span className="dashboard-kpi-short">Expenses</span></span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
+        <div><span><span className="dashboard-kpi-full">Net cash flow</span><span className="dashboard-kpi-short">Net</span></span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
+      </section>
       <div className="dashboard-main-row">
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
           <div className="dashboard-chart-top">
@@ -447,8 +454,8 @@ function monthOverMonth(current:number,previous:number,direction:'higher-better'
   return {delta:signed,rest:'from last month',text:`${signed} from last month`,tone:improved?'positive' as const:'negative' as const};
 }
 function SummaryChange({change}:{change:ReturnType<typeof monthOverMonth>}){
-  if(change.tone==='neutral') return <small>{change.text}</small>;
-  return <small><b className={`amount-${change.tone}`}>{change.delta}</b> {change.rest}</small>;
+  if(change.tone==='neutral') return <><small className="dashboard-kpi-full">{change.text}</small><small className="dashboard-kpi-short" aria-hidden="true"/></>;
+  return <><small className="dashboard-kpi-full"><b className={`amount-${change.tone}`}>{change.delta}</b> {change.rest}</small><small className="dashboard-kpi-short"><b className={`amount-${change.tone}`}>{change.delta}</b></small></>;
 }
 function expenseCategoryLabel(key:string,raw:string){
   const labels:Record<string,string>={
