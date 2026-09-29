@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X } from 'lucide-react';
+import { ArrowLeft, Bell, X } from 'lucide-react';
 
 const SAMPLE_NOTIFICATIONS = [
   { id: 'transfer', group: 'transaction' as const, title: 'Bank transfer received', detail: '15334 Triskett', amount: '+$2,377', tone: 'positive' as const, time: '2h ago', match: 'payout' as const },
@@ -85,6 +85,7 @@ export default function NotificationBell({ onOpenTransaction, onOpenProperty, ho
       <button type="button" className="dashboard-drawer-scrim" aria-label="Close notifications" onClick={() => setOpen(false)} />
       <aside className="dashboard-drawer" role="dialog" aria-modal="true" aria-label="Notifications">
         <header className="dashboard-drawer-head">
+          <button type="button" className="dashboard-drawer-back" aria-label="Back" onClick={() => setOpen(false)}><ArrowLeft size={18} /></button>
           <h2>Notifications</h2>
           <button type="button" className="dashboard-drawer-close" aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></button>
         </header>

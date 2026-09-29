@@ -219,8 +219,8 @@ export default function PropertiesPage() {
         <>
           <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
           <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} onAddTenant={property => startAddUnit(property.id)} />}
-          {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} />}
+          {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} onAddTenant={property => startAddUnit(property.id)} />}
           {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
         </>
       )}

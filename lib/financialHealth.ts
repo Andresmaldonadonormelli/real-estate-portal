@@ -1,6 +1,6 @@
 import { categoryKey } from '@/lib/accounting';
 import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCompactCurrency, formatCurrency } from '@/lib/formatters';
 
 const MORTGAGE_KEYS = ['mortgage', 'mortgage-interest', 'mortgage-principal'];
 
@@ -14,6 +14,7 @@ export type HealthProperty = {
 export type HealthCell = {
   label: string;
   value: string;
+  compact: string;
   tone: '' | 'positive' | 'negative';
   note: string;
 };
@@ -44,27 +45,29 @@ export function financialHealth(transactions: HistoryTransaction[], properties: 
   const single = Boolean(propertyId);
 
   const noiCell: HealthCell = noiKnown
-    ? { label: 'TTM NOI', value: formatCurrency(noi), tone: noi > 0.5 ? 'positive' : noi < -0.5 ? 'negative' : '', note: '' }
-    : { label: 'TTM NOI', value: 'Not available', tone: '', note: 'No posted income or operating expenses in the last 12 months.' };
+    ? { label: 'TTM NOI', value: formatCurrency(noi), compact: formatCompactCurrency(noi), tone: noi > 0.5 ? 'positive' : noi < -0.5 ? 'negative' : '', note: '' }
+    : { label: 'TTM NOI', value: 'Not available', compact: '', tone: '', note: 'No posted income or operating expenses in the last 12 months.' };
 
   const dscrCell: HealthCell = noiKnown && debtService > 0.5
-    ? { label: 'DSCR', value: `${(noi / debtService).toFixed(2)}×`, tone: noi / debtService >= 1 ? 'positive' : 'negative', note: '' }
-    : { label: 'DSCR', value: 'Not available', tone: '', note: debtService > 0.5 ? 'Not enough activity in the last 12 months.' : 'No mortgage payments in the last 12 months.' };
+    ? { label: 'DSCR', value: `${(noi / debtService).toFixed(2)}×`, compact: `${(noi / debtService).toFixed(2)}×`, tone: noi / debtService >= 1 ? 'positive' : 'negative', note: '' }
+    : { label: 'DSCR', value: 'Not available', compact: '', tone: '', note: debtService > 0.5 ? 'Not enough activity in the last 12 months.' : 'No mortgage payments in the last 12 months.' };
 
   const debtCell: HealthCell = financed.length
     ? {
       label: 'Debt balance',
       value: formatCurrency(balance),
+      compact: formatCompactCurrency(balance),
       tone: '',
       note: !single && financed.length < scope.length ? `${financed.length} of ${scope.length} properties` : '',
     }
-    : { label: 'Debt balance', value: 'Not available', tone: '', note: single ? 'Add the mortgage balance on the property.' : 'No mortgage balance is saved.' };
+    : { label: 'Debt balance', value: 'Not available', compact: '', tone: '', note: single ? 'Add the mortgage balance on the property.' : 'No mortgage balance is saved.' };
 
   const rateCell: HealthCell = financed.length && !missingRate
-    ? { label: 'Average interest rate', value: formatRate(weighted / balance), tone: '', note: '' }
+    ? { label: 'Average interest rate', value: formatRate(weighted / balance), compact: formatRate(weighted / balance), tone: '', note: '' }
     : {
       label: 'Average interest rate',
       value: 'Not available',
+      compact: '',
       tone: '',
       note: financed.length ? (single ? 'Add the interest rate on the property.' : 'A mortgage is missing an interest rate.') : (single ? 'Add the mortgage balance on the property.' : 'No mortgage balance is saved.'),
     };
