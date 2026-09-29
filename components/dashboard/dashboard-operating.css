@@ -807,6 +807,14 @@
   font-size: var(--type-small-size);
   font-weight: var(--weight-semibold);
 }
+.dashboard-drawer-list li[data-unread='true'] .dashboard-drawer-title strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+.dashboard-drawer-list li[data-unread='false'] .dashboard-drawer-title strong {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
 .dashboard-drawer-list span,
 .dashboard-drawer-list time {
   color: var(--text-secondary);
@@ -1057,14 +1065,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .dashboard-drawer-list li[data-unread='true'] .dashboard-drawer-title strong {
-    color: var(--text-primary);
-    font-weight: var(--weight-semibold);
-  }
-  .dashboard-drawer-list li[data-unread='false'] .dashboard-drawer-title strong {
-    color: var(--text-secondary);
-    font-weight: var(--weight-medium);
   }
   body:has(.dashboard-drawer-root[data-open='true']) {
     overflow: hidden;

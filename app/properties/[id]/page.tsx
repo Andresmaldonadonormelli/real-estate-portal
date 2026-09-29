@@ -150,10 +150,28 @@ export default function PropertyWorkspacePage(){
     </div>
     <div className="property-skeleton-tabs skeleton-block"/>
     <div className="property-skeleton-overview">
-      <div className="property-skeleton-chart skeleton-block"/>
-      <div className="property-skeleton-pulse skeleton-block"/>
+      <div className="property-skeleton-main">
+        <section className="property-skeleton-module property-skeleton-chart">
+          <div className="skeleton-block property-skeleton-heading"/>
+          <div className="skeleton-block property-skeleton-value"/>
+          <div className="skeleton-block property-skeleton-plot"/>
+        </section>
+        <section className="property-skeleton-module property-skeleton-actions">
+          <div className="skeleton-block property-skeleton-heading"/>
+          <div className="skeleton-block property-skeleton-row"/>
+          <div className="skeleton-block property-skeleton-row"/>
+        </section>
+        {['financials','trends','expenses','statistics','transactions'].map(section=><div className="property-skeleton-section" key={section}><div className="skeleton-block"/></div>)}
+      </div>
+      <aside className="property-skeleton-module property-skeleton-pulse">
+        <div className="skeleton-block property-skeleton-heading"/>
+        <div className="skeleton-block property-skeleton-line"/>
+        <div className="skeleton-block property-skeleton-track"/>
+        <div className="skeleton-block property-skeleton-row"/>
+        <div className="skeleton-block property-skeleton-row"/>
+        <div className="skeleton-block property-skeleton-row"/>
+      </aside>
     </div>
-    <div className="property-skeleton-sections">{[0,1,2,3].map(i=><div className="property-skeleton-section" key={i}><div className="skeleton-block"/><div className="skeleton-block"/><div className="skeleton-block"/></div>)}</div>
   </div>;
   if(error || !property) return <div className="property-workspace"><Link href="/properties" className="property-back"><ArrowLeft size={16}/> Properties</Link><div className="card property-empty">{error || 'Property not found.'}</div></div>;
 
