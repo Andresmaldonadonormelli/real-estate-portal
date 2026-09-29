@@ -889,8 +889,9 @@
     min-width: 0;
     padding: 3px;
     overflow-x: auto;
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--text-primary) 6%, var(--theme-page));
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-control);
+    background: var(--surface-subtle);
     scrollbar-width: none;
   }
   .dashboard-property-chips::-webkit-scrollbar {
@@ -901,23 +902,22 @@
     align-items: center;
     justify-content: center;
     flex: 1 0 auto;
-    min-height: 40px;
+    min-height: 32px;
     padding: 0 var(--space-3);
-    border: 0;
-    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    border-radius: calc(var(--radius-control) - 4px);
     background: transparent;
     color: var(--text-secondary);
-    font-size: var(--type-small-size);
-    line-height: var(--type-small-line);
-    font-weight: var(--weight-medium);
+    font: var(--font-label);
     white-space: nowrap;
     cursor: pointer;
   }
   .dashboard-property-chips button[aria-selected='true'] {
+    border-color: var(--border-color);
     background: var(--theme-card);
     color: var(--text-primary);
-    font-weight: var(--weight-semibold);
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 12%, transparent);
+    font-weight: var(--weight-medium);
+    box-shadow: none;
   }
   .dashboard-health-compact {
     display: inline;
@@ -1040,8 +1040,34 @@
   }
   .dashboard-drawer-list {
     flex: 1 1 auto;
+    align-content: start;
+    grid-auto-rows: 64px;
     min-height: 0;
     overflow: auto;
+  }
+  .dashboard-drawer-list li,
+  .dashboard-drawer-list button {
+    height: 64px;
+    min-height: 64px;
+    max-height: 64px;
+  }
+  .dashboard-drawer-list button {
+    align-content: center;
+    overflow: hidden;
+  }
+  .dashboard-drawer-title strong,
+  .dashboard-drawer-list button > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dashboard-drawer-list li[data-unread='true'] .dashboard-drawer-title strong {
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+  }
+  .dashboard-drawer-list li[data-unread='false'] .dashboard-drawer-title strong {
+    color: var(--text-secondary);
+    font-weight: var(--weight-medium);
   }
   body:has(.dashboard-drawer-root[data-open='true']) {
     overflow: hidden;
@@ -1116,7 +1142,9 @@
 }
 @media (max-width: 767px) {
   .dashboard-drawer-tabs button {
+    height: 44px;
     min-height: 44px;
+    white-space: nowrap;
   }
 }
 @media (prefers-reduced-motion: reduce) {

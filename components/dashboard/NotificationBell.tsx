@@ -71,6 +71,7 @@ export default function NotificationBell({ onOpenTransaction, onOpenProperty, ho
   }
 
   function openItem(item: DashboardNotification) {
+    setUnread((ids) => ids.filter((id) => id !== item.id));
     if (item.group === 'transaction') {
       if (!('match' in item)) return;
       onOpenTransaction?.(item);
