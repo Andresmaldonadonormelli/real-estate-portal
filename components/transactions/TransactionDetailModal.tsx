@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import type { Property, Transaction, Unit } from '@/lib/types';
@@ -17,7 +17,7 @@ function signed(amount: number) {
   return text;
 }
 
-function ChaseMark() {
+export function ChaseMark() {
   return <svg className="transaction-chase-mark" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#117ACA" d="M0 15.415c0 .468.38.85.848.85h5.937V.575L0 7.72v7.695m15.416 8.582c.467 0 .846-.38.846-.849v-5.937H.573l7.146 6.785h7.697M24 8.587a.844.844 0 0 0-.847-.846h-5.938V23.43l6.782-7.148L24 8.586M8.585.003a.847.847 0 0 0-.847.847v5.94h15.688L16.282.003H8.585Z" /></svg>;
 }
 
@@ -34,13 +34,14 @@ function formatDetailDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function TransactionDetailModal({ transaction, properties, units, transactions, onClose, onEdit, onSaved, onArchived, onArchiveFailed }: {
+export default function TransactionDetailModal({ transaction, properties, units, transactions, onClose, onEdit, onSaved, onArchived, onArchiveFailed, back = false }: {
   transaction: EditableTx;
   properties: Property[];
   units: Unit[];
   transactions: Transaction[];
   onClose: () => void;
   onEdit: () => void;
+  back?: boolean;
   onSaved: (message?: string) => void | Promise<void>;
   onArchived?: (message?: string, id?: string, phase?: 'optimistic' | 'complete') => void | Promise<void>;
   onArchiveFailed?: (tx: EditableTx, error: string) => void | Promise<void>;
@@ -137,7 +138,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
     <div className="transaction-detail-panel" role="dialog" aria-modal="true" aria-labelledby="transaction-detail-title">
       <header className="transaction-detail-head">
         <h2 id="transaction-detail-title">Transaction details</h2>
-        <button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19} /></button>
+        <button className="icon-close" type="button" onClick={onClose} aria-label={back ? 'Back' : 'Close'}>{back ? <ChevronLeft size={19} /> : <X size={19} />}</button>
       </header>
       <div className="transaction-detail-summary">
         <div className="transaction-detail-summary-top">
@@ -162,6 +163,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
       <dl className="transaction-facts">
         <div><dt>Property</dt><dd>{property?.address || 'Portfolio'}{unit?.unit_number ? ` · ${unit.unit_number}` : ''}</dd></div>
         <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
+        {current.description ? <div><dt>Description</dt><dd>{current.description}</dd></div> : null}
         {account && <div><dt>Account</dt><dd><AccountLine chase={chase} account={account} /></dd></div>}
         {imported && <div><dt>Imported date</dt><dd>{when}</dd></div>}
         <div><dt>Source</dt><dd>{importStatus}</dd></div>

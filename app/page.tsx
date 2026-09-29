@@ -19,6 +19,7 @@ import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import NotificationBell from '@/components/dashboard/NotificationBell';
+import FinancialHealth from '@/components/dashboard/FinancialHealth';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { ChartLegend, ProductSelect } from '@/components/common/ProductControls';
 import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Transaction|null>(null);
+  const [fromNotifications,setFromNotifications]=useState(false);
   const [detailEditing,setDetailEditing]=useState(false);
   const [addMenuOpen,setAddMenuOpen]=useState(false);
   const addMenuRef=useRef<HTMLDivElement|null>(null);
@@ -319,7 +321,7 @@ export default function Dashboard() {
           {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
           <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
         </div>
-        <NotificationBell onOpenTransaction={item=>{const match=resolveNotificationTransaction(item,transactions,properties);if(!match)return;setShowQuickAdd(false);setDetailEditing(false);setActiveTransaction(match);}} onOpenProperty={item=>{const property=resolveNotificationProperty(item.detail,properties);if(!property)return;router.push(`/properties/${property.id}${item.destination==='units'?'?tab=units':''}`);}} />
+        <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{const match=resolveNotificationTransaction(item,transactions,properties);if(!match)return;setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);}} onOpenProperty={item=>{const property=resolveNotificationProperty(item.detail,properties);if(!property)return;router.push(`/properties/${property.id}${item.destination==='units'?'?tab=units':''}`);}} />
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>
@@ -330,6 +332,7 @@ export default function Dashboard() {
         <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
         <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
       </section>
+      <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
       <div className="dashboard-main-row">
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
           <div className="dashboard-chart-top">
@@ -368,10 +371,10 @@ export default function Dashboard() {
             return <div className="dashboard-expense-row" key={item.key} data-spent={spent?'true':'false'}><div className="dashboard-expense-label"><span className="dashboard-expense-name"><strong>{spent?`${item.label} (${Math.round(item.share*100)}%)`:item.label}</strong>{item.review&&<Link href={reviewHref} className="dashboard-expense-review">Review</Link>}</span><b>{spent?formatKpiCurrency(item.amount):`${formatKpiCurrency(0)} (0%)`}</b></div><span className="dashboard-expense-track">{spent&&<i style={{width:`${item.share*100}%`,background:item.color}}/>}</span></div>;
           })}</div>
         </section>
-        <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>{setDetailEditing(false);setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}}/>
+        <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>{setFromNotifications(false);setDetailEditing(false);setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}}/>
       </div>
     </>}
-    {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal back={fromNotifications} transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false);setFromNotifications(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {(showQuickAdd||(activeTransaction&&detailEditing))&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={detailEditing?activeTransaction:null} onClose={()=>{if(detailEditing){setDetailEditing(false);return;}setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated');setShowQuickAdd(false);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>

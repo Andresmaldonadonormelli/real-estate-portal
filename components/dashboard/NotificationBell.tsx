@@ -27,9 +27,10 @@ type NotificationTab = (typeof TABS)[number]['id'];
 
 const SLIDE_MS = 280;
 
-export default function NotificationBell({ onOpenTransaction, onOpenProperty }: {
+export default function NotificationBell({ onOpenTransaction, onOpenProperty, hold = false }: {
   onOpenTransaction?: (item: DashboardNotification) => void;
   onOpenProperty?: (item: DashboardNotification) => void;
+  hold?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [present, setPresent] = useState(false);
@@ -41,13 +42,13 @@ export default function NotificationBell({ onOpenTransaction, onOpenProperty }: 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!present) return;
+    if (!present || hold) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [present]);
+  }, [present, hold]);
 
   useEffect(() => {
     if (open || !present) return;
@@ -70,12 +71,12 @@ export default function NotificationBell({ onOpenTransaction, onOpenProperty }: 
   }
 
   function openItem(item: DashboardNotification) {
-    setOpen(false);
     if (item.group === 'transaction') {
       if (!('match' in item)) return;
       onOpenTransaction?.(item);
       return;
     }
+    setOpen(false);
     onOpenProperty?.(item);
   }
 

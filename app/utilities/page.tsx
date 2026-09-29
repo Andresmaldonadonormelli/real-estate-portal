@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -284,8 +284,9 @@ export default function UtilitiesPage() {
         </div>
       )}
 
-      {detail && (
-        <Drawer title={detail.utility_type} onClose={() => setDetail(null)}>
+      <Drawer title={detail?.utility_type || ""} open={Boolean(detail)} onClose={() => setDetail(null)}>
+        {detail && (
+          <>
           <div className="utility-drawer-hero">
             <UtilityMark type={detail.utility_type} />
             <div>
@@ -312,8 +313,9 @@ export default function UtilitiesPage() {
             )}
             <Button onClick={() => edit(detail)}>Edit utility</Button>
           </div>
-        </Drawer>
-      )}
+          </>
+        )}
+      </Drawer>
 
       {show && (
         <Modal
@@ -589,30 +591,60 @@ function Modal({
 }
 function Drawer({
   title,
+  open,
   onClose,
   children,
 }: {
   title: string;
+  open: boolean;
   onClose: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  const mounted = useOverlayLock();
-  if (!mounted) return null;
+  const [mounted, setMounted] = useState(false);
+  const [present, setPresent] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!present) return;
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = old; };
+  }, [present]);
+  const held = useRef<{ title: string; children: ReactNode }>({ title, children });
+  if (open) held.current = { title, children };
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) {
+        setShown(true);
+        return;
+      }
+      const frame = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setPresent(false), reduce ? 0 : 280);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!mounted || !present) return null;
   return createPortal(
     <div
       className="utility-drawer-overlay"
+      data-open={shown ? "true" : "false"}
       onMouseDown={(e) => {
         if (e.currentTarget === e.target) onClose();
       }}
     >
-      <aside className="utility-drawer" role="dialog" aria-modal="true" aria-label={title}>
+      <aside className="utility-drawer" role="dialog" aria-modal="true" aria-label={held.current.title}>
         <div className="utility-drawer-head">
-          <h2>{title}</h2>
+          <h2>{held.current.title}</h2>
           <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
             <X size={18} />
           </button>
         </div>
-        {children}
+        {held.current.children}
       </aside>
     </div>,
     document.body,

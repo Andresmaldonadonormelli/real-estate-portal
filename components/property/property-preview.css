@@ -66,7 +66,10 @@
 .portfolio-watch[data-tone='move-in']{color:var(--theme-chart-income)}
 .portfolio-watch[data-tone='warning']{color:var(--warning)}
 .portfolio-watch[data-tone='vacant']{color:var(--negative)}
-.portfolio-property-detail{border-bottom:1px solid var(--border-color);background:var(--theme-card)}
+.portfolio-detail-clip{display:grid;grid-template-rows:0fr;transition:grid-template-rows 280ms ease}
+.portfolio-detail-clip[data-open='true']{grid-template-rows:1fr}
+.portfolio-property-detail{min-height:0;overflow:hidden;border-bottom:1px solid var(--border-color);background:var(--theme-card)}
+@media (prefers-reduced-motion:reduce){.portfolio-detail-clip{transition:none}}
 .portfolio-property-block:last-child .portfolio-property-detail{border-bottom:0}
 .portfolio-stat-band{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4);padding:var(--space-4);border-bottom:1px solid var(--border-color)}
 .portfolio-stat-band strong{display:block;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums}
@@ -104,8 +107,11 @@
 .portfolio-dialog-head,.utility-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-5) var(--space-5) 0}
 .portfolio-dialog-head h2,.utility-drawer-head h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .portfolio-dialog-body{padding:var(--space-4) var(--space-5) var(--space-5)}
-.utility-drawer-overlay{display:grid;place-items:stretch end}
-.utility-drawer{display:flex;flex-direction:column;width:min(420px,100%);height:100%;max-height:100dvh;overflow:auto;border-left:1px solid var(--border-color);background:var(--theme-card);box-shadow:var(--shadow-overlay)}
+.utility-drawer-overlay{display:grid;place-items:stretch end;background:transparent;transition:background 280ms ease}
+.utility-drawer-overlay[data-open='true']{background:var(--theme-overlay)}
+.utility-drawer{display:flex;flex-direction:column;width:min(420px,100%);height:100%;max-height:100dvh;overflow:auto;border-left:1px solid var(--border-color);background:var(--theme-card);box-shadow:var(--shadow-overlay);transform:translateX(100%);transition:transform 280ms ease}
+.utility-drawer-overlay[data-open='true'] .utility-drawer{transform:translateX(0)}
+@media (prefers-reduced-motion:reduce){.utility-drawer-overlay,.utility-drawer{transition:none}}
 .utility-drawer-hero{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4) var(--space-5) 0}
 .utility-drawer-hero>div{display:grid;min-width:0}
 .utility-drawer-hero strong{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--weight-semibold)}
@@ -118,7 +124,8 @@
 .portfolio-unit-status{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;height:24px;padding:0 8px;border-radius:8px;font-size:var(--type-label-size);line-height:1;white-space:nowrap}
 .portfolio-unit-status::before{content:"";width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:currentColor}
 .portfolio-unit-status[data-kind='occupied']{background:color-mix(in srgb,var(--positive) 16%,var(--theme-card));color:var(--positive)}
-.portfolio-unit-status[data-kind='vacant'],.portfolio-unit-status[data-kind='ending']{background:color-mix(in srgb,var(--warning) 16%,var(--theme-card));color:var(--warning)}
+.portfolio-unit-status[data-kind='ending']{background:color-mix(in srgb,var(--warning) 16%,var(--theme-card));color:var(--warning)}
+.portfolio-unit-status[data-kind='vacant']{background:color-mix(in srgb,var(--negative) 16%,var(--theme-card));color:var(--negative)}
 .portfolio-unit-status[data-kind='move-in']{background:var(--surface-subtle);color:var(--text-primary)}
 .portfolio-utility-responsibility{display:inline-flex;align-items:center;width:max-content;max-width:100%;height:24px;padding:0 8px;border-radius:8px;background:var(--surface-subtle);color:var(--text-primary);font-size:var(--type-label-size);line-height:1;white-space:nowrap}
 .portfolio-improve-status{font-size:var(--type-small-size);line-height:var(--type-small-line)}

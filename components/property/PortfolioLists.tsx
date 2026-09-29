@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import type { Property } from '@/lib/types';
-import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
+import type { HistoryTransaction } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
-import { formatLeaseDate, leaseRangeLabel, mortgagePayoffLabel, nextMortgagePaymentLabel, occupancyCounts, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
+import { formatLeaseDate, leaseRangeLabel, nextMortgagePaymentLabel, occupancyCounts, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
 import { cashFlowThisMonth, rentThisMonth } from '@/lib/portfolioMonth';
 
 export type PortfolioDocument = {
@@ -95,21 +95,29 @@ function Fact({ label, value, quiet = false }: { label: string; value: string; q
   return <div><dt>{label}</dt><dd className={quiet ? 'is-quiet' : undefined}>{value}</dd></div>;
 }
 
-function trailingStats(transactions: HistoryTransaction[], property: Property) {
-  const months = buildMonthlyFinancialHistory(transactions, '1Y', property.id);
-  const income = months.reduce((sum, row) => sum + row.income, 0);
-  const operating = months.reduce((sum, row) => sum + row.operatingExpenses, 0);
-  const cash = months.reduce((sum, row) => sum + row.cashExpenses, 0);
-  const noi = income - operating;
-  const debtService = Math.max(0, cash - operating);
-  const price = Number(property.purchase_price);
-  return {
-    noiText: formatCurrency(noi),
-    noiTone: noi > 0 ? 'positive' : noi < 0 ? 'negative' : '',
-    cap: price > 0 ? `${(noi / price * 100).toFixed(1)}%` : '—',
-    expense: income > 0 ? `${(operating / income * 100).toFixed(1)}%` : '—',
-    coverage: debtService > 0 ? `${(noi / debtService).toFixed(2)}×` : '—',
-  };
+function PropertyDetail({ open, id, label, children }: { open: boolean; id: string; label: string; children: ReactNode }) {
+  const [present, setPresent] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        setShown(true);
+        return;
+      }
+      const frame = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setPresent(false), reduce ? 0 : 280);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!present) return null;
+  return <div className="portfolio-detail-clip" data-open={shown ? 'true' : 'false'}>
+    <div id={id} className="portfolio-property-detail" role="region" aria-label={label}>{children}</div>
+  </div>;
 }
 
 export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing, onAddTenant }: {
@@ -148,7 +156,6 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
       const docs = documentSummary(docsByProperty[property.id] || []);
       const acquired = formatLeaseDate(property.purchase_date);
       const financed = hasMortgage(property);
-      const stats = open ? trailingStats(transactions, property) : null;
       return <div key={property.id} className="portfolio-property-block">
         <button type="button" className="portfolio-property-row portfolio-property-grid" aria-expanded={open} aria-controls={detailId} onClick={() => setExpandedId(current => current === property.id ? null : property.id)}>
           <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
@@ -164,20 +171,13 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
           <span className="portfolio-watch" data-tone={watch.tone}>{watch.label}</span>
           <ChevronDown className="portfolio-row-chevron" size={16} aria-hidden="true" />
         </button>
-        {open && stats && <div id={detailId} className="portfolio-property-detail" role="region" aria-label={`${property.address} details`}>
-          <div className="portfolio-stat-band">
-            <div><strong className={stats.noiTone === 'positive' ? 'amount-positive' : stats.noiTone === 'negative' ? 'amount-negative' : ''}>{stats.noiText}</strong><span>Trailing NOI</span></div>
-            <div><strong>{stats.cap}</strong><span>Cap rate</span></div>
-            <div><strong>{stats.expense}</strong><span>Expense ratio</span></div>
-            <div><strong>{stats.coverage}</strong><span>Debt-service coverage</span></div>
-          </div>
+        <PropertyDetail open={open} id={detailId} label={`${property.address} details`}>
           <section className="portfolio-detail-section">
             {financed ? <div className="portfolio-mortgage-row">
               <Fact label="Balance" value={formatCurrency(Number(property.mortgage_balance || 0))} />
               <Fact label="Interest rate" value={rateLabel(property.mortgage_interest_rate)} />
               <Fact label="Monthly payment" value={moneyOrDash(property.monthly_mortgage_payment)} />
               <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />
-              <Fact label="Payoff" value={mortgagePayoffLabel(property.mortgage_start_date, property.mortgage_term_years)} />
               <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>Edit</button>
             </div> : <p className="portfolio-summary-line">
               <span>Mortgage details not added</span>
@@ -199,7 +199,7 @@ export function PropertiesList({ properties, unitsByProperty, transactions, docu
               <button type="button" className="portfolio-detail-action" onClick={() => onAddTenant(property)}>Add tenant</button>
             </p>
           </section>
-        </div>}
+        </PropertyDetail>
       </div>;
     })}
   </div>;

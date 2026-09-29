@@ -91,6 +91,47 @@
 .dashboard-summary strong.amount-negative {
   color: var(--negative);
 }
+.dashboard-health {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+}
+.dashboard-health-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+  font-weight: var(--weight-medium);
+}
+.dashboard-health-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.dashboard-health-metrics > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-height: 72px;
+  padding: 0 var(--space-4) var(--space-3) 0;
+}
+.dashboard-health-metrics > div + div {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-color);
+}
+.dashboard-health-metrics span,
+.dashboard-health-metrics small {
+  color: var(--text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+}
+.dashboard-health-metrics strong {
+  font-size: var(--type-card-title-size);
+  line-height: var(--type-card-title-line);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-health-metrics strong.amount-positive { color: var(--positive); }
+.dashboard-health-metrics strong.amount-negative { color: var(--negative); }
 .dashboard-summary small {
   color: var(--text-secondary);
   font-size: var(--type-small-size);
@@ -893,6 +934,20 @@
   }
   .dashboard-summary strong {
     font-size: calc(var(--type-page-title-size) - 4px);
+  }
+  .dashboard-health-metrics {
+    display: flex;
+    overflow-x: auto;
+    margin: 0 calc(var(--space-5) * -1);
+    padding: 0 var(--space-5) var(--space-2);
+    scroll-snap-type: x proximity;
+  }
+  .dashboard-health-metrics > div {
+    flex: 0 0 168px;
+    scroll-snap-align: start;
+  }
+  .dashboard-health-metrics > div + div {
+    border-left: 1px solid var(--border-color);
   }
   .dashboard-tx-table {
     display: none;

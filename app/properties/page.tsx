@@ -19,7 +19,7 @@ type PortfolioTab = 'properties' | 'units' | 'improve';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
-  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
+  mortgage_balance: '', mortgage_interest_rate: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
 };
 
 const emptyUnit = {
@@ -101,7 +101,7 @@ export default function PropertiesPage() {
     setPropertyForm({
       address: property.address || '', city: property.city || '', state: property.state || '', zip: property.zip || '',
       property_type: property.property_type || 'duplex',
-      mortgage_balance: String(property.mortgage_balance ?? ''), purchase_price: String(property.purchase_price ?? ''),
+      mortgage_balance: String(property.mortgage_balance ?? ''), mortgage_interest_rate: property.mortgage_interest_rate ? String(property.mortgage_interest_rate) : '', purchase_price: String(property.purchase_price ?? ''),
       purchase_date: property.purchase_date || '',
       monthly_mortgage_payment: String(property.monthly_mortgage_payment ?? ''),
       mortgage_start_date: (property as Property & {mortgage_start_date?:string|null}).mortgage_start_date ?? '',
@@ -121,6 +121,7 @@ export default function PropertiesPage() {
       address: propertyForm.address.trim(), city: propertyForm.city.trim(), state: propertyForm.state.trim(), zip: propertyForm.zip.trim(),
       property_type: propertyForm.property_type,
       mortgage_balance: Number(propertyForm.mortgage_balance || 0),
+      mortgage_interest_rate: propertyForm.mortgage_interest_rate ? Number(propertyForm.mortgage_interest_rate) : null,
       purchase_price: propertyForm.purchase_price ? Number(propertyForm.purchase_price) : null,
       purchase_date: propertyForm.purchase_date || null,
       monthly_mortgage_payment: Number(propertyForm.monthly_mortgage_payment || 0),
@@ -234,7 +235,7 @@ export default function PropertiesPage() {
             <button type="button" className={`sheet-details-toggle ${showPropertyDetails?'expanded':''}`} onClick={()=>setShowPropertyDetails(v=>!v)}><span>{showPropertyDetails?'Hide financial details':'Add financial & property details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
             {showPropertyDetails&&<div className="sheet-details-panel">
               <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
-              <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
+              <div style={twoCol}><Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field><Field label="Interest rate"><input type="number" min="0" step="0.001" placeholder="6.75" value={propertyForm.mortgage_interest_rate} onChange={e => setPropertyForm({ ...propertyForm, mortgage_interest_rate: e.target.value })} style={inputStyle} /></Field></div>
               <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div>
               <p style={{margin:0,fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)',color:'var(--text-secondary)'}}>Mortgage payments come from linked bank imports. Keep mortgage details for amortization and Improve projections.</p>
               <Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
