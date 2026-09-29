@@ -69,15 +69,22 @@
   --control-height-mobile: 48px;
   --motion-fast: 160ms;
 
+  /* Source palette (raw). Prefer semantic tokens below in UI. */
+  --palette-lilac: #baa1f7;
+  --palette-green: #35ff69;
+  --palette-red: #db5461;
+  --palette-yellow: #eeba0b;
+  --palette-near-black: #020202;
+
   /* Light surfaces and text */
-  --theme-page: #ffffff;
-  --theme-sidebar: #ffffff;
+  --theme-page: #f4f3f7;
+  --theme-sidebar: var(--theme-page);
   --theme-card: #ffffff;
   --theme-surface: #ffffff;
-  --theme-surface-subtle: #f1f2f3;
-  --theme-surface-hover: #efefef;
+  --theme-surface-subtle: #f3f3f5;
+  --theme-surface-hover: #ececee;
   --theme-elevated: #ffffff;
-  --theme-input: #f5f6f7;
+  --theme-input: #f6f6f7;
   --theme-text-primary: #171918;
   --theme-text-secondary: #68706c;
   --theme-text-muted: #929995;
@@ -86,31 +93,68 @@
   --theme-border-strong: rgba(18, 22, 20, 0.18);
   --theme-overlay: rgba(9, 12, 10, 0.48);
   --theme-shadow-card: none;
+  --theme-shell-radius: 22px;
+  --theme-module-radius: 16px;
+  --theme-control-radius: 8px;
+  --theme-bar-radius: 4px;
+  --dashboard-series-uncategorized: #c9840a;
+  --dashboard-expense-maintenance: #e07a12;
+  --dashboard-expense-management: #7a45d6;
+  --dashboard-expense-utilities: #3b6fe0;
+  --dashboard-expense-other: #5e6872;
+  --dashboard-expense-uncategorized: #c9840a;
+  --dashboard-series-track: #ececee;
+  --dashboard-series-maintenance: #d97706;
+  --dashboard-series-management: #7a45d6;
+  --dashboard-series-utilities: #3b6fe0;
+  --dashboard-series-insurance: #3d56d6;
+  --dashboard-series-taxes: #c49214;
+  --dashboard-series-legal: #c44b86;
+  --dashboard-series-leasing: #1f9a5c;
+  --theme-section-radius: var(--theme-module-radius);
+  --theme-section-padding: var(--space-5);
+  --theme-section-gap: var(--space-4);
+  --theme-chart-muted: #c9c6d1;
+  --theme-chart-quiet: #f1f0f3;
+  --theme-chart-income-quiet: var(--theme-chart-quiet);
+  --theme-chart-income: #AF69FA;
+  --theme-unread: #AF69FA;
+  --theme-chart-expense: #8d8796;
+  --theme-chart-expense-muted: #8d8a94;
+  --theme-chart-grid: rgba(23, 25, 24, 0.07);
+
+  /* Brand / selected accents from lilac (accessible on light surfaces) */
+  --theme-brand: #6b4fd4;
+  --theme-brand-strong: #5538c2;
+  --theme-brand-soft: #efe9fc;
+  --theme-brand-border: #d5c7f7;
+  --theme-brand-fill: var(--palette-lilac);
+  --theme-on-brand: #ffffff;
 
   /* Monochrome actions */
-  --theme-action: #171918;
+  --theme-action: var(--palette-near-black);
   --theme-action-text: #ffffff;
-  --theme-action-hover: #303330;
-  --theme-nav-active: #efefef;
+  --theme-action-hover: #242424;
+  --theme-nav-active: #e6e6e9;
   --theme-nav-active-text: #171918;
-  --theme-focus: #0866cc;
+  --theme-focus: var(--theme-brand);
 
-  /* Semantic financial states */
-  --theme-income: #00cc00;
+  /* Semantic financial states — accessible text colors + soft tints from source palette */
+  --theme-income: #0e9a42;
   --theme-on-income: #ffffff;
-  --theme-income-soft: #eaf8f0;
-  --theme-income-border: #b9e5cb;
-  --theme-expense-series-1: #006b2d;
-  --theme-expense-series-2: #00a800;
-  --theme-expense-series-3: #67d500;
-  --theme-expense-series-4: #b6f600;
-  --theme-expense: #ff3b00;
-  --theme-expense-soft: #fff0ee;
-  --theme-expense-border: #f5c3bf;
-  --theme-warning: #c88700;
-  --theme-warning-soft: #fff7e2;
-  --theme-warning-border: #ead19a;
-  --theme-noi: #3f7ee8;
+  --theme-income-soft: #e7fbef;
+  --theme-income-border: #9ee9b5;
+  --theme-expense-series-1: #0b7a32;
+  --theme-expense-series-2: #12a846;
+  --theme-expense-series-3: #3dbe6a;
+  --theme-expense-series-4: #8fd9a8;
+  --theme-expense: #FF6542;
+  --theme-expense-soft: #ffece7;
+  --theme-expense-border: #ffc4b6;
+  --theme-warning: #9a7600;
+  --theme-warning-soft: #fbf5e0;
+  --theme-warning-border: #efd789;
+  --theme-noi: #6b4fd4;
 
   /* Accounting categories */
   --theme-maintenance: #e27613;
@@ -135,14 +179,14 @@
 }
 
 [data-theme="dark"] {
-  --theme-page: #000000;
-  --theme-sidebar: #000000;
-  --theme-card: #111312;
-  --theme-surface: #111312;
-  --theme-surface-subtle: #191c1a;
-  --theme-surface-hover: #1a1a1a;
-  --theme-elevated: #1e211f;
-  --theme-input: #0d0f0e;
+  --theme-page: #0c0b10;
+  --theme-sidebar: #0c0b10;
+  --theme-card: #16141c;
+  --theme-surface: #16141c;
+  --theme-surface-subtle: #1e1e22;
+  --theme-surface-hover: #2a2a2e;
+  --theme-elevated: #1c1c20;
+  --theme-input: #141416;
   --theme-text-primary: #f4f5f3;
   --theme-text-secondary: #aeb5b1;
   --theme-text-muted: #7f8782;
@@ -151,38 +195,66 @@
   --theme-border-strong: rgba(255, 255, 255, 0.18);
   --theme-overlay: rgba(0, 0, 0, 0.66);
   --theme-shadow-card: none;
+  --theme-chart-muted: #3a3742;
+  --theme-chart-quiet: #1e1c26;
+  --theme-chart-income-quiet: var(--theme-chart-quiet);
+  --theme-chart-income: #c084fc;
+  --theme-unread: #AF69FA;
+  --theme-chart-grid: rgba(255, 255, 255, 0.08);
+  --dashboard-series-uncategorized: #f0c14a;
+  --dashboard-expense-maintenance: #f0a04a;
+  --dashboard-expense-management: #c4a2ff;
+  --dashboard-expense-utilities: #8eb0ff;
+  --dashboard-expense-other: #b7b4bf;
+  --dashboard-expense-uncategorized: #f0c14a;
+  --dashboard-series-track: #2a2832;
+  --dashboard-series-maintenance: #f0a04a;
+  --dashboard-series-management: #c4a2ff;
+  --dashboard-series-utilities: #8eb0ff;
+  --dashboard-series-insurance: #9aabff;
+  --dashboard-series-taxes: #f0c15a;
+  --dashboard-series-legal: #f0a0c4;
+  --dashboard-series-leasing: #6dcea0;
+  --theme-chart-expense: #4D495C;
+  --theme-chart-expense-muted: #8a8596;
+  --theme-brand: #c4b0ff;
+  --theme-brand-strong: #d6c8ff;
+  --theme-brand-soft: rgba(186, 161, 247, 0.16);
+  --theme-brand-border: rgba(186, 161, 247, 0.34);
+  --theme-brand-fill: var(--palette-lilac);
+  --theme-on-brand: #120c24;
   --theme-action: #f3f4f2;
   --theme-action-text: #101210;
   --theme-action-hover: #dfe3df;
-  --theme-nav-active: #1a1a1a;
-  --theme-nav-active-text: #ffffff;
-  --theme-focus: #6ca9ff;
-  --theme-income: #02e002;
-  --theme-on-income: #ffffff;
-  --theme-income-soft: rgba(43, 210, 117, 0.13);
-  --theme-income-border: rgba(43, 210, 117, 0.30);
-  --theme-expense-series-1: #006b2d;
-  --theme-expense-series-2: #00a800;
-  --theme-expense-series-3: #67d500;
-  --theme-expense-series-4: #b6f600;
-  --theme-expense: #ff1109;
-  --theme-expense-soft: rgba(255, 96, 86, 0.13);
-  --theme-expense-border: rgba(255, 96, 86, 0.30);
-  --theme-warning: #f2a73a;
-  --theme-warning-soft: rgba(242, 167, 58, 0.13);
-  --theme-warning-border: rgba(242, 167, 58, 0.30);
-  --theme-noi: #69a0ff;
+  --theme-nav-active: #2a2a2e;
+  --theme-nav-active-text: #f4f5f3;
+  --theme-focus: var(--theme-brand);
+  --theme-income: #3dce74;
+  --theme-on-income: #062412;
+  --theme-income-soft: rgba(61, 190, 106, 0.16);
+  --theme-income-border: rgba(61, 190, 106, 0.34);
+  --theme-expense-series-1: #0b7a32;
+  --theme-expense-series-2: #12a846;
+  --theme-expense-series-3: #3dbe6a;
+  --theme-expense-series-4: #8fd9a8;
+  --theme-expense: #ff7d64;
+  --theme-expense-soft: rgba(255, 101, 66, 0.16);
+  --theme-expense-border: rgba(255, 125, 100, 0.40);
+  --theme-warning: #eeba0b;
+  --theme-warning-soft: rgba(238, 186, 11, 0.14);
+  --theme-warning-border: rgba(238, 186, 11, 0.34);
+  --theme-noi: #c4b0ff;
   --theme-maintenance: #ff9638;
   --theme-management: #9c79ff;
   --theme-mortgage: #69a0ff;
   --theme-utilities: #3ac1dc;
-  --cash-flow-result: #55a7ff;
+  --cash-flow-result: #c4b0ff;
   --theme-insurance: #8291ff;
   --theme-taxes: #f3b447;
   --theme-capex: #ed74c8;
   --theme-legal: #a382ff;
   --theme-review: #f4c84a;
-  --theme-control-hover: #1F2124;
+  --theme-control-hover: #2a2a2e;
 }
 
 @media (max-width: 767px) {

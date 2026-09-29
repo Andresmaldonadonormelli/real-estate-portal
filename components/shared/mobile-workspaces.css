@@ -4,7 +4,6 @@
 .utility-property-head{padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-color)}
 .utility-property-groups{gap:var(--space-4)}
 @media(max-width:767px){
-  .property-preview-card,.property-preview-card:hover,.property-preview-card:active,.property-preview-card:focus-visible{background:transparent!important}
   .property-documents-panel{min-height:0!important}
   .property-documents-toolbar{min-height:0!important;justify-content:flex-start!important;gap:var(--space-3)!important}
   .property-documents-toolbar .product-secondary-button{position:static!important;margin:0!important;min-height:var(--control-height-mobile)}

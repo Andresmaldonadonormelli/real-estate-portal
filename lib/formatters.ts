@@ -16,6 +16,14 @@ export const formatDate = (dateStr: string): string => {
   });
 };
 
+export function shortPropertyName(address?: string | null) {
+  const text = (address || '').trim();
+  if (!text) return 'Portfolio';
+  const parts = text.split(/\s+/);
+  if (parts.length >= 2 && /^\d/.test(parts[0])) return `${parts[0]} ${parts[1].replace(/[.,]$/, '')}`;
+  return parts.slice(0, 2).join(' ');
+}
+
 export const formatDateShort = (dateStr: string): string => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {

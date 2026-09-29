@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import MainLayout from '@/components/layout/MainLayout';
 import AuthGate from '@/components/auth/AuthGate';
-import RotatingMascot from '@/components/layout/RotatingMascot';
 import './globals.css';
 import '../components/layout/app-shell.css';
 import './product-system.css';
@@ -49,7 +48,6 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <RotatingMascot />
         <AuthGate><MainLayout>{children}</MainLayout></AuthGate>
       </body>
     </html>

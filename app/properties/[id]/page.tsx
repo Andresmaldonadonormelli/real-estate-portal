@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Building2, CalendarDays, ChevronRight, Home, PencilLine, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,7 @@ import PropertyUnits from '@/components/property/PropertyUnits';
 import PropertyDocuments from '@/components/property/PropertyDocuments';
 import PropertyEditModal from '@/components/property/PropertyEditModal';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
+import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
 import { SegmentedControl } from '@/components/common/ProductControls';
 import { formatDate, type PropertyTransaction as Tx } from '@/lib/propertyFinancials';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
@@ -92,8 +93,10 @@ async function syncLegacyUnitLeases(propertyId:string,unitRows:any[],docRows:any
 
 export default function PropertyWorkspacePage(){
   const params=useParams<{id:string}>();
+  const searchParams=useSearchParams();
   const propertyId=String(params?.id || '');
   const [tab,setTab]=useState<Tab>('overview');
+  const requestedTab=searchParams.get('tab');
   const [property,setProperty]=useState<Property|null>(null);
   const [units,setUnits]=useState<Unit[]>([]);
   const [transactions,setTransactions]=useState<Tx[]>([]);
@@ -103,6 +106,11 @@ export default function PropertyWorkspacePage(){
   const [error,setError]=useState('');
   const [editingProperty,setEditingProperty]=useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Tx|null>(null);
+  const [detailEditing,setDetailEditing]=useState(false);
+
+  useEffect(()=>{
+    if(requestedTab==='overview'||requestedTab==='improve'||requestedTab==='units'||requestedTab==='documents') setTab(requestedTab);
+  },[requestedTab]);
 
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');
@@ -155,18 +163,19 @@ export default function PropertyWorkspacePage(){
     <header className="property-workspace-header">
       <div className="property-title-block">
         {imageUrl ? <img src={imageUrl} alt="" className="property-workspace-image"/> : <div className="property-workspace-image property-image-placeholder"><Home size={28}/></div>}
-        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><div className="property-header-actions"><button type="button" className="property-edit-inline" onClick={()=>setEditingProperty(true)}><PencilLine size={14}/> Edit property</button><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View ledger <ChevronRight size={14}/></Link></div></div>
+        <div className="property-title-copy"><h1>{property.address}</h1><p>{property.city}, {property.state} {property.zip}</p><div className="property-meta"><span><Building2 size={14}/>{prettyPropertyType(property.property_type)}</span><span><Users size={14}/>{units.length} {units.length===1?'unit':'units'}</span>{units.length>0&&<span className={`property-occupancy-meta ${occupied===units.length?'full':occupied>0?'partial':'vacant'}`}><i/>{occupied}/{units.length} occupied</span>}{property.purchase_date&&<span><CalendarDays size={14}/>Purchased {formatDate(property.purchase_date)}</span>}</div><div className="property-header-actions"><button type="button" className="property-edit-inline" onClick={()=>setEditingProperty(true)}><PencilLine size={14}/> Edit property</button><Link href={`/ledger?property=${property.id}`} className="property-ledger-action">View transactions <ChevronRight size={14}/></Link></div></div>
       </div>
     </header>
 
     <SegmentedControl value={tab} onChange={setTab} label="Property sections" className="property-subnav" options={[{value:'overview',label:'Overview'},{value:'improve',label:'Improve'},{value:'units',label:'Units'},{value:'documents',label:'Documents'}]}/>
 
-    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} expectedRent={expectedRent} onNavigate={setTab} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>} 
+    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} expectedRent={expectedRent} onNavigate={setTab} onOpenTransaction={id=>{setDetailEditing(false);setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}}/>} 
     {tab==='improve' && <PropertyImprove property={property} units={units} transactions={transactions}/>} 
     {tab==='units' && <PropertyUnits units={units} propertyId={property.id} onUnitsUpdated={next=>setUnits(next)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>} 
     {tab==='documents' && <PropertyDocuments documents={documents} propertyId={property.id}/>} 
     {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);}}/>}
-    {activeTransaction&&<AddTransactionModal userId={(activeTransaction as any).user_id||''} properties={[property]} units={units} transaction={activeTransaction as any} viewOnly onClose={()=>setActiveTransaction(null)} onSaved={async()=>{invalidateSupabaseCache(`property:${propertyId}`);const t=await supabase.from('transactions').select(TRANSACTION_FIELDS).eq('property_id',propertyId).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false});if(!t.error)setTransactions((t.data||[]) as Tx[]);setActiveTransaction(null)}} onArchived={async(_message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'){setTransactions(rows=>rows.filter(row=>row.id!==archivedId));setActiveTransaction(null)}if(phase==='complete')invalidateSupabaseCache(`property:${propertyId}`)}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx as Tx,...rows]);invalidateSupabaseCache(`property:${propertyId}`);console.error(error)}}/>} 
+    {activeTransaction&&!detailEditing&&<TransactionDetailModal transaction={activeTransaction as any} properties={[property]} units={units} transactions={transactions as any} onClose={()=>{setActiveTransaction(null);setDetailEditing(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async()=>{invalidateSupabaseCache(`property:${propertyId}`);const t=await supabase.from('transactions').select(TRANSACTION_FIELDS).eq('property_id',propertyId).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false});if(!t.error)setTransactions((t.data||[]) as Tx[])}} onArchived={async(_message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'){setTransactions(rows=>rows.filter(row=>row.id!==archivedId));setActiveTransaction(null)}if(phase==='complete')invalidateSupabaseCache(`property:${propertyId}`)}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx as Tx,...rows]);invalidateSupabaseCache(`property:${propertyId}`);console.error(error)}}/>}
+    {activeTransaction&&detailEditing&&<AddTransactionModal userId={(activeTransaction as any).user_id||''} properties={[property]} units={units} transaction={activeTransaction as any} onClose={()=>setDetailEditing(false)} onSaved={async()=>{invalidateSupabaseCache(`property:${propertyId}`);const t=await supabase.from('transactions').select(TRANSACTION_FIELDS).eq('property_id',propertyId).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false});if(!t.error)setTransactions((t.data||[]) as Tx[]);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async(_message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'){setTransactions(rows=>rows.filter(row=>row.id!==archivedId));setActiveTransaction(null);setDetailEditing(false)}if(phase==='complete')invalidateSupabaseCache(`property:${propertyId}`)}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx as Tx,...rows]);invalidateSupabaseCache(`property:${propertyId}`);console.error(error)}}/>} 
   </div>;
 }
 

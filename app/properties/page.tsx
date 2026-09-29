@@ -1,23 +1,25 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import PageSkeleton from '@/components/common/PageSkeleton';
-import { formatCurrency } from '@/lib/formatters';
 import type { Property, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { categoryKey } from '@/lib/accounting';
-import MiniSparkline from '@/components/charts/MiniSparkline';
-import { buildMonthlyFinancialHistory } from '@/lib/financialHistory';
-import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
-import { PageAction, PageHeader } from '@/components/common/ProductControls';
+import type { HistoryTransaction } from '@/lib/financialHistory';
+import type { PortfolioUnit } from '@/lib/portfolioAttention';
+import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
+import { PageAction, PageHeader, SegmentedControl, UnderlineTabs } from '@/components/common/ProductControls';
+import { PropertiesList, UnitsList, type PortfolioDocument } from '@/components/property/PortfolioLists';
+import PortfolioImprove from '@/components/property/PortfolioImprove';
+
+type PortfolioTab = 'properties' | 'units' | 'improve';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
-  mortgage_balance: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
+  mortgage_balance: '', mortgage_interest_rate: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
 };
 
 const emptyUnit = {
@@ -27,8 +29,11 @@ const emptyUnit = {
 export default function PropertiesPage() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [units, setUnits] = useState<PortfolioUnit[]>([]);
+  const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
+  const [documents, setDocuments] = useState<PortfolioDocument[]>([]);
+  const [tab, setTab] = useState<PortfolioTab>('properties');
+  const [improveAdd, setImproveAdd] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPropertyForm, setShowPropertyForm] = useState(false);
@@ -49,16 +54,18 @@ export default function PropertiesPage() {
     setLoading(true);
     setError('');
     try {
-      const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }] = await withTimeout(Promise.all([
+      const [{ data: props, error: propError }, { data: unitRows, error: unitError }, { data: txRows, error: txError }, { data: docRows, error: docError }] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
-        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('properties:unit-details',async()=>await supabase.from('units').select(UNIT_DETAIL_FIELDS).is('archived_at',null).order('unit_number')),
         cachedSupabaseRequest('properties:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(13)).order('transaction_date',{ascending:false})),
+        cachedSupabaseRequest('properties:documents',async()=>await supabase.from('documents').select('id,property_id,document_date,created_at').is('archived_at',null)),
       ]), 8000, 'Properties took too long to load. Please retry.');
-      if (propError || unitError || txError) throw (propError || unitError || txError);
+      if (propError || unitError || txError || docError) throw (propError || unitError || txError || docError);
       const propertyRows = (props || []) as Property[];
       setProperties(propertyRows);
-      setUnits((unitRows || []) as Unit[]);
-      setTransactions(txRows || []);
+      setUnits((unitRows || []) as PortfolioUnit[]);
+      setTransactions((txRows || []) as HistoryTransaction[]);
+      setDocuments((docRows || []) as PortfolioDocument[]);
       setLoading(false);
       void (async()=>{
         const urls: Record<string,string> = {};
@@ -74,7 +81,7 @@ export default function PropertiesPage() {
   useEffect(() => { loadData(); }, []);
 
   const unitsByProperty = useMemo(() => {
-    return units.reduce<Record<string, Unit[]>>((acc, unit) => {
+    return units.reduce<Record<string, PortfolioUnit[]>>((acc, unit) => {
       (acc[unit.property_id] ||= []).push(unit);
       return acc;
     }, {});
@@ -88,20 +95,20 @@ export default function PropertiesPage() {
     setShowPropertyForm(true);
   }
 
-  function startEditProperty(property: Property) {
+  function startEditProperty(property: Property, financing = false) {
     setEditingProperty(property);
     setPropertyImage(null);
     setPropertyForm({
       address: property.address || '', city: property.city || '', state: property.state || '', zip: property.zip || '',
       property_type: property.property_type || 'duplex',
-      mortgage_balance: String(property.mortgage_balance ?? ''), purchase_price: String(property.purchase_price ?? ''),
+      mortgage_balance: String(property.mortgage_balance ?? ''), mortgage_interest_rate: property.mortgage_interest_rate ? String(property.mortgage_interest_rate) : '', purchase_price: String(property.purchase_price ?? ''),
       purchase_date: property.purchase_date || '',
       monthly_mortgage_payment: String(property.monthly_mortgage_payment ?? ''),
       mortgage_start_date: (property as Property & {mortgage_start_date?:string|null}).mortgage_start_date ?? '',
       management_fee_percent: String(property.management_fee_percent ?? 0),
       mortgage_recurring_enabled: false,
     });
-    setShowPropertyDetails(false);
+    setShowPropertyDetails(financing);
     setShowPropertyForm(true);
   }
 
@@ -114,6 +121,7 @@ export default function PropertiesPage() {
       address: propertyForm.address.trim(), city: propertyForm.city.trim(), state: propertyForm.state.trim(), zip: propertyForm.zip.trim(),
       property_type: propertyForm.property_type,
       mortgage_balance: Number(propertyForm.mortgage_balance || 0),
+      mortgage_interest_rate: propertyForm.mortgage_interest_rate ? Number(propertyForm.mortgage_interest_rate) : null,
       purchase_price: propertyForm.purchase_price ? Number(propertyForm.purchase_price) : null,
       purchase_date: propertyForm.purchase_date || null,
       monthly_mortgage_payment: Number(propertyForm.monthly_mortgage_payment || 0),
@@ -145,22 +153,6 @@ export default function PropertiesPage() {
   function startAddUnit(propertyId?: string) {
     setEditingUnit(null);
     setUnitForm({ ...emptyUnit, property_id: propertyId || properties[0]?.id || '' });
-    setShowUnitForm(true);
-  }
-
-  function startEditUnit(unit: Unit) {
-    setEditingUnit(unit);
-    setUnitForm({
-      property_id: unit.property_id,
-      unit_number: unit.unit_number || '',
-      bedroom_count: String(unit.bedroom_count ?? ''),
-      bathroom_count: String(unit.bathroom_count ?? ''),
-      sqft: String(unit.sqft ?? ''),
-      current_rent: String(unit.current_rent ?? ''),
-      tenant_name: unit.tenant_name || '',
-      occupied: Boolean(unit.occupied),
-      recurring_rent_enabled: unit.recurring_rent_enabled !== false,
-    });
     setShowUnitForm(true);
   }
 
@@ -214,7 +206,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="mobile-page-shell properties-page">
-      <PageHeader title="Properties" action={<PageAction onClick={startAddProperty}>Add property</PageAction>}/>
+      <PageHeader title="Properties" action={tab === 'improve' && properties.length > 0 ? <PageAction onClick={() => setImproveAdd(value => value + 1)}>Add improvement</PageAction> : <PageAction onClick={startAddProperty}>Add property</PageAction>}/>
 
       {error && <ErrorBox message={error} />}
       {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (
@@ -224,52 +216,13 @@ export default function PropertiesPage() {
           <button onClick={startAddProperty} className="workspace-primary-button">Add property</button>
         </div>
       ) : (
-        <div className="compact-properties-list">
-          {properties.map((property,index) => {
-            const propertyUnits = unitsByProperty[property.id] || [];
-            const occupied = propertyUnits.filter((u) => u.occupied).length;
-            const monthlyRent = propertyUnits.filter(u=>u.occupied).reduce((sum,u)=>sum+Number(u.current_rent||0),0);
-            const potentialRent = propertyUnits.reduce((sum,u)=>sum+Number(u.current_rent||0),0);
-            const year = new Date().getFullYear();
-            const propertyTx = transactions.filter(t=>t.property_id===property.id && Number(String(t.transaction_date||'').slice(0,4))===year);
-            let income=0, expenses=0, operatingExpenses=0;
-            for(const tx of propertyTx){
-              const amount=Math.abs(Number(tx.amount||0));
-              if(tx.type==='income') income+=amount;
-              if(tx.type==='expense'){
-                expenses+=amount;
-                const key=categoryKey(tx.category||'');
-                if(!['mortgage-interest','mortgage-principal','mortgage','capex','distribution'].includes(key)) operatingExpenses+=amount;
-              }
-            }
-            const cashFlow=income-expenses;
-            const fullyVacant=propertyUnits.length>0&&occupied===0;
-            const today=new Date();today.setHours(0,0,0,0);
-            const vacancyDates=propertyUnits.map(unit=>(unit as Unit&{lease_end_date?:string|null}).lease_end_date).filter(Boolean).map(value=>new Date(`${value}T12:00:00`)).filter(date=>date<=today);
-            const vacancyStart=vacancyDates.length?new Date(Math.max(...vacancyDates.map(date=>date.getTime()))):(property.purchase_date?new Date(`${property.purchase_date}T12:00:00`):null);
-            const vacancyDays=vacancyStart?Math.max(0,Math.floor((today.getTime()-vacancyStart.getTime())/86400000)):0;
-            const holdingCosts=fullyVacant?propertyTx.filter(tx=>tx.type==='expense'&&(!vacancyStart||new Date(`${tx.transaction_date}T12:00:00`)>=vacancyStart)).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0):0;
-            const expenseRatio=income>0 ? operatingExpenses/income : null;
-            const hasFinancialActivity=propertyTx.some(tx=>Math.abs(Number(tx.amount||0))>0);
-            const health=getPropertyHealth({occupied,total:propertyUnits.length,cashFlow,expenseRatio,hasFinancialActivity});
-            const sparklineRows=buildMonthlyFinancialHistory(transactions as any[],'1Y',property.id);
-            return <Link key={property.id} href={`/properties/${property.id}`} className="property-preview-card">
-              <div className="property-preview-left">
-                <div className="property-preview-identity">
-                  {imageUrls[property.id] ? <img src={imageUrls[property.id]} alt="" className="property-preview-thumb" width="96" height="96" loading={index===0?'eager':'lazy'} fetchPriority={index===0?'high':'auto'} decoding="async"/> : <div className="property-preview-thumb compact-property-placeholder">⌂</div>}
-                  <div><strong>{property.address}</strong><span>{property.city}, {property.state}</span></div>
-                </div>
-                <div className="property-preview-meta"><span>{occupied}/{propertyUnits.length||0} occupied</span>{occupied>0&&<span>{formatCurrency(monthlyRent)}/mo rent</span>}</div>
-              </div>
-              <div className="property-preview-sparkline"><MiniSparkline rows={sparklineRows} negative={cashFlow<0}/></div>
-              <div className="property-preview-result">
-                <span>{fullyVacant?'Holding costs':'YTD cash flow'}</span>
-                <strong className={fullyVacant?'amount-negative':cashFlow>0?'amount-positive':cashFlow<0?'amount-negative':''}>{fullyVacant?formatCurrency(holdingCosts):formatCurrency(cashFlow)}</strong>
-                <small>{fullyVacant?`Vacant for ${vacancyDays} days`:health.detail}</small>
-              </div>
-            </Link>;
-          })}
-        </div>
+        <>
+          <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
+          <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
+          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} onAddTenant={property => startAddUnit(property.id)} />}
+          {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} />}
+          {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
+        </>
       )}
 
       {showPropertyForm && (
@@ -282,7 +235,7 @@ export default function PropertiesPage() {
             <button type="button" className={`sheet-details-toggle ${showPropertyDetails?'expanded':''}`} onClick={()=>setShowPropertyDetails(v=>!v)}><span>{showPropertyDetails?'Hide financial details':'Add financial & property details'}</span><ChevronDown size={16} aria-hidden="true"/></button>
             {showPropertyDetails&&<div className="sheet-details-panel">
               <div style={twoCol}><Field label="Purchase price"><input type="number" min="0" step="0.01" value={propertyForm.purchase_price} onChange={e => setPropertyForm({ ...propertyForm, purchase_price: e.target.value })} style={inputStyle} /></Field><Field label="Purchase date"><input type="date" value={propertyForm.purchase_date} onChange={e => setPropertyForm({ ...propertyForm, purchase_date: e.target.value })} style={inputStyle} /></Field></div>
-              <Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field>
+              <div style={twoCol}><Field label="Mortgage balance"><input type="number" min="0" step="0.01" value={propertyForm.mortgage_balance} onChange={e => setPropertyForm({ ...propertyForm, mortgage_balance: e.target.value })} style={inputStyle} /></Field><Field label="Interest rate"><input type="number" min="0" step="0.001" placeholder="6.75" value={propertyForm.mortgage_interest_rate} onChange={e => setPropertyForm({ ...propertyForm, mortgage_interest_rate: e.target.value })} style={inputStyle} /></Field></div>
               <div style={twoCol}><Field label="Monthly mortgage payment"><input type="number" min="0" step="0.01" value={propertyForm.monthly_mortgage_payment} onChange={e => setPropertyForm({ ...propertyForm, monthly_mortgage_payment: e.target.value })} style={inputStyle} /></Field><Field label="Mortgage start date"><input type="date" value={propertyForm.mortgage_start_date} onChange={e => setPropertyForm({ ...propertyForm, mortgage_start_date: e.target.value })} style={inputStyle} /></Field></div>
               <p style={{margin:0,fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)',color:'var(--text-secondary)'}}>Mortgage payments come from linked bank imports. Keep mortgage details for amortization and Improve projections.</p>
               <Field label="Management fee %"><input type="number" min="0" max="100" step="0.1" value={propertyForm.management_fee_percent} onChange={e => setPropertyForm({ ...propertyForm, management_fee_percent: e.target.value })} style={inputStyle} /></Field>
@@ -339,35 +292,26 @@ function Metric({ label, value }: { label: string; value: string }) { return <di
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'grid', gap: 'var(--space-2)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{label}{children}</label>; }
 function ErrorBox({ message }: { message: string }) { return <div style={{ marginBottom: 'var(--space-5)', padding: 'var(--space-3)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 'var(--radius-control)', fontSize: 'var(--type-small-size)', lineHeight:'var(--type-small-line)' }}>{message}</div>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(()=>{const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[]);
-  return <div className="mobile-sheet-overlay" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}><div className="card mobile-sheet" role="dialog" aria-modal="true"><div className="mobile-sheet-head"><div className="mobile-sheet-handle"/><h2 style={{ fontSize: 'var(--type-section-title-size)', lineHeight:'var(--type-section-title-line)' }}>{title}</h2><button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18}/></button></div><div className="mobile-sheet-body">{children}</div></div></div>;
-}
-
-function getPropertyHealth({occupied,total,cashFlow,expenseRatio,hasFinancialActivity}:{occupied:number;total:number;cashFlow:number;expenseRatio:number|null;hasFinancialActivity:boolean}){
-  // Financial activity takes precedence over vacancy. A vacant property with posted
-  // expenses already has real performance and should not be shown as Pending.
-  if(hasFinancialActivity && cashFlow<0){
-    if(expenseRatio!=null){
-      const pct=Math.round(expenseRatio*100);
-      return {tone:'red',fill:Math.max(0,Math.min(100,pct)),label:'Negative cash flow',detail:`${pct}% operating expense ratio`};
-    }
-    return {tone:'red',fill:100,label:'Negative cash flow',detail:'Recorded expenses exceed income'};
-  }
-  if(total===0 || occupied===0){
-    if(hasFinancialActivity) return {tone:'yellow',fill:0,label:'Financial activity recorded',detail:'No positive cash flow yet'};
-    return {tone:'vacant',fill:0,label:'Vacant',detail:'Performance pending'};
-  }
-  if(occupied<total){
-    const occupancyPct=Math.round((occupied/Math.max(total,1))*100);
-    return {tone:'red',fill:occupancyPct,label:'Vacancy needs attention',detail:`${occupancyPct}% occupied`};
-  }
-  if(expenseRatio==null) return {tone:'yellow',fill:0,label:'Building performance history',detail:'More posted activity needed'};
-  const pct=Math.round(expenseRatio*100);
-  const fill=Math.max(0,Math.min(100,pct));
-  if(expenseRatio>0.8) return {tone:'red',fill,label:'Expenses are very high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.65) return {tone:'orange',fill,label:'Expenses high',detail:`${pct}% operating expense ratio`};
-  if(expenseRatio>0.5) return {tone:'yellow',fill,label:'Performance to watch',detail:`${pct}% operating expense ratio`};
-  return {tone:'green',fill,label:'Performing well',detail:`${pct}% operating expense ratio`};
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const old = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = old; };
+  }, []);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="portfolio-dialog-overlay" onMouseDown={e => { if (e.currentTarget === e.target) onClose(); }}>
+      <div className="portfolio-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="portfolio-dialog-head">
+          <h2>{title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close"><X size={18} /></button>
+        </div>
+        <div className="portfolio-dialog-body">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };

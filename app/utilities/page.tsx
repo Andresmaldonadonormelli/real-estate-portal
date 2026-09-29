@@ -1,17 +1,7 @@
 "use client";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
-import {
-  Bolt,
-  ChevronDown,
-  ChevronRight,
-  CircleEllipsis,
-  Droplets,
-  Flame,
-  Trash2,
-  Waves,
-  Wifi,
-  X,
-} from "lucide-react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthContext";
 import PageSkeleton from "@/components/common/PageSkeleton";
@@ -49,7 +39,6 @@ export default function UtilitiesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<UtilityWithProperties[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [selected, setSelected] = useState("");
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState<UtilityWithProperties | null>(null);
   const [detail, setDetail] = useState<UtilityWithProperties | null>(null);
@@ -106,23 +95,17 @@ export default function UtilitiesPage() {
     load();
   }, []);
 
-  const filtered = useMemo(
-    () => items.filter((x) => !selected || x.property_ids.includes(selected)),
-    [items, selected],
-  );
-  const grouped = useMemo(
+  const groups = useMemo(
     () =>
       properties
-        .filter((p) => !selected || p.id === selected)
         .map((property) => ({
           property,
-          utilities: filtered.filter((x) =>
-            x.property_ids.includes(property.id),
-          ),
+          utilities: items.filter((x) => x.property_ids.includes(property.id)),
         }))
         .filter((group) => group.utilities.length > 0),
-    [properties, filtered, selected],
+    [properties, items],
   );
+  const utilityCount = groups.reduce((sum, group) => sum + group.utilities.length, 0);
 
   const propertyName = (id: string) =>
     properties.find((p) => p.id === id)?.address || "Unknown property";
@@ -131,9 +114,7 @@ export default function UtilitiesPage() {
     setDetail(null);
     setShowDetails(false);
     setForm({ ...empty });
-    setPropertyIds(
-      selected ? [selected] : properties[0]?.id ? [properties[0].id] : [],
-    );
+    setPropertyIds(properties[0]?.id ? [properties[0].id] : []);
     setShow(true);
   }
   function edit(x: UtilityWithProperties) {
@@ -157,12 +138,6 @@ export default function UtilitiesPage() {
   }
   function openDetail(x: UtilityWithProperties) {
     setDetail(x);
-  }
-  function cardKey(e: KeyboardEvent<HTMLDivElement>, x: UtilityWithProperties) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      openDetail(x);
-    }
   }
   function toggleProperty(id: string) {
     setPropertyIds((ids) =>
@@ -256,110 +231,91 @@ export default function UtilitiesPage() {
     <div className="mobile-page-shell utilities-page">
       <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
       {error && <div style={errorBox}>{error}</div>}
-      <div className="utilities-toolbar">
-        <ProductSelect aria-label="Property" value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">All properties</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.address}
-              </option>
-            ))}
-        </ProductSelect>
-      </div>
 
       {loading ? (
         <PageSkeleton variant="utilities" />
-      ) : grouped.length === 0 ? (
-        <div className="card utilities-empty">No utility accounts yet.</div>
       ) : (
-        <div className="utility-property-groups">
-          {grouped.map(({ property, utilities }) => (
-            <section key={property.id} className="utility-property-group">
-              <div className="utility-property-head">
-                <h2>{property.address}</h2>
-                <small>
-                  {utilities.length}{" "}
-                  {utilities.length === 1 ? "utility" : "utilities"}
-                </small>
+        <div className="portfolio-panel">
+          <div className="portfolio-panel-head">
+            <strong>Utilities</strong>
+            <span>{utilityCount}</span>
+          </div>
+          {groups.length === 0 ? (
+            <p className="portfolio-empty">No utility accounts yet.</p>
+          ) : (
+            <>
+              <div className="portfolio-columns portfolio-utility-grid" aria-hidden="true">
+                <span />
+                <span>Utility</span>
+                <span>Provider</span>
+                <span>Responsibility</span>
+                <span>Autopay</span>
+                <span>Account</span>
               </div>
-              <div className="utility-grid">
-                {utilities.map((x) => (
-                  <div
-                    key={`${property.id}-${x.id}`}
-                    className="utility-directory-card utility-directory-row"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openDetail(x)}
-                    onKeyDown={(e) => cardKey(e, x)}
-                    aria-label={`Open ${x.utility_type} utility details`}
-                  >
-                    <div className="utility-card-icon">
-                      {utilityIcon(x.utility_type)}
-                    </div>
-                    <div className="utility-card-copy">
-                      <div className="utility-card-type">{x.utility_type}</div>
-                      <div className="utility-card-provider">{x.provider}</div>
-                      <div className="utility-card-meta">{x.responsibility} · Autopay {x.autopay ? "on" : "off"}{x.account_number ? ` · ${maskedAccount(x.account_number)}` : ""}</div>
-                    </div>
-                    <ChevronRight className="utility-card-chevron" size={18} />
+              {groups.map(({ property, utilities }) => (
+                <section key={property.id} className="portfolio-utility-group">
+                  <div className="portfolio-utility-property">
+                    {property.address}
+                    <span>
+                      {property.city}, {property.state}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </section>
-          ))}
+                  {utilities.map((utility) => (
+                    <button
+                      key={`${property.id}-${utility.id}`}
+                      type="button"
+                      className="portfolio-utility-row portfolio-utility-grid"
+                      onClick={() => openDetail(utility)}
+                    >
+                      <UtilityMark type={utility.utility_type} />
+                      <span className="portfolio-utility-type">{utility.utility_type}</span>
+                      <span className="portfolio-utility-provider">{utility.provider}</span>
+                      <span className="portfolio-utility-responsibility">{utility.responsibility}</span>
+                      <span className="portfolio-utility-autopay">{utility.autopay ? "On" : "Off"}</span>
+                      <span className="portfolio-utility-account">
+                        {utility.account_number ? maskedAccount(utility.account_number) : "—"}
+                      </span>
+                    </button>
+                  ))}
+                </section>
+              ))}
+            </>
+          )}
         </div>
       )}
 
-      {detail && (
-        <Modal title={detail.utility_type} onClose={() => setDetail(null)}>
-          <div className="utility-detail-view">
-            <div className="utility-detail-hero">
-              <div className="utility-detail-icon">
-                {utilityIcon(detail.utility_type)}
-              </div>
-              <div>
-                <div className="utility-detail-provider">{detail.provider}</div>
-                <div className="utility-detail-properties">
-                  {detail.property_ids.map(propertyName).join(" · ")}
-                </div>
-              </div>
-            </div>
-            <div className="utility-detail-list">
-              {detail.account_number && (
-                <DetailRow l="Account number" v={detail.account_number} />
-              )}{" "}
-              {detail.username_email && (
-                <DetailRow l="Username / email" v={detail.username_email} />
-              )}
-              <DetailRow l="Autopay" v={detail.autopay ? "On" : "Off"} />
-              <DetailRow l="Responsibility" v={detail.responsibility} />
-              {detail.billing_cycle && (
-                <DetailRow l="Billing cycle" v={detail.billing_cycle} />
-              )}{" "}
-              {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
-            </div>
-            <div className="utility-detail-actions">
-              {detail.login_url && (
-                <Button
-                  onClick={() =>
-                    window.open(
-                      detail.login_url!,
-                      "_blank",
-                      "noopener,noreferrer",
-                    )
-                  }
-                  variant="secondary"
-                >
-                  Open provider
-                </Button>
-              )}
-              <Button onClick={() => edit(detail)}>
-                Edit utility
-              </Button>
+      <Drawer title={detail?.utility_type || ""} open={Boolean(detail)} onClose={() => setDetail(null)}>
+        {detail && (
+          <>
+          <div className="utility-drawer-hero">
+            <UtilityMark type={detail.utility_type} />
+            <div>
+              <strong>{detail.provider}</strong>
+              <span>{detail.property_ids.map(propertyName).join(" · ")}</span>
             </div>
           </div>
-        </Modal>
-      )}
+          <dl className="utility-drawer-facts">
+            {detail.account_number && <DetailRow l="Account number" v={detail.account_number} />}
+            {detail.username_email && <DetailRow l="Username / email" v={detail.username_email} />}
+            <DetailRow l="Autopay" v={detail.autopay ? "On" : "Off"} />
+            <DetailRow l="Responsibility" v={detail.responsibility} />
+            {detail.billing_cycle && <DetailRow l="Billing cycle" v={detail.billing_cycle} />}
+            {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
+          </dl>
+          <div className="utility-drawer-actions">
+            {detail.login_url && (
+              <Button
+                onClick={() => window.open(detail.login_url!, "_blank", "noopener,noreferrer")}
+                variant="secondary"
+              >
+                Open provider
+              </Button>
+            )}
+            <Button onClick={() => edit(detail)}>Edit utility</Button>
+          </div>
+          </>
+        )}
+      </Drawer>
 
       {show && (
         <Modal
@@ -544,24 +500,18 @@ export default function UtilitiesPage() {
   );
 }
 
-function utilityIcon(type: string) {
-  const props = { size: 20, strokeWidth: 2 };
-  switch (type) {
-    case "Electric":
-      return <Bolt {...props} />;
-    case "Gas":
-      return <Flame {...props} />;
-    case "Water":
-      return <Droplets {...props} />;
-    case "Sewer":
-      return <Waves {...props} />;
-    case "Internet":
-      return <Wifi {...props} />;
-    case "Trash":
-      return <Trash2 {...props} />;
-    default:
-      return <CircleEllipsis {...props} />;
-  }
+const utilityMarks: Record<string, string> = {
+  Electric: "/utilities/electric.png",
+  Gas: "/utilities/gas.png",
+  Water: "/utilities/water.png",
+};
+function UtilityMark({ type }: { type: string }) {
+  const src = utilityMarks[type];
+  return src ? (
+    <img src={src} alt="" className="portfolio-utility-mark" width="40" height="40" />
+  ) : (
+    <span className="portfolio-utility-mark is-empty" aria-hidden="true" />
+  );
 }
 function maskedAccount(v: string) {
   const clean = v.trim();
@@ -569,9 +519,9 @@ function maskedAccount(v: string) {
 }
 function DetailRow({ l, v }: { l: string; v: string }) {
   return (
-    <div className="utility-detail-row">
-      <span>{l}</span>
-      <strong>{v}</strong>
+    <div>
+      <dt>{l}</dt>
+      <dd>{v}</dd>
     </div>
   );
 }
@@ -596,6 +546,18 @@ function Field({
     </label>
   );
 }
+function useOverlayLock() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = old;
+    };
+  }, []);
+  return mounted;
+}
 function Modal({
   title,
   onClose,
@@ -605,36 +567,87 @@ function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    const old = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = old;
-    };
-  }, []);
-  return (
+  const mounted = useOverlayLock();
+  if (!mounted) return null;
+  return createPortal(
     <div
-      className="mobile-sheet-overlay"
+      className="portfolio-dialog-overlay"
       onMouseDown={(e) => {
         if (e.currentTarget === e.target) onClose();
       }}
     >
-      <div className="card mobile-sheet" role="dialog" aria-modal="true">
-        <div className="mobile-sheet-head">
-          <div className="mobile-sheet-handle" />
+      <div className="portfolio-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="portfolio-dialog-head">
           <h2>{title}</h2>
-          <button
-            onClick={onClose}
-            type="button"
-            className="sheet-close-button"
-            aria-label="Close"
-          >
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
             <X size={18} />
           </button>
         </div>
-        <div className="mobile-sheet-body">{children}</div>
+        <div className="portfolio-dialog-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+function Drawer({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [present, setPresent] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!present) return;
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = old; };
+  }, [present]);
+  const held = useRef<{ title: string; children: ReactNode }>({ title, children });
+  if (open) held.current = { title, children };
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) {
+        setShown(true);
+        return;
+      }
+      const frame = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setPresent(false), reduce ? 0 : 280);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!mounted || !present) return null;
+  return createPortal(
+    <div
+      className="utility-drawer-overlay"
+      data-open={shown ? "true" : "false"}
+      onMouseDown={(e) => {
+        if (e.currentTarget === e.target) onClose();
+      }}
+    >
+      <aside className="utility-drawer" role="dialog" aria-modal="true" aria-label={held.current.title}>
+        <div className="utility-drawer-head">
+          <h2>{held.current.title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        {held.current.children}
+      </aside>
+    </div>,
+    document.body,
   );
 }
 const input: React.CSSProperties = {

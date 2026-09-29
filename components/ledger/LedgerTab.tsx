@@ -11,12 +11,12 @@ import { groupTransactionsByMonth, calculateMonthlyTotals } from '@/lib/calculat
 import { formatCurrency, formatDateShort, formatMonthYear } from '@/lib/formatters';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Paperclip, ChevronRight, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X, Landmark } from 'lucide-react';
+import { Paperclip, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
+import TransactionDetailModal, { ChaseMark } from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
 import { cachedSupabaseRequest, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
-import { SegmentedControl } from '@/components/common/ProductControls';
 import { Button } from '@/components/ui/Button';
 import { Modal as UiModal } from '@/components/ui/Modal';
 
@@ -40,18 +40,11 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('months');
-  useEffect(()=>{
-    if(typeof window==='undefined')return;
-    const media=window.matchMedia('(min-width:768px)');
-    const sync=()=>setViewMode(media.matches?'table':'months');
-    sync();
-    media.addEventListener('change',sync);
-    return()=>media.removeEventListener('change',sync);
-  },[]);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [formEditing, setFormEditing] = useState(false);
   const [form, setForm] = useState(emptyTx);
   const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState({ search:'', type:'', category:'', min:'', max:'' });
@@ -63,7 +56,6 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const [receiptFile, setReceiptFile] = useState<File|null>(null);
   const [attachmentCounts,setAttachmentCounts]=useState<Record<string,number>>({});
   const [toast,setToast]=useState('');
-  const [showSearch,setShowSearch]=useState(false);
   const [showFilters,setShowFilters]=useState(false);
   const [showMore,setShowMore]=useState(false);
 
@@ -115,10 +107,11 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   const activeFilterCount=[filters.type,filters.category,filters.min,filters.max].filter(Boolean).length;
   const groups=useMemo(()=>Object.entries(groupTransactionsByMonth(filtered)).sort(([a],[b])=>b.localeCompare(a)).map(([key,txs])=>({key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),transactions:[...txs].sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))})),[filtered]);
   const propertyName=(id:string)=>properties.find(p=>p.id===id)?.address||'Unknown property';
+  const propertyKind=(id:string)=>properties.find(p=>p.id===id)?.property_type||'';
   const unitName=(id?:string|null)=>units.find(u=>u.id===id)?.unit_number||'';
 
-  function openAdd(){setEditing(null);setShowForm(true);}
-  async function openEdit(tx:Transaction){setEditing(tx);setShowForm(true);if(tx.is_new_import){setTransactions(rows=>rows.map(row=>row.id===tx.id?{...row,is_new_import:false,import_acknowledged_at:new Date().toISOString()}:row));await supabase.from('transactions').update({is_new_import:false,import_acknowledged_at:new Date().toISOString()}).eq('id',tx.id)}}
+  function openAdd(){setEditing(null);setFormEditing(true);setShowForm(true);}
+  async function openEdit(tx:Transaction){setEditing(tx);setFormEditing(false);setShowForm(true);if(tx.is_new_import){setTransactions(rows=>rows.map(row=>row.id===tx.id?{...row,is_new_import:false,import_acknowledged_at:new Date().toISOString()}:row));await supabase.from('transactions').update({is_new_import:false,import_acknowledged_at:new Date().toISOString()}).eq('id',tx.id)}}
 
   async function saveTx(e:FormEvent){
     e.preventDefault(); setSaving(true); setError(''); setNotice('');
@@ -186,16 +179,14 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     {!properties.length&&!loading&&<div className="card" style={{padding:18,marginBottom:18}}>Add a property before entering transactions.</div>}
 
     <div className="ledger-v230-toolbar">
-      <SegmentedControl value={viewMode} onChange={setViewMode} label="Ledger view" className="ledger-v230-view-switch" options={[{value:'table',label:'Table'},{value:'months',label:'Months'}]}/>
+      <ProductSelect className="ledger-toolbar-property" aria-label="Property" value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>
+      <label className="ledger-v230-search"><Search size={16} aria-hidden="true"/><input placeholder="Search" aria-label="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})}/>{filters.search&&<button type="button" onClick={()=>setFilters({...filters,search:''})} aria-label="Clear search"><X size={16}/></button>}</label>
       <div className="ledger-v230-tools">
-        <button className={showSearch||filters.search?'active':''} onClick={()=>setShowSearch(v=>!v)} aria-expanded={showSearch} aria-label="Search transactions"><Search size={17}/><span>Search</span></button>
         <button className={showFilters||activeFilterCount?'active':''} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>
-        {newImportCount>0&&<button type="button" className={`ledger-v230-review ${newImportFilter?'active':''}`} aria-label={`New bank imports: ${newImportCount}`} aria-pressed={newImportFilter} onClick={()=>setNewImportFilter(value=>!value)}><Download size={17}/><span>New imports</span><em>{newImportCount}</em></button>}
-        {reviewCount>0&&<button type="button" className={`ledger-v230-review ${reviewFilter?'active':''}`} aria-label={`Needs category: ${reviewCount}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><span>Needs category</span><em>{reviewCount}</em></button>}
-        <div className="ledger-v230-more-wrap"><button className={showMore?'active':''} onClick={()=>setShowMore(v=>!v)} aria-label="More ledger actions" aria-expanded={showMore}><MoreHorizontal size={18}/><span>More</span></button>{showMore&&<div className="ledger-v230-more-menu"><button onClick={()=>{setShowMore(false);openImport();}}><Upload size={16}/>Import CSV</button><button onClick={()=>{setShowMore(false);exportCsv();}}><Download size={16}/>Export CSV</button></div>}</div>
+        {reviewCount>0&&<button type="button" className={`ledger-needs-category ${reviewFilter?'active':''}`} aria-label={`Needs category: ${reviewCount}`} aria-pressed={reviewFilter} onClick={()=>setReviewFilter(value=>!value)}><span>Needs category</span><em>{reviewCount}</em></button>}
+        <div className="ledger-v230-more-wrap"><button className={showMore?'active':''} onClick={()=>setShowMore(v=>!v)} aria-label="More ledger actions" aria-expanded={showMore}><MoreHorizontal size={18}/></button>{showMore&&<div className="ledger-v230-more-menu">{newImportCount>0&&<button type="button" aria-pressed={newImportFilter} onClick={()=>{setNewImportFilter(value=>!value);setShowMore(false);}}>New imports <em>{newImportCount}</em></button>}<button onClick={()=>{setShowMore(false);openImport();}}><Upload size={16}/>Import CSV</button><button onClick={()=>{setShowMore(false);exportCsv();}}><Download size={16}/>Export CSV</button></div>}</div>
       </div>
     </div>
-    {showSearch&&<div className="ledger-v230-search"><Search size={18}/><input autoFocus placeholder="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})}/>{filters.search&&<button onClick={()=>setFilters({...filters,search:''})} aria-label="Clear search"><X size={16}/></button>}</div>}
     {showFilters&&<><button type="button" className="ledger-v230-filter-backdrop" onClick={()=>setShowFilters(false)} aria-label="Close filters"/><div className="ledger-v230-filter-panel"><div className="ledger-v230-filter-head"><strong>Filters</strong><button onClick={()=>setShowFilters(false)} aria-label="Close filters"><X size={18}/></button></div>
       <ProductSelect aria-label="Transaction type" value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})}><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect>
       <ProductSelect aria-label="Transaction category" value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</ProductSelect>
@@ -207,34 +198,15 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     {activeFilterCount>0&&<div className="ledger-v230-filter-chips">{filters.type&&<button onClick={()=>setFilters({...filters,type:''})}>Type: {filters.type}<X size={13}/></button>}{filters.category&&<button onClick={()=>setFilters({...filters,category:''})}>{filters.category}<X size={13}/></button>}{filters.min&&<button onClick={()=>setFilters({...filters,min:''})}>Min ${filters.min}<X size={13}/></button>}{filters.max&&<button onClick={()=>setFilters({...filters,max:''})}>Max ${filters.max}<X size={13}/></button>}</div>}
 
     <div className="ledger-summary-inline"><Metric label="Income" value={formatCurrency(total.income)} tone="positive"/><Metric label="Expenses" value={formatCurrency(total.expense)} tone="negative"/><Metric label="Net" value={formatCurrency(total.net)} tone={total.net>=0?'positive':'negative'}/></div>
+    <div className="ledger-view-toggle" role="group" aria-label="Ledger view">
+      <button type="button" aria-pressed={viewMode==='table'} onClick={()=>setViewMode('table')}>Table</button>
+      <button type="button" aria-pressed={viewMode==='months'} onClick={()=>setViewMode('months')}>Months</button>
+    </div>
 
-    {loading?<PageSkeleton variant="ledger"/>:filtered.length===0?<div className="ledger-empty-state"><strong>No transactions found</strong><span>Try clearing a filter or add a transaction.</span></div>:viewMode==='months'?<div className="ledger-months-list">{groups.map(group=>{const totals=calculateMonthlyTotals(group.transactions);const open=expandedMonths.has(group.key);return <section className={`ledger-month-section ${open?'open':''}`} key={group.key}><button onClick={()=>setExpandedMonths(prev=>{const n=new Set(prev);n.has(group.key)?n.delete(group.key):n.add(group.key);return n;})} className="ledger-month-head"><div className="ledger-month-title"><strong>{formatMonthYear(group.year,group.month)}</strong><span>{group.transactions.length} transactions</span></div><div className="ledger-month-metrics"><span><small>Income</small><b className="amount-positive">{formatCurrency(totals.income)}</b></span><span><small>Expenses</small><b className="amount-negative">{formatCurrency(totals.expense)}</b></span><span><small>Net</small><b className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</b></span><ChevronDown size={18} className="ledger-month-chevron"/></div></button>{open&&<div className="ledger-month-transactions">{group.transactions.map(tx=><TxRow key={tx.id} tx={tx} property={propertyName(tx.property_id)} unit={unitName(tx.unit_id)} attachmentCount={(attachmentCounts[tx.id]||0)+((tx as any).receipt_path?1:0)} onEdit={()=>openEdit(tx)}/>)}</div>}</section>})}</div>:<div className="ledger-feed">
-      {filtered.map(tx=>{
-        const pending=tx.status==='pending';
-        const needsReview=Boolean((tx as any).needs_review);
-        const attachments=(attachmentCounts[tx.id]||0)+((tx as any).receipt_path?1:0);
-        const title=(tx.payee_source||tx.description||tx.category||'Transaction').trim();
-        const categoryLabel=needsReview?'':tx.category;
-        const propertyLabel=propertyName(tx.property_id);
-        const unitLabel=unitName(tx.unit_id);
-        return <button type="button" key={tx.id} className={`ledger-feed-row ${pending?'is-pending':''}`} onClick={()=>openEdit(tx)}>
-          <span className="ledger-feed-main">
-            <span className="ledger-feed-primary">
-              <strong className={tx.is_new_import?'ledger-transaction-new':''}>{title}</strong>{pending&&<span className="ledger-pending-text">(Pending)</span>}
-            </span>
-            <span className="ledger-feed-secondary">{propertyLabel}{unitLabel?` · ${unitLabel}`:''}</span>
-            <span className="ledger-feed-secondary">
-              <span className="ledger-secondary-text">{needsReview?<em className="ledger-category-needed">Category needed</em>:categoryLabel}{bankSource(tx)}</span>
-              {attachments>0&&<span className="ledger-paperclip" title={`${attachments} supporting ${attachments===1?'document':'documents'}`}><Paperclip size={12}/>{attachments}</span>}
-            </span>
-          </span>
-          <span className="ledger-feed-right"><strong className={pending?'':tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{formatCurrency(tx.amount)}</strong><small>{formatDateShort(tx.transaction_date)}</small></span>
-          <ChevronRight size={17} className="ledger-feed-chevron"/>
-        </button>
-      })}
-    </div>}
+    {loading?<PageSkeleton variant="ledger"/>:filtered.length===0?<div className="ledger-empty-state"><strong>No transactions found</strong><span>Try clearing a filter or add a transaction.</span></div>:viewMode==='months'?<div className="ledger-months-list">{groups.map(group=>{const totals=calculateMonthlyTotals(group.transactions);const open=expandedMonths.has(group.key);return <section className={`ledger-month-section ${open?'open':''}`} key={group.key}><button onClick={()=>setExpandedMonths(prev=>{const n=new Set(prev);n.has(group.key)?n.delete(group.key):n.add(group.key);return n;})} className="ledger-month-head"><div className="ledger-month-title"><strong>{formatMonthYear(group.year,group.month)}</strong><span>{group.transactions.length} transactions</span></div><div className="ledger-month-metrics"><span><small>Income</small><b className="amount-positive">{formatCurrency(totals.income)}</b></span><span><small>Expenses</small><b className="amount-negative">{formatCurrency(totals.expense)}</b></span><span><small>Net</small><b className={totals.net>=0?'amount-positive':'amount-negative'}>{formatCurrency(totals.net)}</b></span><ChevronDown size={18} className="ledger-month-chevron"/></div></button>{open&&<div className="ledger-table">{group.transactions.map(tx=><LedgerRow key={tx.id} tx={tx} property={propertyName(tx.property_id)} kind={propertyKind(tx.property_id)} unit={unitName(tx.unit_id)} attachments={(attachmentCounts[tx.id]||0)+((tx as Transaction & {receipt_path?:string|null}).receipt_path?1:0)} onOpen={()=>openEdit(tx)}/>)}</div>}</section>})}</div>:<div className="ledger-table"><div className="ledger-columns" aria-hidden="true"><span>Transaction</span><span>Property</span><span>Category</span><span>Date</span><span>Amount</span></div>{filtered.map(tx=><LedgerRow key={tx.id} tx={tx} property={propertyName(tx.property_id)} kind={propertyKind(tx.property_id)} unit={unitName(tx.unit_id)} attachments={(attachmentCounts[tx.id]||0)+((tx as Transaction & {receipt_path?:string|null}).receipt_path?1:0)} onOpen={()=>openEdit(tx)}/>)}</div>}
 
-    {showForm&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={editing as any} viewOnly={Boolean(editing)} onClose={()=>setShowForm(false)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async (message,id,phase)=>{const archivedId=id||editing?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {showForm&&editing&&!formEditing&&<TransactionDetailModal transaction={editing} properties={properties} units={units} transactions={transactions} onClose={()=>{setShowForm(false);setEditing(null);setFormEditing(false)}} onEdit={()=>setFormEditing(true)} onSaved={async message=>{await loadData();setToast(message||'Transaction saved')}} onArchived={async (message,id,phase)=>{const archivedId=id||editing.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {showForm&&(!editing||formEditing)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={formEditing?editing as any:null} onClose={()=>{if(formEditing&&editing){setFormEditing(false);return;}setShowForm(false);setEditing(null);setFormEditing(false)}} onSaved={async message=>{await loadData();setToast(message||'Transaction saved');setShowForm(false);setEditing(null);setFormEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||editing?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();await loadData();setToast(message||'Transaction archived')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {showImport&&<UiModal title="Import Doorvest CSV" onClose={()=>setShowImport(false)}><div style={{display:'grid',gap:14}}>
       <p style={{fontSize:14,color:'var(--text-secondary)'}}>Import a Doorvest ledger export in bulk. Re-importing the same CSV is safe because duplicate rows are skipped.</p>
@@ -247,8 +219,13 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   </div>;
 }
 
-function bankSource(tx:Transaction){if(tx.source!=='plaid')return null;return <span className="ledger-bank-source"><Landmark size={12} aria-hidden="true"/>Imported from {tx.source_institution||'bank'}</span>;}
-function TxRow({tx,property,unit,attachmentCount,onEdit}:{tx:Transaction;property:string;unit:string;attachmentCount:number;onEdit:()=>void}){const pending=tx.status==='pending';const needsReview=Boolean((tx as Transaction & {needs_review?:boolean}).needs_review);return <button type="button" className={`ledger-feed-row ledger-month-transaction ${pending?'is-pending':''}`} onClick={onEdit}><span className="ledger-feed-main"><span className="ledger-feed-primary"><strong className={tx.is_new_import?'ledger-transaction-new':''}>{tx.description}</strong>{pending&&<span className="ledger-pending-text">(Pending)</span>}</span><span className="ledger-feed-secondary">{property}{unit?` · ${unit}`:''}</span><span className="ledger-feed-secondary">{needsReview?<em className="ledger-category-needed">Category needed</em>:tx.category}{tx.payee_source?` · ${tx.payee_source}`:''}{bankSource(tx)}{attachmentCount>0&&<span className="ledger-paperclip"><Paperclip size={12}/>{attachmentCount}</span>}</span></span><span className="ledger-feed-right"><strong className={pending?'':tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}>{formatCurrency(tx.amount)}</strong><small>{formatDateShort(tx.transaction_date)}</small></span><ChevronRight size={17} className="ledger-feed-chevron"/></button>}
+function needsCategory(tx:Transaction){return Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)||/needs review|uncategor/i.test(tx.category||'');}
+function looksLikeBankDescriptor(value:string){const text=value.trim();if(!text)return false;if(/\b(ach|pos|debit|autopay|auto-pay|auto pay|chk|checkcard|sq \*|tst\*|paypal|visa|mastercard|withdrawal|orig co|ppd|web id|trace)\b/i.test(text))return true;const letters=text.replace(/[^A-Za-z]/g,'');if(letters.length>=10&&letters===letters.toUpperCase())return true;if(/\d{5,}/.test(text))return true;return false;}
+function trimRailNoise(value:string){return value.replace(/\b(?:ppd|ach|pos|web|id|trace|chk|checkcard|debit|autopay)\b[:#\s-]*/gi,' ').replace(/\b\d{5,}\b/g,' ').replace(/[^A-Za-z0-9&.' -]+/g,' ').replace(/\s+/g,' ').trim();}
+function readableName(value:string){if(value!==value.toUpperCase())return value;return value.toLowerCase().replace(/\b[a-z]/g,letter=>letter.toUpperCase());}
+function merchantLabel(tx:Transaction){const payee=(tx.payee_source||'').trim();const description=(tx.description||'').trim();if(payee&&!looksLikeBankDescriptor(payee))return payee;const trimmed=trimRailNoise(description);if(trimmed&&trimmed.length>2&&!looksLikeBankDescriptor(trimmed))return readableName(trimmed);if(description&&!looksLikeBankDescriptor(description))return description;return needsCategory(tx)?'Transaction':(tx.category||'Transaction');}
+function isChase(tx:Transaction){return tx.source==='plaid'&&/chase/i.test(tx.source_institution||'');}
+function LedgerRow({tx,property,kind,unit,attachments,onOpen}:{tx:Transaction;property:string;kind:string;unit:string;attachments:number;onOpen:()=>void}){const needs=needsCategory(tx);const pending=tx.status==='pending';const chase=isChase(tx);const meta=Boolean(unit||kind);return <button type="button" className={`ledger-table-row ${meta?'has-meta':''}`} onClick={onOpen}><span className="ledger-tx"><strong>{chase?<ChaseMark/>:null}{merchantLabel(tx)}{pending?<em>Pending</em>:null}{tx.is_new_import?<i className="ledger-new-dot" aria-label="New import"/>:null}{attachments>0?<Paperclip size={12} aria-hidden="true"/>:null}</strong>{unit?<span className="ledger-tx-meta">{unit}</span>:null}</span><span className="ledger-property"><b>{property}</b>{kind?<small>{kind}</small>:null}</span><span className={needs?'ledger-needs':'ledger-cell'}>{needs?'Needs category':tx.category}</span><span className="ledger-cell ledger-date">{formatDateShort(tx.transaction_date)}</span><strong className={`ledger-amount ${tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}`}>{formatCurrency(tx.amount)}</strong></button>;}
 
 function Metric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="ledger-summary-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label style={{display:'grid',gap:6,fontSize:13}}>{label}{children}</label>}

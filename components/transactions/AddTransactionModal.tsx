@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
 import { formatCurrency } from '@/lib/formatters';
-import { estimatePayoutSplit } from '@/lib/managementPayout';
 import { ProductSelect } from '@/components/common/ProductControls';
 
 type TxType = 'income' | 'expense' | 'transfer';
@@ -52,9 +51,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
   }),[selectedProperty]);
   const propertyDefaultAllocated=propertyDefaultSplit.principal+propertyDefaultSplit.interest+propertyDefaultSplit.escrow;
   const propertyDefaultAvailable=propertyDefaultAllocated>0;
-  const notesText=String(transaction?.notes||'');
-  const alreadyPayoutSplit=/split from (net|Chase\/net) payout|split from net deposit/i.test(notesText);
-  const showPayoutSplit=Boolean(editing&&transaction?.source==='plaid'&&transaction.type==='income'&&Number(selectedProperty?.management_fee_percent||0)>0&&!alreadyPayoutSplit);
   function applyMortgageDefault(){
     if(!propertyDefaultAvailable)return;
     setMortgageSplit({principal:String(propertyDefaultSplit.principal||''),interest:String(propertyDefaultSplit.interest||''),escrow:String(propertyDefaultSplit.escrow||'')});
@@ -102,52 +98,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
     setSaving(false);
   }
 
-  async function applyEstimatedPayoutSplit(confirm=false){
-    if(!transaction||!selectedProperty)return;
-    const feePercent=Number(selectedProperty.management_fee_percent||0);
-    if(feePercent<=0){setError('Add a management fee percent on the property to estimate this split.');return;}
-    const feeKey=`management-fee-split:${transaction.id}`;
-    const existingFee=await supabase.from('transactions').select('id').eq('user_id',userId).eq('import_key',feeKey).is('archived_at',null).maybeSingle();
-    if(existingFee.data?.id){setError('A management-fee split already exists for this deposit.');return;}
-    const net=Math.abs(Number(transaction.amount||0));
-    const split=estimatePayoutSplit(net,feePercent);
-    if(split.fee<=0){setError('Could not estimate a management fee from this deposit.');return;}
-    setSaving(true);setError('');
-    const rentUpdate=await supabase.from('transactions').update({
-      type:'income',
-      category:'Rent',
-      amount:split.gross,
-      description:transaction.description||'Property management payout',
-      notes:confirm?`Confirmed split from net deposit ${formatCurrency(split.net)}.`:`Estimated split from net deposit ${formatCurrency(split.net)}. Needs review.`,
-      needs_review:!confirm,
-      is_new_import:false,
-      import_acknowledged_at:new Date().toISOString(),
-    }).eq('id',transaction.id);
-    if(rentUpdate.error){setError(rentUpdate.error.message);setSaving(false);return;}
-    const feeUpsert=await supabase.from('transactions').upsert({
-      user_id:userId,
-      property_id:transaction.property_id,
-      unit_id:transaction.unit_id||null,
-      transaction_date:transaction.transaction_date,
-      type:'expense',
-      category:'Management Fee',
-      description:`Management fee (${feePercent}%)`,
-      payee_source:'Property manager',
-      amount:-split.fee,
-      notes:confirm?`Confirmed fee split from Chase/net payout ${formatCurrency(split.net)}.`:`Estimated fee split from Chase/net payout ${formatCurrency(split.net)}. Needs review.`,
-      source:transaction.source||'plaid',
-      import_key:feeKey,
-      status:'posted',
-      confirmed_at:new Date().toISOString(),
-      needs_review:!confirm,
-      is_new_import:false,
-    },{onConflict:'user_id,import_key',ignoreDuplicates:true});
-    if(feeUpsert.error){setError(feeUpsert.error.message);setSaving(false);return;}
-    setForm(current=>({...current,category:'Rent',type:'income',amount:String(split.gross),needs_review:!confirm}));
-    await onSaved(confirm?'Payout split confirmed':'Estimated payout split applied');
-    setSaving(false);
-  }
-
   async function resolveCategory(category:string){
     if(!transaction)return;
     const key=categoryKey(category);
@@ -167,8 +117,6 @@ export default function AddTransactionModal({ userId, properties, units, transac
   return <div className="quick-add-overlay" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)onClose();}}>
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
       <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?(showEditor?'Edit transaction':'Transaction details'):'Add transaction'}</h2><p>{editing?(showEditor?'Update the accounting details or supporting documents.':'Review the transaction before making changes.'):'Post it now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
-      {transaction?.source==='plaid'&&<div className="quick-add-source" style={{margin:'0 var(--space-4)',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--surface-subtle)'}}><strong>{transaction.source_institution||'Linked bank'}{transaction.source_account_mask?` •••• ${transaction.source_account_mask}`:''}</strong><span>{transaction.source_connection_status==='unlinked'?'Unlinked account · imported transaction':'Imported bank transaction'}</span></div>}
-      {showPayoutSplit&&(()=>{const split=estimatePayoutSplit(Math.abs(Number(transaction!.amount||0)),Number(selectedProperty?.management_fee_percent||0));return <div className="quick-add-source" style={{margin:'var(--space-3) var(--space-4) 0',padding:'var(--space-3)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-control)',background:'var(--surface-subtle)'}}><strong>Property-management payout</strong><span>Chase deposit {formatCurrency(split.net)} · Estimated rent {formatCurrency(split.gross)} · Fee {formatCurrency(split.fee)} ({Number(selectedProperty?.management_fee_percent||0)}%)</span><span>Estimated · Needs review until confirmed so the net deposit is not double-counted as gross rent.</span><div style={{display:'flex',flexWrap:'wrap',gap:'var(--space-2)',marginTop:'var(--space-2)'}}><button type="button" className="product-secondary-button" disabled={saving} onClick={()=>void applyEstimatedPayoutSplit(false)}>Apply estimated split</button><button type="button" className="quick-add-submit" disabled={saving} onClick={()=>void applyEstimatedPayoutSplit(true)}>Confirm split</button></div></div>})()}
       {error&&<div className="quick-add-error">{error}</div>}
       {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>void resolveCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
         {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}

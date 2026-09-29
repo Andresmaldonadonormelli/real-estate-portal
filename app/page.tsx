@@ -7,19 +7,22 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
+import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
+import { resolveNotificationProperty, resolveNotificationTransaction } from '@/lib/notificationMatch';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
+import { settleRentCollection } from '@/lib/rentCollection';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
-import MiniSparkline from '@/components/charts/MiniSparkline';
-import ActionCenter from '@/components/dashboard/ActionCenter';
+import NotificationBell from '@/components/dashboard/NotificationBell';
+import FinancialHealth from '@/components/dashboard/FinancialHealth';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { ChartLegend, ProductSelect } from '@/components/common/ProductControls';
-import { buildMonthlyFinancialHistory, type HistoryPeriod, type MonthlyFinancialPoint } from '@/lib/financialHistory';
+import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
 type DailyInsight={id:string;kicker:'Changed'|'Watch'|'Progress';title:string;detail:string;tone:'positive'|'warning'|'neutral';kind:'rent'|'expense'|'occupancy';href:string;opened?:boolean;resolved?:boolean};
@@ -31,9 +34,8 @@ export default function Dashboard() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
-  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('1Y');
+  const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
   const [cashPropertyId, setCashPropertyId] = useState('');
-  const [inspectedCashFlow,setInspectedCashFlow]=useState<MonthlyFinancialPoint|null>(null);
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,6 +47,8 @@ export default function Dashboard() {
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Transaction|null>(null);
+  const [fromNotifications,setFromNotifications]=useState(false);
+  const [detailEditing,setDetailEditing]=useState(false);
   const [addMenuOpen,setAddMenuOpen]=useState(false);
   const addMenuRef=useRef<HTMLDivElement|null>(null);
   const [toast,setToast]=useState('');
@@ -110,7 +114,7 @@ export default function Dashboard() {
     try {
       const [p,u,t,d] = await withTimeout(Promise.all([
         cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),
-        cachedSupabaseRequest('shared:units',async()=>await supabase.from('units').select(UNIT_FIELDS).is('archived_at',null).order('unit_number')),
+        cachedSupabaseRequest('dashboard:units',async()=>await supabase.from('units').select(`${UNIT_FIELDS},lease_end_date`).is('archived_at',null).order('unit_number')),
         cachedSupabaseRequest('dashboard:transactions',async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false})),
         cachedSupabaseRequest('dashboard:documents',async()=>await supabase.from('documents').select(DOCUMENT_FIELDS).is('archived_at',null).order('created_at',{ascending:false})),
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
@@ -173,7 +177,7 @@ export default function Dashboard() {
   }
 
   const stats=useMemo(()=>calculatePortfolioStats(properties,units,transactions),[properties,units,transactions]);
-  const currentMonth=new Date().toISOString().slice(0,7);
+  const currentMonth=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const monthLabel=new Date().toLocaleString('en-US',{month:'long'});
   const formatKpiCurrency=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Math.round(value));
   const postedThisMonth=useMemo(()=>transactions.filter(t=>t.transaction_date.startsWith(currentMonth)&&(t.status||'posted')==='posted'),[transactions,currentMonth]);
@@ -208,8 +212,7 @@ export default function Dashboard() {
   const dailyRent=expectedMonthlyRent/daysInMonth;
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
-  const greeting=now.getHours()<12?'Good morning':now.getHours()<18?'Good afternoon':'Good evening';
-  const todayLabel=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const overviewYear=now.getFullYear();
 
   const visibleDailyInsights=briefItems;
   const activeBrief=visibleDailyInsights.length?visibleDailyInsights[Math.min(briefIndex,visibleDailyInsights.length-1)]:null;
@@ -229,50 +232,253 @@ export default function Dashboard() {
   }
 
   const cashFlow=useMemo(()=>buildMonthlyFinancialHistory(transactions,cashPeriod,cashPropertyId),[transactions,cashPeriod,cashPropertyId]);
-  const periodCashFlow=useMemo(()=>cashFlow.reduce((total,row)=>({cashFlow:total.cashFlow+row.cashFlow,income:total.income+row.income,cashExpenses:total.cashExpenses+row.cashExpenses}),{cashFlow:0,income:0,cashExpenses:0}),[cashFlow]);
   const currentCashFlow=cashFlow[cashFlow.length-1];
-  const displayedCashFlow=inspectedCashFlow||currentCashFlow;
-
-  return <div className="dashboard-page pulse-page">
-    <header className="pulse-page-header"><div><h1>{greeting}</h1><p>{todayLabel}</p></div>{!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span className="pulse-add-desktop">Add</span><span className="pulse-add-mobile">Add</span></button>{addMenuOpen&&<div className="pulse-add-options"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}</header>
+  const scopedTransactions=useMemo(()=>cashPropertyId?transactions.filter(tx=>tx.property_id===cashPropertyId):transactions,[transactions,cashPropertyId]);
+  const scopedUnits=useMemo(()=>cashPropertyId?units.filter(unit=>unit.property_id===cashPropertyId):units,[units,cashPropertyId]);
+  const postedScoped=useMemo(()=>scopedTransactions.filter(tx=>(tx.status||'posted')==='posted'),[scopedTransactions]);
+  const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
+  const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
+  const rentPicture=useMemo(()=>{
+    const monthExpenses=postedScoped.filter(tx=>tx.type==='expense'&&tx.transaction_date.startsWith(currentMonth));
+    const settleProperty=(propertyId:string,expected:number)=>settleRentCollection({
+      expected,
+      net:monthRent.filter(tx=>tx.property_id===propertyId).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),
+      expenses:monthExpenses.filter(tx=>tx.property_id===propertyId),
+      deposits:monthRent.filter(tx=>tx.property_id===propertyId),
+      feePercent:properties.find(property=>property.id===propertyId)?.management_fee_percent,
+    });
+    if(cashPropertyId){
+      const expected=scopedUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+      const settled=settleProperty(cashPropertyId,expected);
+      const covered=settled.unpaid<0.5&&expected>0.5;
+      const rows=scopedUnits.map(unit=>{
+        const occupied=Boolean(unit.occupied);
+        const unitExpected=occupied?Math.max(0,Number(unit.current_rent||0)):0;
+        const unitNet=monthRent.filter(tx=>tx.unit_id===unit.id).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+        const status=!occupied?'Vacant':(covered||unitNet+0.5>=unitExpected)&&unitExpected>0.5?'Paid':unitExpected>0.5?'Outstanding':'Vacant';
+        return {id:unit.id,name:unit.unit_number||'Unit',occupancy:occupied?'Occupied':'Vacant',status,statusLabel:status,reason:''};
+      });
+      return {...settled,rows};
+    }
+    const rows=properties.flatMap(property=>{
+      const propertyUnits=scopedUnits.filter(unit=>unit.property_id===property.id);
+      if(!propertyUnits.length) return [];
+      const occupiedCount=propertyUnits.filter(unit=>unit.occupied).length;
+      const expected=propertyUnits.filter(unit=>unit.occupied).reduce((sum,unit)=>sum+Math.max(0,Number(unit.current_rent||0)),0);
+      const settled=settleProperty(property.id,expected);
+      const status=occupiedCount===0?'Vacant':occupiedCount<propertyUnits.length?'Mixed':settled.unpaid<0.5?'Paid':'Outstanding';
+      const statusLabel=status==='Mixed'?`${occupiedCount}/${propertyUnits.length} occupied`:status;
+      return [{id:property.id,name:shortPropertyName(property.address),occupancy:`${occupiedCount}/${propertyUnits.length} units occupied`,status,statusLabel,reason:settled.deductions>0.5?settled.reason:'',expected:settled.expected,net:settled.net,gross:settled.gross,deductions:settled.deductions,unpaid:settled.unpaid}];
+    });
+    const totals=rows.reduce((sum,row)=>({expected:sum.expected+row.expected,net:sum.net+row.net,gross:sum.gross+row.gross,deductions:sum.deductions+row.deductions,unpaid:sum.unpaid+row.unpaid}),{expected:0,net:0,gross:0,deductions:0,unpaid:0});
+    return {...totals,reason:'',rows};
+  },[cashPropertyId,currentMonth,monthRent,postedScoped,properties,scopedUnits]);
+  const monthComparison=useMemo(()=>buildMonthlyFinancialHistory(transactions,'6M',cashPropertyId),[transactions,cashPropertyId]);
+  const comparisonCurrent=monthComparison[monthComparison.length-1];
+  const comparisonPrevious=monthComparison[monthComparison.length-2];
+  const rentForMonth=(key?:string)=>postedScoped.filter(tx=>Boolean(key)&&tx.transaction_date.startsWith(key||'')&&tx.type==='income'&&categoryKey(tx.category)==='rent').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+  const rentChange=monthOverMonth(rentForMonth(comparisonCurrent?.key),rentForMonth(comparisonPrevious?.key),'higher-better');
+  const expenseChange=monthOverMonth(comparisonCurrent?.operatingExpenses||0,comparisonPrevious?.operatingExpenses||0,'lower-better');
+  const cashChange=monthOverMonth(comparisonCurrent?.cashFlow||0,comparisonPrevious?.cashFlow||0,'higher-better');
+  const expenseMonthKey=currentMonth;
+  const ledgerHref=cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger';
+  const reviewHref=cashPropertyId?`/ledger?property=${cashPropertyId}&review=1`:'/ledger?review=1';
+  const expenseBreakdown=useMemo(()=>{
+    const current=new Map(DASHBOARD_EXPENSE_ROWS.map(row=>[row.key,0]));
+    postedScoped.forEach(tx=>{
+      if(tx.type!=='expense'||!tx.transaction_date.startsWith(expenseMonthKey)) return;
+      const group=dashboardExpenseGroup(tx.category||'');
+      if(!group) return;
+      current.set(group,(current.get(group)||0)+Math.abs(Number(tx.amount||0)));
+    });
+    const total=[...current.values()].reduce((sum,amount)=>sum+amount,0);
+    const rows=DASHBOARD_EXPENSE_ROWS.map(row=>{
+      const amount=current.get(row.key)||0;
+      return {...row,amount,share:total?amount/total:0,review:row.key==='uncategorized'&&amount>0.5};
+    });
+    return {rows,total};
+  },[expenseMonthKey,postedScoped]);
+  const recentItems=postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)).map(tx=>{
+    const property=properties.find(p=>p.id===tx.property_id);
+    const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;
+    const category=!tx.category||/needs review|uncategor/i.test(tx.category)?'Uncategorized':tx.category;
+    const vendor=friendlyVendor(tx,category);
+    const support=supportingLine(tx,category,vendor);
+    const propertyName=property?shortPropertyName(property.address):'Portfolio';
+    return {id:tx.id,title:vendor,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor,support,property:propertyName,category,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
+  });
+  const monthNet=currentCashFlow?.cashFlow||0;
+  const monthNetTone=monthNet>0?'positive':monthNet<0?'negative':'';
+  const collectedRatio=rentPicture.expected>0.5?rentPicture.gross/rentPicture.expected:null;
+  const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
+  const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
+  return <div className="dashboard-operating">
+    <header className="dashboard-operating-header">
+      <strong className="dashboard-mobile-brand">Portfolio</strong>
+      <div className="dashboard-heading"><h1>{monthLabel} {overviewYear} overview</h1><p>Portfolio performance for the current month</p></div>
+      <div className="dashboard-operating-controls">
+        <div className="dashboard-filter-row">
+          {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+          <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
+        </div>
+        <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{const match=resolveNotificationTransaction(item,transactions,properties);if(!match)return;setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);}} onOpenProperty={item=>{const property=resolveNotificationProperty(item.detail,properties);if(!property)return;router.push(`/properties/${property.id}${item.destination==='units'?'?tab=units':''}`);}} />
+        {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
+      </div>
+    </header>
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
-      <div className="pulse-dashboard-grid">
-      <main className="pulse-dashboard-main">
-        <section className="pulse-performance-open">
-          <div className="pulse-chart-head"><span className="pulse-kicker">{inspectedCashFlow?`${inspectedCashFlow.fullLabel} net cash flow`:'Net cash flow this month'}</span></div>
-          <div className="pulse-cash-summary"><strong className={(displayedCashFlow?.cashFlow||0)>=0?'amount-positive':'amount-negative'}>{formatCurrency(displayedCashFlow?.cashFlow||0)}</strong><div className="pulse-cash-breakdown"><span><b>Income</b><strong className="amount-positive">{formatCurrency(displayedCashFlow?.income||0)}</strong></span><span><b>Expenses</b><strong className="amount-negative">{formatCurrency(displayedCashFlow?.cashExpenses||0)}</strong></span></div></div>
-          <ChartLegend negative={(displayedCashFlow?.cashFlow||0)<0}/>
-          <FinancialHistoryChart rows={cashFlow} label="Monthly portfolio income and expenses" onInspect={setInspectedCashFlow}/>
-          <div className="pulse-chart-controls"><div className={`pulse-periods ${periodCashFlow.cashFlow<0?'is-negative':'is-positive'}`} aria-label="Cash flow period">{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div><ProductSelect className="pulse-property-select" aria-label="Cash flow property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect></div>
-          <div className="pulse-rent-module"><button type="button" className="pulse-rent-secondary" aria-expanded={rentExpanded} onClick={()=>setRentExpanded(value=>!value)}><span>Rent earned this month <ChevronDown size={17} className={rentExpanded?'is-open':''} aria-hidden="true"/></span><div><strong>{formatCurrency(rentEarned)}</strong><b className="amount-positive">+{formatCurrency(dailyRent)} today</b></div></button>{rentExpanded&&<div className="pulse-rent-pace"><strong>{formatCurrency(dailyRent)} per day</strong><span>for {now.getDate()} days this month</span></div>}</div>
-        </section>
-      <section className="daily-brief" aria-labelledby="daily-brief-title">
-        <div className="daily-brief-heading"><h2 id="daily-brief-title">Daily Brief</h2><p>{briefUpdatedAt?`Updated ${briefUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`:'Updating…'}</p></div>
-        {activeBrief?<><article key={activeBrief.id} className="daily-insight" data-tone={activeBrief.tone} data-direction={briefDirection} onTouchStart={event=>{const touch=event.touches[0];briefTouchStart.current={x:touch.clientX,y:touch.clientY};briefSwipeHandled.current=false;}} onTouchEnd={event=>{const start=briefTouchStart.current;const touch=event.changedTouches[0];briefTouchStart.current=null;if(!start||visibleDailyInsights.length<2)return;const dx=touch.clientX-start.x;const dy=touch.clientY-start.y;if(Math.abs(dx)<42||Math.abs(dx)<=Math.abs(dy)*1.2)return;briefSwipeHandled.current=true;if(dx<0){setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}else{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}}>
-          <button type="button" className="daily-insight-dismiss" onClick={()=>void dismissDailyInsight(activeBrief.id)} aria-label={`Dismiss ${activeBrief.kicker}`}><X size={18}/></button>
-          <Link href={activeBrief.href} onClick={event=>{if(briefSwipeHandled.current){event.preventDefault();briefSwipeHandled.current=false;return}void openDailyInsight(activeBrief.id)}} className="daily-insight-link"><div className="daily-insight-icon" aria-hidden="true">{activeBrief.kind==='rent'?<Banknote size={19}/>:activeBrief.kind==='expense'?(activeBrief.tone==='positive'?<TrendingDown size={19}/>:<TrendingUp size={19}/>):<Building2 size={19}/>}</div><span>{activeBrief.kicker}</span><strong>{activeBrief.title}</strong><p>{activeBrief.detail}</p></Link>
-        </article><div className="daily-brief-pagination"><button type="button" aria-label="Previous brief" onClick={()=>{setBriefDirection('previous');setBriefIndex(index=>(index-1+visibleDailyInsights.length)%visibleDailyInsights.length)}}><ChevronLeft size={18}/></button><span>{Math.min(briefIndex+1,visibleDailyInsights.length)} of {visibleDailyInsights.length}</span><button type="button" aria-label="Next brief" onClick={()=>{setBriefDirection('next');setBriefIndex(index=>(index+1)%visibleDailyInsights.length)}}><ChevronRight size={18}/></button></div></>:<div className="daily-brief-clear"><strong>No material changes since yesterday</strong><span>New portfolio changes will appear here.</span></div>}
+      <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
+        <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
+        <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
+        <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
       </section>
-      <ActionCenter items={actionItems.map(item=>({...item,detail:`${item.detail}${item.test?' · Test preview':''}`,onSelect:()=>{if(item.kind==='rent'&&item.propertyId){setReviewPropertyId(item.propertyId);setTestPreview(Boolean(item.test));if(item.test)setTestModeActive(true);}else if(!item.test)router.push(item.id==='new-bank-imports'?'/ledger?imports=1':item.kind==='review'?'/ledger?review=1':'/ledger')}}))} onViewAll={()=>router.push(testActionsActive?'/actions?test=1':'/actions')}/>
-      <RecentActivity items={transactions.filter(t=>(t.status||'posted')==='posted').map(tx=>{const property=properties.find(p=>p.id===tx.property_id);const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;const bank=tx.source==='plaid'?`${tx.source_institution||'Bank'}${tx.source_account_mask?` •••• ${tx.source_account_mask}`:''} · Imported`:tx.category;return {id:tx.id,title:tx.description||tx.payee_source||tx.category,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as any).needs_review?'Category needed':bank,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:'/ledger'}})} onOpenTransaction={id=>setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}/>
-      </main>
-      <aside className="portfolio-rail" aria-labelledby="portfolio-rail-title">
-        <div className="portfolio-rail-head"><h2 id="portfolio-rail-title">Properties</h2><Link href="/properties">Manage</Link></div>
-        <div className="portfolio-rail-list">{properties.map(property=>{const pu=units.filter(u=>u.property_id===property.id);const history=buildMonthlyFinancialHistory(transactions,cashPeriod,property.id);const propertyCashFlow=history.reduce((sum,row)=>sum+row.cashFlow,0);const status=pu.length>0&&pu.every(u=>u.occupied)?'Fully occupied':propertyCashFlow<0?'Negative cash flow':'Watch expenses';return <Link key={property.id} href={`/properties/${property.id}`} className="portfolio-rail-row">
-          <span className="portfolio-rail-copy"><strong>{property.address}</strong><small>{status}</small></span>
-          <MiniSparkline rows={history} negative={propertyCashFlow<0}/><strong className={propertyCashFlow>=0?'amount-positive':'amount-negative'}>{formatRailCurrency(propertyCashFlow)}</strong>
-        </Link>})}</div>
-      </aside>
+      <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
+      <div className="dashboard-main-row">
+        <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
+          <div className="dashboard-chart-top">
+            <div>
+              <h2>Net cash flow</h2>
+              <div className={`dashboard-chart-value ${monthNetTone?`amount-${monthNetTone}`:''}`}>{formatKpiCurrency(monthNet)}</div>
+            </div>
+            <div className="dashboard-periods" aria-label="Chart history"><span>History</span>{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
+          </div>
+          <ChartLegend variant="incomeExpense"/>
+          <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses"/>
+        </section>
+        <section className="dashboard-module dashboard-rent-status" aria-label="Rent this month">
+          <h2>Rent this month</h2>
+          <div className="dashboard-rent-figure">
+            {collectedPercent!==null&&<strong>{collectedPercent}% rent collected</strong>}
+            <span>{formatKpiCurrency(rentPicture.gross)} received of {formatKpiCurrency(rentPicture.expected)} expected</span>
+          </div>
+          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
+          {rentPicture.deductions>0.5&&<p className="dashboard-rent-note">Net proceeds: {formatKpiCurrency(rentPicture.net)}</p>}
+          {rentPicture.deductions>0.5&&<p className="dashboard-rent-note">{formatKpiCurrency(rentPicture.deductions)} in approved deductions</p>}
+          {rentPicture.unpaid>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentPicture.unpaid)} outstanding</p>}
+          {rentPicture.rows.length>0&&<h3>{cashPropertyId?'Unit status':'Property status'}</h3>}
+          <div className="dashboard-rent-list">
+            {rentPicture.rows.map(row=><div className="dashboard-rent-row" key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong><small>{row.occupancy}{row.reason?` · ${row.reason}`:''}</small></span><b data-status={row.status}>{row.statusLabel}</b></div>)}
+          </div>
+        </section>
+      </div>
+      <div className="dashboard-lower-row">
+        <section className="dashboard-module" aria-label="Expenses">
+          <div className="dashboard-expense-head"><h2>Expenses</h2><Link href={ledgerHref} className="dashboard-tx-all">View all expenses<ChevronRight size={14} aria-hidden="true"/></Link></div>
+          <p className="dashboard-expense-scope">{monthLabel} {overviewYear} · Operating expenses only</p>
+          <strong className="dashboard-expense-total">{formatKpiCurrency(expenseBreakdown.total)} total</strong>
+          <div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=>{
+            const spent=item.amount>0.5;
+            return <div className="dashboard-expense-row" key={item.key} data-spent={spent?'true':'false'}><div className="dashboard-expense-label"><span className="dashboard-expense-name"><strong>{spent?`${item.label} (${Math.round(item.share*100)}%)`:item.label}</strong>{item.review&&<Link href={reviewHref} className="dashboard-expense-review">Review</Link>}</span><b>{spent?formatKpiCurrency(item.amount):`${formatKpiCurrency(0)} (0%)`}</b></div><span className="dashboard-expense-track">{spent&&<i style={{width:`${item.share*100}%`,background:item.color}}/>}</span></div>;
+          })}</div>
+        </section>
+        <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>{setFromNotifications(false);setDetailEditing(false);setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}}/>
       </div>
     </>}
-    {(showQuickAdd||activeTransaction)&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={activeTransaction} viewOnly={Boolean(activeTransaction)} onClose={()=>{setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal back={fromNotifications} transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false);setFromNotifications(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {(showQuickAdd||(activeTransaction&&detailEditing))&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={detailEditing?activeTransaction:null} onClose={()=>{if(detailEditing){setDetailEditing(false);return;}setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated');setShowQuickAdd(false);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:999,background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:700}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>
       {testPreview?testReviewUnits.map(unit=><div key={unit.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit.unit_number||'Unit'} · {formatCurrency(Number(unit.current_rent||0))}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>resolveTestUnit(unit.id)} style={secondaryButton}>Decline</button><button className="primary-action" onClick={()=>resolveTestUnit(unit.id)} style={primaryButton}>Confirm received</button></div></div>):reviewRents.map(tx=>{const unit=tx.unit_id?unitMap[tx.unit_id]:undefined;return <div key={tx.id} style={{border:'1px solid var(--border-color)',borderRadius:10,padding:14,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}><div><strong>{unit?.unit_number||'Unit'} · {formatCurrency(tx.amount)}</strong><div style={{fontSize:'var(--type-small-size)',color:'var(--text-secondary)',marginTop:3}}>{unit?.tenant_name||'Tenant'}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}><button onClick={()=>declineRent(tx)} style={secondaryButton}>Decline</button><button className="primary-action" disabled={confirming===tx.id} onClick={()=>confirmRent(tx)} style={primaryButton}>{confirming===tx.id?'Confirming…':'Confirm received'}</button></div></div>})}
       {testPreview&&testReviewUnits.length===0&&<div style={{padding:18,textAlign:'center',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:10}}>Test complete. All occupied units were reviewed.</div>}
     </div></div></div>}
   </div>;
+}
+const DASHBOARD_EXPENSE_ROWS=[
+  {key:'maintenance',label:'Repairs & Maintenance',color:'var(--dashboard-expense-maintenance)'},
+  {key:'management',label:'Management Fees',color:'var(--dashboard-expense-management)'},
+  {key:'utilities',label:'Utilities',color:'var(--dashboard-expense-utilities)'},
+  {key:'other',label:'Other',color:'var(--dashboard-expense-other)'},
+  {key:'uncategorized',label:'Uncategorized',color:'var(--dashboard-expense-uncategorized)'},
+] as const;
+function dashboardExpenseGroup(category:string){
+  if(!category||/needs review|uncategor/i.test(category)) return 'uncategorized';
+  const key=categoryKey(category);
+  if(['mortgage-interest','mortgage-principal','mortgage','insurance','taxes','capex','distribution'].includes(key)) return '';
+  if(key==='maintenance'||key==='management'||key==='utilities') return key;
+  return 'other';
+}
+function rentRowStatus(received:number,expected:number,vacant=false){
+  if(vacant&&received<0.5) return 'Vacant' as const;
+  if(expected>0.5&&received+0.5>=expected) return 'Collected' as const;
+  if(received>0.5&&expected>received+0.5) return 'Partial' as const;
+  if(expected>0.5&&received<0.5) return 'Outstanding' as const;
+  return null;
+}
+function looksLikeBankDescriptor(value:string){
+  const text=value.trim();
+  if(!text) return false;
+  if(/\b(ach|pos|debit|autopay|auto-pay|auto pay|chk|checkcard|sq \*|tst\*|paypal|visa|mastercard|withdrawal|orig co|ppd|web id|trace)\b/i.test(text)) return true;
+  const letters=text.replace(/[^A-Za-z]/g,'');
+  if(letters.length>=10&&letters===letters.toUpperCase()) return true;
+  if(/\d{5,}/.test(text)) return true;
+  return false;
+}
+function friendlyVendor(tx:Transaction,category:string){
+  const payee=(tx.payee_source||'').trim();
+  const description=(tx.description||'').trim();
+  if(tx.source==='plaid') return payee&&!looksLikeBankDescriptor(payee)?payee:category;
+  if(payee&&!looksLikeBankDescriptor(payee)) return payee;
+  if(description&&!looksLikeBankDescriptor(description)) return description;
+  return category;
+}
+function supportingLine(tx:Transaction,category:string,vendor:string){
+  const key=categoryKey(tx.category||'');
+  let line='';
+  if(key==='rent'&&tx.type==='income') line='Rent received';
+  else if(/auto-?pay/i.test(`${tx.description||''} ${tx.notes||''} ${tx.payee_source||''}`)||tx.source==='recurring') line='Auto-pay';
+  else if(tx.source==='plaid'){
+    const payee=(tx.payee_source||'').trim();
+    const hidden=!payee||looksLikeBankDescriptor(payee)||looksLikeBankDescriptor(tx.description||'');
+    line=hidden?'Bank activity':category==='Uncategorized'?'':category;
+  }
+  else if(vendor.toLowerCase()===category.toLowerCase()) line=tx.type==='income'?'Income':'Expense';
+  else line=category;
+  return line.toLowerCase()===vendor.toLowerCase()?'':line;
+}
+function monthOverMonth(current:number,previous:number,direction:'higher-better'|'lower-better'){
+  const delta=current-previous;
+  const neutral={text:'No change from last month',tone:'neutral' as const,delta:'',rest:''};
+  if(Math.abs(delta)<0.5) return neutral;
+  if(Math.abs(previous)<0.5) return {text:'No prior month to compare',tone:'neutral' as const,delta:'',rest:''};
+  const pct=(delta/Math.abs(previous))*100;
+  if(Math.abs(pct)<0.05) return neutral;
+  const signed=`${pct>0?'+':'−'}${Math.abs(pct).toFixed(1)}%`;
+  const improved=direction==='higher-better'?pct>0:pct<0;
+  return {delta:signed,rest:'from last month',text:`${signed} from last month`,tone:improved?'positive' as const:'negative' as const};
+}
+function SummaryChange({change}:{change:ReturnType<typeof monthOverMonth>}){
+  if(change.tone==='neutral') return <small>{change.text}</small>;
+  return <small><b className={`amount-${change.tone}`}>{change.delta}</b> {change.rest}</small>;
+}
+function expenseCategoryLabel(key:string,raw:string){
+  const labels:Record<string,string>={
+    management:'Management Fee',
+    leasing:'Leasing Fee',
+    maintenance:'Repairs & Maintenance',
+    utilities:'Utilities',
+    insurance:'Insurance',
+    taxes:'Property Taxes',
+    legal:'Legal & Professional',
+    review:'Other Expense',
+    contribution:'Owner Contribution',
+    refund:'Refund',
+    'other-income':'Other Income',
+  };
+  return labels[key]||raw||'Other';
+}
+function expenseColor(key:string,uncategorized:boolean,index:number){
+  if(uncategorized) return 'var(--dashboard-series-uncategorized)';
+  const colors:Record<string,string>={
+    maintenance:'var(--dashboard-series-maintenance)',
+    management:'var(--dashboard-series-management)',
+    utilities:'var(--dashboard-series-utilities)',
+    insurance:'var(--dashboard-series-insurance)',
+    taxes:'var(--dashboard-series-taxes)',
+    legal:'var(--dashboard-series-legal)',
+    leasing:'var(--dashboard-series-leasing)',
+  };
+  const fallback=['var(--dashboard-series-insurance)','var(--dashboard-series-utilities)','var(--dashboard-series-maintenance)','var(--dashboard-series-management)','var(--dashboard-series-taxes)','var(--dashboard-series-legal)'];
+  return colors[key]||fallback[index%fallback.length];
 }
 function PulseMetric({label,value,tone}:{label:string;value:string;tone?:'positive'|'negative'}){return <div className="pulse-metric"><span>{label}</span><strong className={tone?`amount-${tone}`:''}>{value}</strong></div>}
 function formatRailCurrency(value:number){return formatCurrency(Math.round(value)).replace(/\.00$/,'')}
