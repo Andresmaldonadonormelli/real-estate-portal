@@ -119,6 +119,9 @@ body {
   .app-shell .nav-link svg {
     flex: 0 0 auto;
   }
+  .bottom-nav {
+    display: none !important;
+  }
 }
 
 @media (max-width: 767px) {
@@ -137,6 +140,18 @@ body {
   .app-shell .main-content {
     padding-left: 0 !important;
     background: transparent;
+  }
+  .side-nav {
+    display: none !important;
+  }
+  .bottom-nav {
+    position: fixed !important;
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 1100 !important;
+    transform: none !important;
   }
 }
 

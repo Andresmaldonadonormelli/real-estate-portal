@@ -65,4 +65,6 @@
 .transaction-detail-panel .transaction-detail-delete{justify-self:center;margin:0;min-height:44px;color:var(--text-secondary)}
 @keyframes transaction-detail-in{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @media(prefers-reduced-motion:reduce){.transaction-detail-panel{animation:none;transform:none}}
-@media(max-width:767px){.quick-add-overlay.transaction-detail-overlay{place-items:stretch end;padding:0}.transaction-detail-panel{width:100%;border-left:0;border-radius:0}}
+@media(max-width:767px){.quick-add-overlay.transaction-detail-overlay{place-items:end stretch;padding:0}.transaction-detail-panel{width:100%;height:100dvh;max-height:100dvh;border-left:0;border-radius:var(--radius-card) var(--radius-card) 0 0;transform:translateY(100%);animation:transaction-detail-up 280ms ease forwards}}
+@keyframes transaction-detail-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@media(max-width:767px) and (prefers-reduced-motion:reduce){.transaction-detail-panel{animation:none;transform:none}}
