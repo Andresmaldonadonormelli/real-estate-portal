@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { PageHeader } from '@/components/common/ProductControls';
 import Toast from '@/components/common/Toast';
-import { NotificationFeed, type DashboardNotification } from '@/components/dashboard/NotificationBell';
+import { NotificationFeed } from '@/components/dashboard/NotificationFeed';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
-import { resolveNotificationProperty, resolveNotificationTransaction } from '@/lib/notificationMatch';
+import { resolveNotificationTransaction } from '@/lib/notificationMatch';
+import type { FeedNotification } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 import type { Property, Transaction, Unit } from '@/lib/types';
@@ -36,23 +37,36 @@ export default function NotificationsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openNotification(item: DashboardNotification) {
+  function goBack() {
+    if (window.history.length > 1) router.back();
+    else router.push('/');
+  }
+
+  async function openNotification(item: FeedNotification) {
     if (item.group === 'transaction') {
-      const match = resolveNotificationTransaction(item, transactions, properties);
-      if (!match) return;
+      const match = await resolveNotificationTransaction(item.transactionId, transactions);
+      if (!match) {
+        setToast('This transaction is no longer available.');
+        return;
+      }
       setDetailEditing(false);
       setActiveTransaction(match);
       return;
     }
-    const property = resolveNotificationProperty(item.detail, properties);
-    if (!property) return;
-    router.push(`/properties/${property.id}${item.destination === 'units' ? '?tab=units' : ''}`);
+    if (!item.propertyId) {
+      setToast('This property is no longer available.');
+      return;
+    }
+    router.push(`/properties/${item.propertyId}?tab=units`);
   }
 
   return (
     <div className="notifications-page">
-      <PageHeader title="Notifications" />
-      <NotificationFeed onOpen={openNotification} />
+      <header className="notifications-page-bar">
+        <button type="button" className="notifications-back" aria-label="Back" onClick={goBack}><ArrowLeft size={22} strokeWidth={1.75} /></button>
+        <h1>Notifications</h1>
+      </header>
+      <NotificationFeed onOpen={item => { void openNotification(item); }} />
       {activeTransaction && !detailEditing && (
         <TransactionDetailModal
           back
@@ -65,10 +79,10 @@ export default function NotificationsPage() {
           onSaved={async (message) => { invalidateSupabaseCache(); await load(); setToast(message || 'Transaction updated'); }}
           onArchived={async (message, id, phase) => {
             const archivedId = id || activeTransaction.id;
-            if (phase !== 'complete' && archivedId) setTransactions((rows) => rows.filter((row) => row.id !== archivedId));
+            if (phase !== 'complete' && archivedId) setTransactions(rows => rows.filter(row => row.id !== archivedId));
             if (phase === 'complete') { invalidateSupabaseCache(); setToast(message || 'Transaction deleted'); }
           }}
-          onArchiveFailed={(tx, error) => { setTransactions((rows) => rows.some((row) => row.id === tx.id) ? rows : [tx, ...rows]); setToast(error); invalidateSupabaseCache(); }}
+          onArchiveFailed={(tx, error) => { setTransactions(rows => rows.some(row => row.id === tx.id) ? rows : [tx, ...rows]); setToast(error); invalidateSupabaseCache(); }}
         />
       )}
       {activeTransaction && detailEditing && (
@@ -81,10 +95,10 @@ export default function NotificationsPage() {
           onSaved={async (message) => { invalidateSupabaseCache(); await load(); setToast(message || 'Transaction updated'); setActiveTransaction(null); setDetailEditing(false); }}
           onArchived={async (message, id, phase) => {
             const archivedId = id || activeTransaction.id;
-            if (phase !== 'complete' && archivedId) setTransactions((rows) => rows.filter((row) => row.id !== archivedId));
+            if (phase !== 'complete' && archivedId) setTransactions(rows => rows.filter(row => row.id !== archivedId));
             if (phase === 'complete') { invalidateSupabaseCache(); setToast(message || 'Transaction deleted'); }
           }}
-          onArchiveFailed={(tx, error) => { setTransactions((rows) => rows.some((row) => row.id === tx.id) ? rows : [tx, ...rows]); setToast(error); invalidateSupabaseCache(); }}
+          onArchiveFailed={(tx, error) => { setTransactions(rows => rows.some(row => row.id === tx.id) ? rows : [tx, ...rows]); setToast(error); invalidateSupabaseCache(); }}
         />
       )}
       {toast && <Toast message={toast} onClose={() => setToast('')} />}

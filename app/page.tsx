@@ -13,7 +13,7 @@ import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
-import { resolveNotificationProperty, resolveNotificationTransaction } from '@/lib/notificationMatch';
+import { resolveNotificationTransaction } from '@/lib/notificationMatch';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
@@ -321,7 +321,7 @@ export default function Dashboard() {
           {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
           <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
         </div>
-        <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{const match=resolveNotificationTransaction(item,transactions,properties);if(!match)return;setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);}} onOpenProperty={item=>{const property=resolveNotificationProperty(item.detail,properties);if(!property)return;router.push(`/properties/${property.id}${item.destination==='units'?'?tab=units':''}`);}} />
+        <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{void (async()=>{const match=await resolveNotificationTransaction(item.transactionId,transactions);if(!match){setToast('This transaction is no longer available.');return;}setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);})();}} onOpenProperty={item=>{if(!item.propertyId){setToast('This property is no longer available.');return;}router.push(`/properties/${item.propertyId}?tab=units`);}} />
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>

@@ -3,59 +3,15 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Bell, X } from 'lucide-react';
-import { useNotificationInbox, type DashboardNotification } from '@/components/dashboard/notificationInbox';
-
-export type { DashboardNotification };
-
-const TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'transaction', label: 'Transactions' },
-  { id: 'property', label: 'Properties' },
-] as const;
-
-type NotificationTab = (typeof TABS)[number]['id'];
+import { NotificationFeed } from '@/components/dashboard/NotificationFeed';
+import { useNotificationInbox } from '@/components/dashboard/notificationInbox';
+import type { FeedNotification } from '@/lib/notifications';
 
 const SLIDE_MS = 280;
 
-export function NotificationFeed({ onOpen }: { onOpen: (item: DashboardNotification) => void }) {
-  const { items, unread, markRead, markAllRead } = useNotificationInbox();
-  const [tab, setTab] = useState<NotificationTab>('all');
-  const visible = items.filter((item) => tab === 'all' || item.group === tab);
-
-  function openItem(item: DashboardNotification) {
-    markRead(item.id);
-    onOpen(item);
-  }
-
-  return (
-    <>
-      <div className="dashboard-drawer-tabs" role="tablist" aria-label="Notification groups">
-        {TABS.map((choice) => (
-          <button key={choice.id} type="button" role="tab" aria-selected={tab === choice.id} onClick={() => setTab(choice.id)}>{choice.label}</button>
-        ))}
-      </div>
-      <button type="button" className="dashboard-drawer-mark" disabled={unread.length === 0} onClick={markAllRead}>Mark all as read</button>
-      <ul className="dashboard-drawer-list">
-        {visible.map((item) => (
-          <li key={item.id} data-unread={unread.includes(item.id) ? 'true' : 'false'}>
-            <button type="button" onClick={() => openItem(item)}>
-              <span className="dashboard-drawer-title">
-                <strong>{item.title}</strong>
-                <time>{item.time}</time>
-                {unread.includes(item.id) ? <i className="dashboard-drawer-dot" aria-hidden="true" /> : null}
-              </span>
-              <span>{item.detail}{item.amount ? <> · <b className={item.tone ? `amount-${item.tone}` : ''}>{item.amount}</b></> : null}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
 export default function NotificationBell({ onOpenTransaction, onOpenProperty, hold = false }: {
-  onOpenTransaction?: (item: DashboardNotification) => void;
-  onOpenProperty?: (item: DashboardNotification) => void;
+  onOpenTransaction?: (item: FeedNotification) => void;
+  onOpenProperty?: (item: FeedNotification) => void;
   hold?: boolean;
 }) {
   const { unreadCount } = useNotificationInbox();
@@ -93,7 +49,7 @@ export default function NotificationBell({ onOpenTransaction, onOpenProperty, ho
     });
   }
 
-  function openItem(item: DashboardNotification) {
+  function openItem(item: FeedNotification) {
     if (item.group === 'transaction') {
       onOpenTransaction?.(item);
       return;

@@ -1,40 +1,103 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-
-export const SAMPLE_NOTIFICATIONS = [
-  { id: 'transfer', group: 'transaction' as const, title: 'Bank transfer received', detail: '15334 Triskett', amount: '+$2,377', tone: 'positive' as const, time: '2h ago', match: 'payout' as const },
-  { id: 'review', group: 'transaction' as const, title: 'Transaction needs review', detail: '3765 W134th · Uncategorized', amount: '', tone: '' as const, time: '3h ago', match: 'review' as const },
-  { id: 'expense', group: 'transaction' as const, title: 'Large expense posted', detail: 'Harbor Plumbing', amount: '-$280', tone: 'negative' as const, time: '6h ago', match: 'expense' as const },
-  { id: 'rent', group: 'property' as const, title: 'Rent still outstanding', detail: 'W134', amount: '$1,200 remaining', tone: 'negative' as const, time: '1d ago', destination: 'overview' as const },
-  { id: 'lease', group: 'property' as const, title: 'Lease ends in 30 days', detail: '214 Maple · Unit 1', amount: '', tone: '' as const, time: '2d ago', destination: 'units' as const },
-  { id: 'vacant', group: 'property' as const, title: 'Unit vacant for 14 days', detail: '4365 W · Unit 1', amount: '', tone: '' as const, time: '4d ago', destination: 'units' as const },
-  { id: 'turnover', group: 'property' as const, title: 'Upcoming turnover', detail: '3765 W134th · Unit 2', amount: '', tone: '' as const, time: '5d ago', destination: 'overview' as const },
-  { id: 'maintenance', group: 'property' as const, title: 'Maintenance reminder', detail: '15334 Triskett · Unit 1', amount: '', tone: '' as const, time: '1d ago', destination: 'overview' as const },
-];
-
-export type DashboardNotification = (typeof SAMPLE_NOTIFICATIONS)[number];
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useAuth } from '@/components/auth/AuthContext';
+import { notificationLoadError, reconcileNotifications } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
+import type { Notification } from '@/lib/types';
 
 type NotificationInbox = {
-  items: readonly DashboardNotification[];
-  unread: string[];
+  items: Notification[];
   unreadCount: number;
-  markRead: (id: string) => void;
-  markAllRead: () => void;
+  loading: boolean;
+  error: string;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const NotificationInboxContext = createContext<NotificationInbox | null>(null);
 
 export function NotificationInboxProvider({ children }: { children: ReactNode }) {
-  const [unread, setUnread] = useState<string[]>(() => SAMPLE_NOTIFICATIONS.map((item) => item.id));
-  const value = useMemo<NotificationInbox>(() => ({
-    items: SAMPLE_NOTIFICATIONS,
-    unread,
-    unreadCount: unread.length,
-    markRead: (id) => setUnread((ids) => ids.filter((item) => item !== id)),
-    markAllRead: () => setUnread([]),
-  }), [unread]);
+  const { user } = useAuth();
+  const [items, setItems] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const refreshing = useRef(false);
+  const refreshAgain = useRef(false);
 
+  const refresh = useCallback(async () => {
+    if (refreshing.current) {
+      refreshAgain.current = true;
+      return;
+    }
+    refreshing.current = true;
+    setLoading(true);
+    try {
+      do {
+        refreshAgain.current = false;
+        const rows = await reconcileNotifications(user.id);
+        setItems(rows);
+        setError('');
+      } while (refreshAgain.current);
+    } catch (cause) {
+      setError(notificationLoadError(cause));
+    } finally {
+      refreshing.current = false;
+      setLoading(false);
+      if (refreshAgain.current) {
+        refreshAgain.current = false;
+        void refresh();
+      }
+    }
+  }, [user.id]);
+
+  useEffect(() => {
+    let timer = 0;
+    let active = true;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => { if (active) void refresh(); }, 300);
+    };
+    schedule();
+    window.addEventListener('focus', schedule);
+    window.addEventListener('portal:data-changed', schedule);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', schedule);
+      window.removeEventListener('portal:data-changed', schedule);
+    };
+  }, [refresh]);
+
+  const markRead = useCallback(async (id: string) => {
+    let shouldWrite = false;
+    const readAt = new Date().toISOString();
+    setItems(rows => rows.map(row => {
+      if (row.id !== id || row.read_at) return row;
+      shouldWrite = true;
+      return { ...row, read_at: readAt };
+    }));
+    if (!shouldWrite) return;
+    const result = await supabase.from('notifications').update({ read_at: readAt }).eq('id', id).eq('user_id', user.id).is('read_at', null);
+    if (result.error) void refresh();
+  }, [refresh, user.id]);
+
+  const markAllRead = useCallback(async () => {
+    const readAt = new Date().toISOString();
+    const ids: string[] = [];
+    setItems(rows => rows.map(row => {
+      if (row.read_at) return row;
+      ids.push(row.id);
+      return { ...row, read_at: readAt };
+    }));
+    if (!ids.length) return;
+    const result = await supabase.from('notifications').update({ read_at: readAt }).in('id', ids).eq('user_id', user.id).is('read_at', null);
+    if (result.error) void refresh();
+  }, [refresh, user.id]);
+
+  const unreadCount = items.filter(row => !row.read_at).length;
+  const value = { items, unreadCount, loading, error, markRead, markAllRead, refresh };
   return <NotificationInboxContext.Provider value={value}>{children}</NotificationInboxContext.Provider>;
 }
 

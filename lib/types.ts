@@ -93,6 +93,33 @@ export interface DashboardVisit {
   brief_resolved_ids?: string[];
 }
 
+export type NotificationType =
+  | 'bank_transfer_received'
+  | 'transaction_needs_category'
+  | 'large_expense_posted'
+  | 'lease_ending_soon'
+  | 'unit_vacant';
+
+export type NotificationOrigin = 'seed' | 'app' | 'plaid';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  read_at?: string | null;
+  created_at: string;
+  title: string;
+  body: string;
+  amount?: number | null;
+  property_id?: string | null;
+  unit_id?: string | null;
+  transaction_id?: string | null;
+  dedupe_key: string;
+  metadata?: Record<string, unknown> | null;
+  origin: NotificationOrigin;
+  archived_at?: string | null;
+}
+
 export interface UtilityAccount {
   id: string;
   user_id?: string | null;
