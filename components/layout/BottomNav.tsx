@@ -9,6 +9,7 @@ import { useNotificationInbox } from '@/components/dashboard/notificationInbox';
 import OverviewIcon from '@/components/layout/OverviewIcon';
 import PropertiesIcon from '@/components/layout/PropertiesIcon';
 import TransactionsIcon from '@/components/layout/TransactionsIcon';
+import { iconSize } from '@/lib/iconSizes';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -33,9 +34,9 @@ export default function BottomNav() {
         const active = pathname === href || pathname.startsWith(`${href}/`) || (href === '/ledger' && pathname.startsWith('/actions'));
         return (
           <Link key={href} href={href} className={`bottom-nav-link ${active ? 'active' : ''}`} aria-label={kind === 'alerts' && unreadCount > 0 ? `Alerts, ${unreadCount} unread` : undefined}>
-            {kind === 'overview' ? <OverviewIcon active={active} size={26} /> : kind === 'properties' ? <PropertiesIcon active={active} size={26} /> : kind === 'transactions' ? <TransactionsIcon active={active} size={26} /> : (
+            {kind === 'overview' ? <OverviewIcon active={active} size={iconSize.navMobile} /> : kind === 'properties' ? <PropertiesIcon active={active} size={iconSize.navMobile} /> : kind === 'transactions' ? <TransactionsIcon active={active} size={iconSize.navMobile} /> : (
               <span className="bottom-nav-icon">
-                <Bell size={26} strokeWidth={1.75} fill={active ? 'currentColor' : 'none'} />
+                <Bell size={iconSize.navMobile} strokeWidth={1.75} fill={active ? 'currentColor' : 'none'} />
                 {unreadCount > 0 && <span className="dashboard-bell-count">{unreadCount}</span>}
               </span>
             )}
@@ -44,7 +45,7 @@ export default function BottomNav() {
         );
       })}
       <Link href="/account" className={`bottom-nav-link ${moreActive ? 'active' : ''}`}>
-        <Ellipsis size={26} strokeWidth={1.75} fill={moreActive ? 'currentColor' : 'none'} />
+        <Ellipsis size={iconSize.navMobile} strokeWidth={1.75} fill={moreActive ? 'currentColor' : 'none'} />
         <span>More</span>
       </Link>
     </nav>,

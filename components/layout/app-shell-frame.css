@@ -47,7 +47,7 @@ body {
     padding-bottom: var(--space-6) !important;
     overflow: hidden;
     background: var(--theme-card) !important;
-    border-radius: var(--theme-shell-radius, 22px);
+    border-radius: var(--radius-shell);
   }
   .app-shell .side-nav-brand {
     display: flex;
@@ -102,10 +102,10 @@ body {
     border-top: 0;
   }
   .app-shell .nav-link {
-    min-height: 40px;
+    min-height: var(--control-height-desktop);
     margin: 0;
     padding: 0 var(--space-3) !important;
-    border-radius: 12px !important;
+    border-radius:var(--radius-control)!important;
     color: var(--text-secondary);
     font-size: var(--type-small-size);
     line-height: var(--type-small-line);

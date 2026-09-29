@@ -45,9 +45,9 @@
 
 .recent-activity-copy { display:grid; gap:2px; align-items:center; }
 
-.recent-activity-copy strong { font-size:14px; font-weight:650; }
+.recent-activity-copy strong { font-size:var(--type-small-size); font-weight:var(--weight-semibold); }
 
-.recent-activity-copy span { color:var(--text-secondary); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.recent-activity-copy span { color:var(--text-secondary); font-size:var(--type-label-size); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (hover:hover) and (pointer:fine){
   .recent-activity-row:hover { background:color-mix(in srgb, var(--accent-soft) 58%, transparent); }}
 @media (max-width:767px){
@@ -70,12 +70,12 @@
 .action-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius:var(--radius-control);
   display: grid;
   place-items: center;
 }
 @media(max-width:767px){
-  .action-center.card { border-radius: 20px !important; }}
+  .action-center.card { border-radius:var(--radius-card)!important; }}
 
 .actions-page-header { margin-bottom: var(--space-6); }
 
@@ -95,7 +95,7 @@
   text-decoration: none;
 }
 
-.actions-page-icon { width: 42px; height: 42px; border-radius: 11px; display:grid; place-items:center; background:var(--accent-soft); color:var(--accent-dark); }
+.actions-page-icon { width: 42px; height: 42px; border-radius:var(--radius-control); display:grid; place-items:center; background:var(--accent-soft); color:var(--accent-dark); }
 
 .actions-page-copy strong { display:block; font-size:var(--type-body-size); line-height:var(--type-body-line); }
 
@@ -107,7 +107,7 @@
   justify-content: center;
   min-width: 92px;
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius:var(--radius-pill);
   background: var(--accent);
   color: var(--accent-contrast);
   font: var(--font-button-strong);
@@ -115,7 +115,7 @@
 @media(max-width:767px){
   .actions-page-item { grid-template-columns: 40px minmax(0,1fr) auto; padding: var(--space-4) 0; gap: var(--space-3); }}
 @media(max-width:767px){
-  .actions-page-icon { width: 38px; height: 38px; border-radius: 10px; }}
+  .actions-page-icon { width: 38px; height: 38px; border-radius:var(--radius-control); }}
 @media(max-width:767px){
   .actions-page-cta { min-width: 0; padding: var(--space-2) var(--space-3); }}
 

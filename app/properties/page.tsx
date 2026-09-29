@@ -258,8 +258,8 @@ export default function PropertiesPage() {
       {deleteTarget && (
         <Modal title="Archive property property?" onClose={() => { if (!deletingProperty) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
           <div style={{display:'grid',gap:14}}>
-            <div style={{padding:14,border:'1px solid var(--danger)',borderRadius:12,background:'color-mix(in srgb, var(--danger) 8%, transparent)'}}>
-              <div style={{fontWeight:650,color:'var(--danger)',marginBottom:6}}>This cannot be undone.</div>
+            <div style={{padding:14,border:'1px solid var(--danger)',borderRadius:'var(--radius-control)',background:'color-mix(in srgb, var(--danger) 8%, transparent)'}}>
+              <div style={{fontWeight:'var(--weight-semibold)',color:'var(--danger)',marginBottom:6}}>This cannot be undone.</div>
               <div style={{fontSize:'var(--type-small-size)',lineHeight:'var(--type-small-line)',color:'var(--text-secondary)'}}>Deleting <strong style={{color:'var(--text-primary)'}}>{deleteTarget.address}</strong> also permanently deletes its units, ledger transactions, document records and utility accounts.</div>
             </div>
             <Field label={`Type “${deleteTarget.address}” to confirm`}><input autoFocus value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} style={inputStyle} /></Field>
@@ -316,7 +316,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: 'var(--space-3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-control)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--type-body-size)' };
 const sharedButtonType: React.CSSProperties = { fontSize:'var(--type-button-size)',lineHeight:'var(--type-button-line)',fontWeight:'var(--type-button-weight)' };
-const primaryButton: React.CSSProperties = { ...sharedButtonType, padding: '10px 14px', border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-contrast)', cursor: 'pointer' };
-const secondaryButton: React.CSSProperties = { ...sharedButtonType, padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 8, background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
+const primaryButton: React.CSSProperties = { ...sharedButtonType, padding: '10px 14px', border: 0, borderRadius:'var(--radius-control-compact)', background: 'var(--accent)', color: 'var(--accent-contrast)', cursor: 'pointer' };
+const secondaryButton: React.CSSProperties = { ...sharedButtonType, padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius:'var(--radius-control-compact)', background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
 const dangerButton: React.CSSProperties = { ...secondaryButton, color: 'var(--danger)' };
 const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 };
