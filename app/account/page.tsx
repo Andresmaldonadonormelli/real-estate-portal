@@ -3,8 +3,9 @@
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Archive, ArrowLeft, ChevronRight, FileText, Landmark, Lightbulb, Settings, UserRound } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Archive, ChevronRight, FileText, Landmark, Lightbulb, Settings, UserRound } from 'lucide-react';
+import MoreBackHeader from '@/components/layout/MoreBackHeader';
 import ThemeToggle from '@/components/layout/ThemeToggle';
 import { PageHeader } from '@/components/common/ProductControls';
 import ConnectedAccounts from '@/components/account/ConnectedAccounts';
@@ -30,7 +31,6 @@ export default function AccountPage() {
 }
 
 function MorePage({ email }: { email: string }) {
-  const router = useRouter();
   const section = useSearchParams().get('section');
   const titled = section === 'profile' || section === 'settings';
 
@@ -38,11 +38,8 @@ function MorePage({ email }: { email: string }) {
     <div className="more-page">
       {section === 'banks' || titled ? (
         <>
-          <header className="more-section-head">
-            <button type="button" aria-label="Back to More" onClick={() => router.push('/account')}><ArrowLeft size={18} /></button>
-            {titled ? <h1>{section === 'profile' ? 'Profile' : 'Settings'}</h1> : null}
-          </header>
-          {section === 'banks' && <div className="more-panel"><ConnectedAccounts /></div>}
+          <MoreBackHeader title={section === 'banks' ? 'Bank accounts' : section === 'profile' ? 'Profile' : 'Settings'} />
+          {section === 'banks' && <div className="more-panel more-banks"><ConnectedAccounts /></div>}
           {section === 'profile' && (
             <section className="more-panel">
               <div className="more-detail"><span>Signed in as</span><strong>{email}</strong></div>
@@ -64,7 +61,7 @@ function MorePage({ email }: { email: string }) {
             <div className="more-panel">
               <Link href="/utilities"><Lightbulb size={20} strokeWidth={1.75} /><span>Utilities</span><ChevronRight size={18} /></Link>
               <Link href="/account?section=banks"><Landmark size={20} strokeWidth={1.75} /><span>Bank accounts</span><ChevronRight size={18} /></Link>
-              <Link href="/ledger?tab=documents"><FileText size={20} strokeWidth={1.75} /><span>Documents &amp; statements</span><ChevronRight size={18} /></Link>
+              <Link href="/ledger?tab=documents&from=more"><FileText size={20} strokeWidth={1.75} /><span>Documents &amp; statements</span><ChevronRight size={18} /></Link>
               <Link href="/archive"><Archive size={20} strokeWidth={1.75} /><span>Archive</span><ChevronRight size={18} /></Link>
             </div>
           </section>

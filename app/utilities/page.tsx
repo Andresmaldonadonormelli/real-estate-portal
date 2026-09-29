@@ -9,6 +9,7 @@ import type { Property, UtilityAccount } from "@/lib/types";
 import { withTimeout } from "@/lib/async";
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from "@/lib/supabaseData";
 import { PageAction, PageHeader, ProductSelect } from "@/components/common/ProductControls";
+import MoreBackHeader from "@/components/layout/MoreBackHeader";
 import { Button } from "@/components/ui/Button";
 
 const types = [
@@ -229,7 +230,10 @@ export default function UtilitiesPage() {
 
   return (
     <div className="mobile-page-shell utilities-page">
-      <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
+      <MoreBackHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>} />
+      <div className="desktop-page-header">
+        <PageHeader title="Utilities" action={<PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>}/>
+      </div>
       {error && <div style={errorBox}>{error}</div>}
 
       {loading ? (

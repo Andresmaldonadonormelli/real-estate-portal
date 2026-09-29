@@ -10,6 +10,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { withTimeout } from '@/lib/async';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
 import { PageAction, PageHeader, UnderlineTabs } from '@/components/common/ProductControls';
+import MoreBackHeader from '@/components/layout/MoreBackHeader';
 import PropertyPicker from '@/components/common/PropertyPicker';
 
 type Tab='ledger'|'statements'|'documents';
@@ -32,8 +33,14 @@ export default function LedgerDocsPage(){
 
   useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
   function changeTab(next:Tab){setTab(next);setAddRequest(0);setUploadRequest(0)}
-  return <div className="ledger-page ledger-v230-page">
-    <PageHeader title="Transactions" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:<span className="ledger-v230-action-placeholder" aria-hidden="true"/>}/>
+  const fromMore = searchParams.get('from') === 'more';
+  function headerAction(){
+    if(tab==='statements') return <span className="ledger-v230-action-placeholder" aria-hidden="true"/>;
+    return <PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>;
+  }
+  return <div className={`ledger-page ledger-v230-page${fromMore ? ' ledger-from-more' : ''}`}>
+    <MoreBackHeader title="Transactions" action={headerAction()}/>
+    <div className="desktop-page-header"><PageHeader title="Transactions" action={headerAction()}/></div>
     <div className="ledger-v230-workspace">
       <UnderlineTabs primary value={tab} onChange={changeTab} label="Transaction sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Transactions'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
       {tab!=='ledger'&&!loading&&<PropertyPicker className="ledger-v230-shared-property" value={selectedPropertyId} properties={properties} onChange={setSelectedPropertyId}/>}
