@@ -328,7 +328,7 @@ export default function Dashboard() {
     {!loading&&<div className="dashboard-mobile-context">
       <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>
       <div className="dashboard-property-chips" role="tablist" aria-label="Property">
-        <button type="button" role="tab" aria-selected={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>Portfolio</button>
+        <button type="button" role="tab" aria-selected={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>All</button>
         {properties.map(property=><button type="button" role="tab" key={property.id} aria-selected={cashPropertyId===property.id} onClick={()=>setCashPropertyId(property.id)}>{propertyChipName(property.address)}</button>)}
       </div>
     </div>}
