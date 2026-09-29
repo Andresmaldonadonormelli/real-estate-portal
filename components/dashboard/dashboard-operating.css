@@ -1152,6 +1152,10 @@
     min-height: 44px;
     white-space: nowrap;
   }
+  .notifications-page .dashboard-drawer-list button {
+    padding-right: 0;
+    padding-left: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-drawer,

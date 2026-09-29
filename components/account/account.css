@@ -18,9 +18,10 @@
 .more-panel a:first-child{border-top:0}
 .more-panel a span{flex:1 1 auto;min-width:0}
 .more-panel a svg:last-child{flex:0 0 auto;color:var(--text-secondary)}
-.more-section-head{display:flex;align-items:center;gap:var(--space-2);min-height:44px;margin-bottom:var(--space-5)}
-.more-section-head button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);cursor:pointer}
-.more-section-head h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold);letter-spacing:-.035em}
+.more-back-header{display:none}
+.more-back-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);min-height:44px}
+.more-back-button{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);cursor:pointer}
+.more-back-header h1{margin:var(--space-1) 0 var(--space-6);text-align:center;font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold);letter-spacing:-.035em}
 .more-detail{display:grid;gap:var(--space-1);padding:var(--space-4)}
 .more-detail strong{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
 .more-detail span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
@@ -29,9 +30,12 @@
 .more-settings .appearance-menu{padding:0 var(--space-4)}
 .more-settings .appearance-options button{min-height:44px}
 .more-panel .connected-accounts-setting{padding:var(--space-4);border-bottom:0}
+.more-banks .connected-accounts-head>div>strong{display:none}
 @media (max-width:767px){
   .account-desktop{display:none}
   .more-page{display:block;width:100%;background:var(--theme-page)}
+  .utilities-page .more-back-header,.archive-page .more-back-header,.ledger-from-more .more-back-header,.more-page .more-back-header{display:block}
+  .utilities-page>.desktop-page-header,.ledger-from-more>.desktop-page-header,.archive-page .archive-back-link,.archive-page .archive-desktop-title{display:none}
 }
 .actions-page-item{padding:var(--space-4) 0!important;border-radius:0!important}
 .actions-page-icon{background:var(--surface-subtle)}
