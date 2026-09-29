@@ -9,7 +9,8 @@ import DocumentsTab from '@/components/ledger/DocumentsTab';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { withTimeout } from '@/lib/async';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
-import { PageAction, PageHeader, ProductSelect, UnderlineTabs } from '@/components/common/ProductControls';
+import { PageAction, PageHeader, UnderlineTabs } from '@/components/common/ProductControls';
+import PropertyPicker from '@/components/common/PropertyPicker';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
@@ -35,7 +36,7 @@ export default function LedgerDocsPage(){
     <PageHeader title="Transactions" action={tab!=='statements'?<PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>:<span className="ledger-v230-action-placeholder" aria-hidden="true"/>}/>
     <div className="ledger-v230-workspace">
       <UnderlineTabs primary value={tab} onChange={changeTab} label="Transaction sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Transactions'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
-      {tab!=='ledger'&&!loading&&<ProductSelect className="ledger-v230-shared-property" aria-label="Property" value={selectedPropertyId} onChange={e=>setSelectedPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
+      {tab!=='ledger'&&!loading&&<PropertyPicker className="ledger-v230-shared-property" value={selectedPropertyId} properties={properties} onChange={setSelectedPropertyId}/>}
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'
         ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest} onActionHandled={()=>setAddRequest(0)}/>
         :tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} uploadRequest={uploadRequest} onActionHandled={()=>setUploadRequest(0)}/>} 

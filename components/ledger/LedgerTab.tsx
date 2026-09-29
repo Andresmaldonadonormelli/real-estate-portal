@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductSelect } from '@/components/common/ProductControls';
+import PropertyPicker from '@/components/common/PropertyPicker';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -179,7 +180,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     {!properties.length&&!loading&&<div className="card" style={{padding:18,marginBottom:18}}>Add a property before entering transactions.</div>}
 
     <div className="ledger-v230-toolbar">
-      <ProductSelect className="ledger-toolbar-property" aria-label="Property" value={selectedPropertyId} onChange={e=>onSelectedPropertyChange(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>
+      <PropertyPicker className="ledger-toolbar-property" value={selectedPropertyId} properties={properties} onChange={onSelectedPropertyChange}/>
       <label className="ledger-v230-search"><Search size={16} aria-hidden="true"/><input placeholder="Search" aria-label="Search transactions" value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})}/>{filters.search&&<button type="button" onClick={()=>setFilters({...filters,search:''})} aria-label="Clear search"><X size={16}/></button>}</label>
       <div className="ledger-v230-tools">
         <button type="button" className={`ledger-filters ${showFilters||activeFilterCount?'active':''}`} onClick={()=>setShowFilters(v=>!v)} aria-expanded={showFilters}><SlidersHorizontal size={17}/><span>Filters</span>{activeFilterCount>0&&<em>{activeFilterCount}</em>}</button>

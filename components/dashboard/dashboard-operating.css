@@ -24,7 +24,11 @@
   line-height: var(--type-small-line);
 }
 .dashboard-mobile-brand,
-.dashboard-month-chip {
+.dashboard-month-chip,
+.dashboard-mobile-context,
+.dashboard-kpi-short,
+.dashboard-health-compact,
+.dashboard-drawer-back {
   display: none;
 }
 .dashboard-filter-row,
@@ -707,14 +711,21 @@
   color: var(--text-secondary);
   cursor: pointer;
 }
-.dashboard-drawer-close {
+.dashboard-drawer-close,
+.dashboard-drawer-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
+  border: 0;
   border-radius: var(--theme-control-radius, 8px);
+  background: transparent;
   color: var(--text-primary);
+  cursor: pointer;
+}
+.dashboard-drawer-back {
+  display: none;
 }
 .dashboard-drawer-tabs {
   display: grid;
@@ -853,21 +864,70 @@
     grid-column: 3;
     grid-row: 1;
   }
-  .dashboard-filter-row {
+  .dashboard-filter-row,
+  .dashboard-health-full,
+  .dashboard-kpi-full {
+    display: none;
+  }
+  .dashboard-mobile-context {
+    display: grid;
     grid-column: 1 / -1;
     grid-row: 2;
-    gap: var(--space-3);
-  }
-  .dashboard-month-chip {
-    display: block;
-    flex: 0 0 auto;
-    margin-top: 0;
-    white-space: nowrap;
-  }
-  .dashboard-filter-row .product-select {
-    flex: 1 1 auto;
-    width: auto;
     min-width: 0;
+    gap: 0;
+  }
+  .dashboard-property-chips {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dashboard-property-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .dashboard-property-chips button {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .dashboard-property-chips button + button::before {
+    content: '·';
+    margin: 0 10px;
+    color: var(--text-muted);
+    font-weight: var(--weight-regular);
+  }
+  .dashboard-property-chips button[aria-pressed='true'] {
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+  }
+  .dashboard-mobile-month {
+    margin: 0 0 var(--space-1);
+    color: var(--text-secondary);
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-line);
+    font-weight: var(--weight-medium);
+  }
+  .dashboard-health-compact {
+    display: inline;
+  }
+  .dashboard-health-line {
+    margin: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dashboard-health-line::-webkit-scrollbar {
+    display: none;
   }
   .dashboard-operating .pulse-add-button {
     width: 44px;
@@ -879,39 +939,110 @@
     display: none;
   }
   .dashboard-chart-top {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+  .dashboard-chart-top h2,
+  .dashboard-chart-value {
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
+    letter-spacing: 0;
+  }
+  .dashboard-periods {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .dashboard-periods > span {
+    display: none;
   }
   .dashboard-summary {
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-    border: 0;
-    background: transparent;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: var(--theme-card);
   }
   .dashboard-summary > div,
   .dashboard-summary > div + div {
-    border: 1px solid var(--border-color);
-    border-radius: var(--theme-module-radius, 16px);
-    background: var(--theme-card);
+    min-height: 0;
+    padding: var(--space-3) var(--space-2);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .dashboard-summary > div + div {
+    border-left: 1px solid var(--border-color);
   }
   .dashboard-summary > div:last-child {
-    grid-column: 1 / -1;
-    order: -1;
+    grid-column: auto;
+    order: 0;
+  }
+  .dashboard-kpi-short {
+    display: inline;
+  }
+  .dashboard-summary strong,
+  .dashboard-summary strong.amount-positive,
+  .dashboard-summary strong.amount-negative {
+    color: var(--text-primary);
+    font-size: var(--type-card-title-size);
+    line-height: var(--type-card-title-line);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .dashboard-summary small {
+    min-height: 1em;
+    font-size: var(--type-label-size);
+    line-height: var(--type-label-line);
+    white-space: nowrap;
   }
   .dashboard-periods button,
   .dashboard-operating .financial-history-axis button {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0 10px;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0 6px;
+  }
+  .dashboard-chart-module {
+    overflow: hidden;
   }
   .dashboard-operating .financial-history-chart {
-    height: 220px;
+    height: 168px;
   }
-  .dashboard-summary strong {
-    font-size: calc(var(--type-page-title-size) - 4px);
+  .dashboard-operating .financial-history-y-axis {
+    width: 42px;
   }
-  .dashboard-health-line {
-    margin: 0;
+  .dashboard-operating .product-chart-legend {
+    flex-wrap: nowrap;
+    gap: var(--space-3);
+  }
+  .dashboard-drawer-scrim {
+    display: none;
+  }
+  .dashboard-drawer {
+    left: 0;
+    width: 100%;
+    padding: var(--space-3) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+    border: 0;
+    background: var(--theme-page);
+  }
+  .dashboard-drawer-close {
+    display: none;
+  }
+  .dashboard-drawer-back {
+    display: inline-flex;
+  }
+  .dashboard-drawer-head h2 {
+    flex: 1 1 auto;
+  }
+  .dashboard-drawer-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+  body:has(.dashboard-drawer-root[data-open='true']) {
+    overflow: hidden;
   }
   .dashboard-tx-table {
     display: none;
