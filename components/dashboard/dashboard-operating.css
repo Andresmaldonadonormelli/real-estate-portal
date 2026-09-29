@@ -857,10 +857,7 @@
     display: contents;
   }
   .dashboard-bell {
-    grid-column: 2;
-    grid-row: 1;
-    width: 44px;
-    height: 44px;
+    display: none;
   }
   .dashboard-operating .pulse-add-menu {
     grid-column: 3;
@@ -1140,6 +1137,15 @@
     color: var(--text-primary);
   }
 }
+.notifications-page .dashboard-drawer-list {
+  margin-right: 0;
+  margin-left: 0;
+}
+.bottom-nav-icon {
+  position: relative;
+  display: inline-flex;
+}
+
 @media (max-width: 767px) {
   .dashboard-drawer-tabs button {
     height: 44px;
