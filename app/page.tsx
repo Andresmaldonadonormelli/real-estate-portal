@@ -327,12 +327,12 @@ export default function Dashboard() {
     </header>
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<>
+      <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
       <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
         <div><span>Rent collected</span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
         <div><span>Operating expenses</span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
         <div><span>Net cash flow</span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
       </section>
-      <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
       <div className="dashboard-main-row">
         <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
           <div className="dashboard-chart-top">
