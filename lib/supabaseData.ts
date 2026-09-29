@@ -20,4 +20,7 @@ export async function cachedSupabaseRequest<T>(key:string,loader:()=>Promise<T>,
   requestCache.set(key,{expires:now+ttl,pending});return pending;
 }
 
-export function invalidateSupabaseCache(prefix=''){for(const key of requestCache.keys())if(!prefix||key.startsWith(prefix))requestCache.delete(key)}
+export function invalidateSupabaseCache(prefix=''){
+  for(const key of requestCache.keys())if(!prefix||key.startsWith(prefix))requestCache.delete(key);
+  if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('portal:data-changed'));
+}
