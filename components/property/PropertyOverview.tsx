@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { SegmentedControl } from '@/components/common/ProductControls';
+import { ChevronDown } from 'lucide-react';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import PositionChart from '@/components/property/PositionChart';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type HistoryTransaction } from '@/lib/financialHistory';
@@ -11,7 +11,6 @@ import {
   cashFlowThisYear,
   equityOf,
   investorNumbers,
-  moneyOrDash,
   monthActivity,
   nextLeaseLabel,
   payoffModel,
@@ -42,6 +41,8 @@ export default function PropertyOverview({ property, units, transactions }: {
   const [path, setPath] = useState<Path>('to-date');
   const [period, setPeriod] = useState<HistoryPeriod>('1Y');
   const [flowPeriod, setFlowPeriod] = useState<HistoryPeriod>('1Y');
+  const [showInvestors, setShowInvestors] = useState(false);
+  const [showKnown, setShowKnown] = useState(false);
   const leaseUnits = units as LeaseUnit[];
   const occupancy = occupancyCounts(leaseUnits);
   const equity = equityOf(property);
@@ -49,42 +50,62 @@ export default function PropertyOverview({ property, units, transactions }: {
   const price = Number(property.purchase_price || 0);
   const model = useMemo(() => payoffModel(property), [property]);
   const numbers = useMemo(() => investorNumbers(property, transactions), [property, transactions]);
-  const month = useMemo(() => monthActivity(transactions, property.id), [transactions, property.id]);
   const yearFlow = useMemo(() => cashFlowThisYear(transactions, property.id), [transactions, property.id]);
   const comingUp = useMemo(() => upcomingLeases(leaseUnits), [leaseUnits]);
   const history = useMemo(() => buildMonthlyFinancialHistory(transactions, flowPeriod, property.id), [transactions, flowPeriod, property.id]);
-  const current = series === 'equity' ? equity : debt;
+  const lastMonthDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return date;
+  }, []);
+  const lastMonth = useMemo(() => monthActivity(transactions, property.id, lastMonthDate), [transactions, property.id, lastMonthDate]);
+  const current = series === 'equity' ? equity : (debt > 0 ? debt : null);
+  const headline = formatKpiCurrency(current ?? 0);
   const payoffPoints = series === 'equity' ? model?.equity : model?.debt;
+  const lastLabel = lastMonthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   return <div className="property-stack">
     <section className="property-module property-position">
-      <div className="property-position-main">
-        <div className="property-position-switches">
-          <SegmentedControl value={series} onChange={setSeries} label="Chart series" options={[{ value: 'equity', label: 'Equity' }, { value: 'debt', label: 'Debt' }]} />
-          <SegmentedControl value={path} onChange={setPath} label="Chart range" options={[{ value: 'to-date', label: 'To date' }, { value: 'payoff', label: 'Payoff path' }]} />
+      <div className="property-position-layout">
+        <div className="property-position-main">
+          <div className="property-position-top">
+            <div>
+              <p className="property-kicker">This property</p>
+              <p className="property-series-label">{series === 'equity' ? 'Your equity' : 'Loan balance'}</p>
+              <strong className={`property-position-value property-signed ${signedTone(current)}`}>{headline}</strong>
+            </div>
+            <PillGroup label="Chart series" value={series} onChange={setSeries} options={[{ value: 'equity', label: 'Equity' }, { value: 'debt', label: 'Debt' }]} />
+          </div>
+          <div className="property-position-plot">
+            {path === 'payoff' && payoffPoints ? <PositionChart points={payoffPoints} label={`${series} payoff path`} /> : <EmptyPlot />}
+          </div>
+          <div className="property-position-controls">
+            <PillGroup label="Chart period" value={period} onChange={setPeriod} options={PERIODS} />
+            <PillGroup label="Chart range" value={path} onChange={setPath} options={[{ value: 'to-date', label: 'To date' }, { value: 'payoff', label: 'Payoff path' }]} />
+          </div>
         </div>
-        <p className="property-kicker">{series === 'equity' ? 'Equity' : 'Debt'}</p>
-        <strong className={`property-position-value property-signed ${signedTone(current)}`}>{moneyOrDash(current)}</strong>
-        {path === 'to-date' ? <div className="position-chart-empty"><span>{period} view uses the saved {series === 'equity' ? 'equity' : 'balance'}. Earlier balances are not stored, so this does not draw a trend.</span></div> : payoffPoints ? <PositionChart points={payoffPoints} label={`${series} payoff path`} /> : <div className="position-chart-empty"><span>{series === 'equity' && price <= 0 ? 'Add a purchase price to chart equity.' : 'Add a balance, rate, and payment to chart the payoff path.'}</span></div>}
-        {path === 'to-date' && <div className="property-chart-periods" role="group" aria-label="Equity and debt period">
-          {PERIODS.map(option => <button key={option.value} type="button" className={period === option.value ? 'active' : ''} onClick={() => setPeriod(option.value)}>{option.label}</button>)}
-        </div>}
+        <aside className="property-position-side">
+          <p className="property-kicker">Current position</p>
+          <div><span>Cash flow this year</span><strong className={`property-signed ${signedTone(yearFlow)}`}>{yearFlow > 0 ? `+${formatKpiCurrency(yearFlow)}` : formatKpiCurrency(yearFlow)}</strong></div>
+          <div><span>Loan balance</span><strong>{formatKpiCurrency(debt)}</strong></div>
+          <div><span>Cash in the deal</span><strong>{formatKpiCurrency(price)}</strong><small>Purchase price</small></div>
+        </aside>
+        <div className="property-investor">
+          <button type="button" aria-expanded={showInvestors} onClick={() => setShowInvestors(open => !open)}>
+            <span>
+              <strong>Investor numbers</strong>
+              <small>DSCR, return on equity, and cash return · last 12 months</small>
+            </span>
+            <em>{showInvestors ? 'Hide' : 'Show'} <ChevronDown size={14} aria-hidden="true" /></em>
+          </button>
+          {showInvestors && <div className="property-stat-row">
+            <Stat label="DSCR" value={numbers.dscr == null ? '—' : `${ratioOrDash(numbers.dscr)}×`} />
+            <Stat label="Return on equity" value={percentOrDash(numbers.returnOnEquity)} />
+            <Stat label="Cash return" value={percentOrDash(numbers.cashReturn)} />
+          </div>}
+        </div>
       </div>
-      <dl className="property-position-side">
-        <div><dt>Cash flow</dt><dd className={`property-signed ${signedTone(yearFlow)}`}>{formatKpiCurrency(yearFlow)}</dd><small>This year</small></div>
-        <div><dt>Loan balance</dt><dd>{moneyOrDash(debt > 0 ? debt : null)}</dd></div>
-        <div><dt>Cash in the deal</dt><dd>{moneyOrDash(price > 0 ? price : null)}</dd><small>Purchase price</small></div>
-      </dl>
-    </section>
-
-    <section className="property-module">
-      <h2>Investor numbers</h2>
-      <div className="property-stat-row">
-        <Stat label="DSCR" value={numbers.dscr == null ? '—' : `${ratioOrDash(numbers.dscr)}×`} />
-        <Stat label="Return on equity" value={percentOrDash(numbers.returnOnEquity)} />
-        <Stat label="Cash return" value={percentOrDash(numbers.cashReturn)} />
-      </div>
-      <p className="property-module-note">Returns use the last 12 months of posted cash flow. DSCR uses operating income and mortgage payments from that same window.</p>
     </section>
 
     <section className="property-module property-status-line">
@@ -92,35 +113,100 @@ export default function PropertyOverview({ property, units, transactions }: {
       <span>{nextLeaseLabel(leaseUnits)}</span>
     </section>
 
-    <section className="property-module">
-      <h2>This month</h2>
-      <div className="property-stat-row">
-        <Stat label="Rent" value={formatKpiCurrency(month.rent)} />
-        <Stat label="Expenses" value={formatKpiCurrency(month.expenses)} />
-        <Stat label="Mortgage" value={formatKpiCurrency(month.mortgage)} />
-        <Stat label="Cash flow" value={formatKpiCurrency(month.cashFlow)} tone={signedTone(month.cashFlow)} />
-      </div>
-    </section>
-
-    <section className="property-module">
-      <h2>Coming up</h2>
-      {comingUp.length ? <ul className="property-coming-list">
-        {comingUp.map(item => <li key={`${item.unit}-${item.label}`}><span>{item.unit}{item.tenant ? ` · ${item.tenant}` : ''}</span><strong>Lease ends {item.label}</strong></li>)}
-      </ul> : <p className="property-module-note">Nothing coming up in the next 90 days.</p>}
-    </section>
-
-    <section className="property-module property-flow-chart">
-      <div className="property-module-head">
-        <h2>Cash flow</h2>
-        <div className="property-chart-periods" role="group" aria-label="Cash flow period">
-          {PERIODS.map(option => <button key={option.value} type="button" className={flowPeriod === option.value ? 'active' : ''} onClick={() => setFlowPeriod(option.value)}>{option.label}</button>)}
+    <div className="property-split">
+      <section className="property-module property-flow-chart">
+        <div className="property-module-head">
+          <h2>Monthly cash flow</h2>
+          <PillGroup label="Cash flow period" value={flowPeriod} onChange={setFlowPeriod} options={PERIODS} />
         </div>
-      </div>
-      <FinancialHistoryChart rows={history} label="Monthly cash flow" />
-    </section>
+        <FinancialHistoryChart rows={history} label="Monthly cash flow" />
+      </section>
+      <EquityComposition equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
+    </div>
+
+    <div className="property-split property-split-lower">
+      <section className="property-module property-last-month">
+        <h2>Last month — {lastLabel}</h2>
+        <dl>
+          <Row label="Rent" value={formatKpiCurrency(lastMonth.rent)} />
+          <Row label="Regular bills" value={formatKpiCurrency(lastMonth.expenses)} />
+          <Row label="Rent minus bills" value={formatKpiCurrency(lastMonth.rent - lastMonth.expenses)} strong />
+          <Row label="Mortgage payment" value={signedExpense(lastMonth.mortgage)} />
+          <Row label="Cash flow" value={signedAmount(lastMonth.cashFlow)} strong tone={signedTone(lastMonth.cashFlow)} />
+        </dl>
+      </section>
+      <section className="property-module property-coming">
+        <h2>Coming up</h2>
+        {comingUp.length ? <ul className="property-coming-list">
+          {comingUp.map(item => <li key={`${item.unit}-${item.label}`}><span>{item.unit}{item.tenant ? ` · ${item.tenant}` : ''}</span><strong>Lease ends {item.label}</strong></li>)}
+        </ul> : <div className="property-coming-empty">
+          <strong>Nothing coming up</strong>
+          <span>Lease ends, renewals and due dates will show here.</span>
+        </div>}
+      </section>
+    </div>
   </div>;
 }
 
-function Stat({ label, value, tone = '' }: { label: string; value: string; tone?: string }) {
-  return <div><span>{label}</span><strong className={tone ? `property-signed ${tone}` : ''}>{value}</strong></div>;
+function EquityComposition({ equity, open, onToggle }: { equity: number | null; open: boolean; onToggle: () => void }) {
+  return <section className="property-module property-composition">
+    <h2>Equity composition</h2>
+    <p className="property-module-note">How your equity is built.</p>
+    <div className="equity-bar" aria-hidden="true"><i /></div>
+    <dl>
+      <Row label="Down payment" value={formatKpiCurrency(0)} swatch="is-down" />
+      <Row label="Loan paid down since purchase" value={formatKpiCurrency(0)} swatch="is-paydown" />
+      <Row label="Value change since purchase" value={formatKpiCurrency(0)} swatch="is-value" />
+    </dl>
+    <div className="property-composition-total"><span>Equity</span><strong className={equity && equity > 0 ? 'property-signed is-positive' : ''}>{formatKpiCurrency(equity ?? 0)}</strong></div>
+    <div className="property-composition-deal">
+      <h3>Cash in the deal</h3>
+      <p>The cash you have put in, minus cash you have taken out. Cash return is worked out on this.</p>
+      <Row label="Down payment" value={formatKpiCurrency(0)} />
+      <Row label="Closing costs" value={formatKpiCurrency(0)} />
+      <div className="property-composition-total"><span>Cash in the deal</span><strong>{formatKpiCurrency(0)}</strong></div>
+    </div>
+    <button type="button" className="property-known" aria-expanded={open} onClick={onToggle}>
+      <span>Known values</span>
+      <em>{open ? 'Hide' : 'Show'} <ChevronDown size={14} aria-hidden="true" /></em>
+    </button>
+    {open && <p className="property-module-note">Down payment, closing costs, loan paydown, and value change are not saved yet.</p>}
+  </section>;
+}
+
+function EmptyPlot() {
+  return <svg className="position-chart" viewBox="0 0 640 220" role="img" aria-label="No balance history is saved">
+    <line x1="52" x2="628" y1="16" y2="16" />
+    <line x1="52" x2="628" y1="92" y2="92" />
+    <line x1="52" x2="628" y1="168" y2="168" />
+    <text x="44" y="172" textAnchor="end">$0</text>
+  </svg>;
+}
+
+function PillGroup<T extends string>({ label, value, onChange, options }: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly { value: T; label: string }[];
+}) {
+  return <div className="property-chart-pills" role="group" aria-label={label}>
+    {options.map(option => <button key={option.value} type="button" className={value === option.value ? 'active' : ''} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>{option.label}</button>)}
+  </div>;
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return <div><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function Row({ label, value, strong = false, tone = '', swatch = '' }: { label: string; value: string; strong?: boolean; tone?: string; swatch?: string }) {
+  return <div className={strong ? 'is-strong' : ''}><dt>{swatch ? <i className={swatch} /> : null}{label}</dt><dd className={tone ? `property-signed ${tone}` : ''}>{value}</dd></div>;
+}
+
+function signedAmount(value: number) {
+  const text = formatKpiCurrency(value);
+  return value > 0 ? `+${text}` : text;
+}
+
+function signedExpense(value: number) {
+  return value > 0 ? `-${formatKpiCurrency(value)}` : formatKpiCurrency(0);
 }

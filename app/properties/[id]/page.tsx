@@ -13,6 +13,7 @@ import PropertyLoan from '@/components/property/PropertyLoan';
 import PropertyUnits from '@/components/property/PropertyUnits';
 import PropertyDocuments from '@/components/property/PropertyDocuments';
 import PropertyEditModal from '@/components/property/PropertyEditModal';
+import { Button } from '@/components/ui/Button';
 import { UnderlineTabs } from '@/components/common/ProductControls';
 import { propertyTypeLabel } from '@/lib/propertyPosition';
 import type { PropertyTransaction as Tx } from '@/lib/propertyFinancials';
@@ -180,8 +181,7 @@ export default function PropertyWorkspacePage(){
         <p>{propertyTypeLabel(property.property_type)} · {units.length} {units.length === 1 ? 'unit' : 'units'}</p>
       </div>
       <div className="property-header-actions">
-        <button type="button" className="property-text-action" onClick={() => setEditingProperty(true)}>Edit property</button>
-        <Link href={`/ledger?property=${property.id}`}>Ledger</Link>
+        <Button onClick={() => setEditingProperty(true)}>Edit</Button>
       </div>
     </header>
 
