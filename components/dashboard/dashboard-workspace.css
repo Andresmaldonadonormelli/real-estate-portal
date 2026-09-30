@@ -108,9 +108,6 @@
 .actions-page-header { margin-bottom: var(--space-6); }
 
 .actions-page-header h1 { font-size: var(--type-page-title-size); line-height: var(--type-page-title-line); font-weight: var(--weight-semibold); margin-top: var(--space-3); }
-@media (min-width: 768px) {
-  .actions-page-header h1 { font-size: var(--type-section-title-size); line-height: var(--type-section-title-line); }
-}
 
 .actions-page-header p { font-size: var(--type-small-size); line-height: var(--type-small-line); color: var(--text-secondary); margin-top: var(--space-1); }
 
@@ -293,7 +290,7 @@
 
 .pulse-add-button{
   min-height:var(--control-height-desktop);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);
-  padding:0 var(--space-4);border:0;border-radius:var(--radius-pill);background:var(--accent);color:var(--accent-contrast);
+  padding:0 var(--space-4);border:0;border-radius:var(--radius-control);background:var(--accent);color:var(--accent-contrast);
   font-size:var(--type-small-size);font-weight:var(--weight-semibold);transition:background var(--motion-fast),transform var(--motion-fast);
 }
 

@@ -13,5 +13,5 @@
   .ledger-v230-filter-panel{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:1100;display:grid!important;grid-template-columns:1fr!important;gap:var(--space-3)!important;max-height:calc(100dvh - 96px - env(safe-area-inset-bottom));margin:0!important;padding:var(--space-4)!important;border:1px solid var(--border-color)!important;border-bottom:0!important;border-radius:var(--radius-card) var(--radius-card) 0 0!important;background:var(--surface-elevated)!important;box-shadow:var(--shadow-overlay);overflow-y:auto}
   .ledger-v230-filter-head{display:flex!important;grid-column:1;position:static!important}
   .ledger-v230-filter-panel .product-select-control,.ledger-v230-filter-panel>input{height:var(--control-height-mobile)}
-  .ledger-v230-filter-apply{display:block;min-height:var(--control-height-mobile);border-radius:var(--radius-pill);background:var(--color-action);color:var(--color-action-text);font-size:var(--type-button-size);font-weight:var(--type-button-weight)}
+  .ledger-v230-filter-apply{display:block;min-height:var(--control-height-mobile);border-radius:var(--radius-pill);background:var(--text-primary);color:var(--bg-primary);font-size:var(--type-button-size);font-weight:var(--type-button-weight)}
 }

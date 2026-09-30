@@ -16,7 +16,7 @@
 @media (hover:hover) and (pointer:fine){
   .utility-card:hover { background:color-mix(in srgb, var(--accent-soft) 45%, var(--bg-secondary)) !important; }}
 
-.utilities-page{padding:var(--space-6);max-width:var(--content-max);margin:0 auto;}
+.utilities-page{padding:24px;max-width:1200px;margin:0 auto;}
 
 .utilities-toolbar{margin-bottom:18px;}
 

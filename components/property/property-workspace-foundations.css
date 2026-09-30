@@ -1,5 +1,5 @@
 
-.property-workspace{padding:var(--space-6);max-width:var(--content-max);margin:0 auto}
+.property-workspace{padding:24px;max-width:1320px;margin:0 auto}
 .property-back{display:inline-flex;align-items:center;gap:7px;color:var(--text-secondary);text-decoration:none;font-size:var(--type-compact-size);font-weight:var(--weight-semibold);margin-bottom:18px}
 .property-back:hover{color:var(--text-primary)}
 .property-workspace-header{display:flex;gap:24px;align-items:flex-start;margin-bottom:18px}

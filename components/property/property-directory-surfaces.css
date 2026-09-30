@@ -5,3 +5,11 @@
 .utilities-property-group,.utility-property-group,.utility-group{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}.utilities-property-group+.utilities-property-group,.utility-property-group+.utility-property-group,.utility-group+.utility-group{margin-top:var(--space-6)}.utility-row,.utilities-row{border-radius:0!important;background:transparent!important;border-bottom:1px solid var(--border-color)!important}
 @media(hover:hover){.property-list-card:hover,.property-directory-row:hover{background:var(--surface-hover)!important}.utility-row:hover,.utilities-row:hover{background:var(--surface-hover)!important}}@media(hover:none){.property-list-card:hover,.property-directory-row:hover,.utility-row:hover,.utilities-row:hover{background:transparent!important}}
 @media(max-width:767px){.mortgage-payment-grid{grid-template-columns:1fr}}
+@media (min-width: 768px) {
+  .property-list-card,
+  .property-directory-row,
+  .unit-directory-item {
+    background: var(--color-surface) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+}

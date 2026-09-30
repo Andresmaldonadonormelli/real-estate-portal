@@ -83,8 +83,6 @@
   --control-height-tab: 42px;
   --control-height-nav: 44px;
   --bar-height: 64px;
-  --sidebar-width: 240px;
-  --content-max: 1240px;
   --icon-sm: 16px;
   --icon-md: 18px;
   --icon-nav: 23px;
@@ -94,12 +92,11 @@
 
   --shadow-card: none;
   --shadow-overlay: none;
-  --shadow-shell: 0 12px 32px rgba(18, 22, 20, 0.08), 0 1px 3px rgba(18, 22, 20, 0.05);
   --shadow-toast: 0 14px 38px rgba(0, 0, 0, 0.16);
   --shadow-slider: 0 2px 7px rgba(0, 0, 0, 0.22);
 
   /* Light color */
-  --color-page: #e8e8e6;
+  --color-page: #f4f3f7;
   --color-surface: #ffffff;
   --color-surface-subtle: #f3f3f5;
   --color-surface-hover: #ececee;
@@ -339,7 +336,6 @@
 
 [data-theme="dark"] {
   --color-page: #0c0b10;
-  --shadow-shell: 0 16px 40px rgba(0, 0, 0, 0.5);
   --color-surface: #16141c;
   --color-surface-subtle: #1e1e22;
   --color-surface-hover: #2a2a2e;
@@ -423,5 +419,15 @@
     --type-control-size: 15px;
     --control-height: var(--control-height-mobile);
     --control-height-segment: var(--control-height-mobile);
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --shadow-card: 0 1px 2px rgba(18, 22, 20, 0.06);
+  }
+
+  [data-theme="dark"] {
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   }
 }

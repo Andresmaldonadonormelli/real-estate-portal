@@ -1,5 +1,5 @@
 /* Property directory */
-.properties-page{width:min(var(--content-max),100%);margin:0 auto;padding:var(--space-6) var(--space-8)!important}
+.properties-page{width:min(1240px,100%);margin:0 auto;padding:var(--space-8)!important}
 .properties-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-8)}
 .properties-page-head h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold);letter-spacing:-.035em}
 .properties-page-head p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -7,11 +7,10 @@
 .properties-empty-state h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .properties-empty-state p{max-width:560px;margin:var(--space-2) 0 var(--space-5);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 /* Individual property */
-.property-workspace{width:min(var(--content-max),100%);margin:0 auto;padding:var(--space-6) var(--space-8)!important}
+.property-workspace{width:min(1240px,100%);padding:var(--space-8)!important}
 .property-workspace-header{margin-bottom:var(--space-6)}
 .property-workspace-image{width:112px;height:88px;border-radius:var(--radius-control)}
 .property-title-copy h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold)}
-@media (min-width:768px){.property-title-copy h1{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line)}}
 .property-subnav,.property-chart-modes{padding:var(--space-1);border-radius:var(--radius-pill);background:var(--surface-subtle)}
 .property-subnav{width:max-content;max-width:100%;gap:var(--space-1)!important;margin-bottom:var(--space-8);border:0;overflow-x:auto}
 .property-subnav button,.property-chart-modes button{position:relative;min-width:0;border-radius:var(--radius-pill);color:var(--text-secondary);font:var(--font-button)}
@@ -88,7 +87,7 @@
 @media (hover:hover) and (pointer:fine){.property-pulse-list>button:hover,.property-financial-breakdown>a:hover{background:var(--surface-hover)}.property-collapsible-toggle:hover{background:var(--surface-subtle)}}
 @media (hover:none){.property-collapsible-toggle:hover{background:transparent}.property-collapsible-toggle:active{background:var(--surface-subtle)}}
 @media (prefers-reduced-motion:reduce){.expense-bars i,.expense-chart button{transition:none}}
-@media (hover:hover) and (pointer:fine){.property-subnav button:not(.active):hover{background:transparent;color:var(--text-primary);font:var(--font-button)}.property-subnav button.active:hover{background:var(--color-action);color:var(--color-action-text);font:var(--font-button-strong)}.property-chart-modes button:not(.active):hover{color:var(--text-primary);font:var(--font-button)}.property-chart-modes button.active:hover{font:var(--font-button-strong)}.property-chart-periods button:hover{font:var(--font-button)}.property-chart-periods button.active:hover{font:var(--font-button)}}
+@media (hover:hover) and (pointer:fine){.property-subnav button:not(.active):hover{background:transparent;color:var(--text-primary);font:var(--font-button)}.property-subnav button.active:hover{background:var(--text-primary);color:var(--bg-primary);font:var(--font-button-strong)}.property-chart-modes button:not(.active):hover{color:var(--text-primary);font:var(--font-button)}.property-chart-modes button.active:hover{font:var(--font-button-strong)}.property-chart-periods button:hover{font:var(--font-button)}.property-chart-periods button.active:hover{font:var(--font-button)}}
 .property-overview-metrics{padding:var(--space-5) 0}
 .mortgage-overview-panel.compact{margin:0;padding:var(--space-5) 0!important;border:0!important;border-top:1px solid var(--border-color)!important;border-bottom:1px solid var(--border-color)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
 .property-overview-lower{gap:var(--space-8)}

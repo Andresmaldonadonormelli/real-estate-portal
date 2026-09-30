@@ -1,12 +1,9 @@
 /* Theme structure. Color values live in app/design-tokens.css. */
 
 html,
-body {
-  background: var(--color-page) !important;
-  color: var(--color-text-primary);
-}
-
+body,
 .main-content {
+  background: var(--color-page) !important;
   color: var(--color-text-primary);
 }
 
@@ -28,9 +25,5 @@ body {
   body {
     max-width: 100vw;
     overflow-x: clip;
-  }
-
-  .main-content {
-    background: var(--color-page) !important;
   }
 }
