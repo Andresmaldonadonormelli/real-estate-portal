@@ -245,7 +245,11 @@
 .property-management-form label{display:grid;gap:var(--space-1);color:var(--text-secondary);font-size:var(--type-label-size)}
 .property-management-form input{min-height:44px;padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--input-bg,var(--bg-primary));color:var(--text-primary)}
 .property-edit-page>h1{margin:0 0 var(--space-5);font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
-.property-edit-page .property-module{margin-bottom:var(--space-4)}
+.property-edit-page.workspace-form{gap:var(--space-6)}
+.property-edit-page .property-module{display:grid;gap:var(--space-6);margin-bottom:0}
+.property-edit-page .property-module h2,.property-edit-page .property-module-head{margin:0}
+.property-edit-page .workspace-form-grid{gap:var(--space-6)}
+.property-edit-page .property-module label,.property-edit-page .property-edit-owner span{font-weight:var(--weight-regular)}
 .property-edit-page .property-module small,.property-edit-choice small{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .property-edit-owner,.property-edit-choice{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--space-4)}
 .property-edit-owner>div,.property-edit-choice{display:grid;gap:var(--space-2)}
