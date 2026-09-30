@@ -45,7 +45,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .document-feed-detail:hover,
   .property-menu button:hover,
   .property-chart-pills button:hover,
-  .landing-disclosure:hover { transform: none; }
+  .landing-disclosure:hover,
+  .landing-bar:hover,
+  .landing-dotted:hover,
+  .landing-info:hover,
+  .landing-pop-close:hover,
+  .property-ledger-info:hover { transform: none; }
+  a.ui-button--primary:hover { opacity: 1; }
   .icon-button:hover { background: var(--surface-hover); }
   a:hover { opacity: .88; }
 }

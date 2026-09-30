@@ -1,12 +1,23 @@
 import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
 import { cashInDeal, currentEquity, emptyProfile, type PropertyProfile } from '@/lib/propertyProfile';
-import { monthActivity, nextPaymentParts, payoffModel, type PositionPoint } from '@/lib/propertyPosition';
+import { monthActivity, nextPaymentParts, payoffModel } from '@/lib/propertyPosition';
 import type { Property } from '@/lib/types';
 
 export type LandingSeries = 'equity' | 'value' | 'debt';
 export type LandingPath = 'to-date' | 'payoff';
 export type LandingPeriod = '3M' | '6M' | '1Y' | '2Y' | '5Y' | 'All';
 export type FlowStatus = 'entered' | 'partial' | 'estimated';
+export type LandingPoint = { label: string; value: number; time: number };
+export type LandingLine = { label: string; amount: number };
+
+const PERIOD_LABEL: Record<LandingPeriod, string> = {
+  '3M': 'past 3 months',
+  '6M': 'past 6 months',
+  '1Y': 'past year',
+  '2Y': 'past 2 years',
+  '5Y': 'past 5 years',
+  'All': 'since the start',
+};
 
 export type LandingUnit = {
   property_id: string;
@@ -31,35 +42,34 @@ export function buildPortfolioLanding(
   const now = options.now || new Date();
   const tracks = properties.map(property => ({ property, profile: profiles[property.id], track: propertyTrack(property, profiles[property.id], now) }));
   const current = snapshot(tracks, now.getTime());
-  const yearAgoDate = new Date(now.getFullYear(), now.getMonth() - 12, 1);
-  const yearAgo = snapshot(tracks, yearAgoDate.getTime());
-  const equityDelta = current.equity - yearAgo.equity;
+  const windowDate = windowStart(options.period, tracks, now);
+  const then = snapshot(tracks, windowDate.getTime());
+  const equityDelta = current.equity - then.equity;
   const boughtProperties = tracks.filter(item => {
     const purchased = item.track[0]?.time || 0;
-    return purchased > yearAgoDate.getTime();
+    return purchased > windowDate.getTime();
   });
   const bought = boughtProperties.reduce((sum, item) => sum + Number(item.property.purchase_price || 0), 0);
-  const paydown = yearAgo.debt - current.debt;
-  const valueChange = current.value - yearAgo.value - bought;
+  const paydown = then.debt - current.debt;
+  const valueChange = current.value - then.value - bought;
   const shownEquity = Math.round(equityDelta);
   const shownPaydown = Math.round(paydown);
   const shownBought = Math.round(bought);
   const shownValue = shownEquity - shownPaydown - shownBought;
-  const putIn = boughtProperties.reduce((sum, item) => sum + invested(item.profile, item.property, yearAgoDate), 0)
-    + tracks.filter(item => (item.track[0]?.time || 0) <= yearAgoDate.getTime()).reduce((sum, item) => sum + capexSince(item.profile, yearAgoDate), 0);
-  const growthBase = yearAgo.equity > 0 ? yearAgo.equity : putIn;
+  const putIn = boughtProperties.reduce((sum, item) => sum + invested(item.profile, item.property, windowDate), 0)
+    + tracks.filter(item => (item.track[0]?.time || 0) <= windowDate.getTime()).reduce((sum, item) => sum + capexSince(item.profile, windowDate), 0);
+  const growthBase = then.equity > 0 ? then.equity : putIn;
   const growth = growthBase > 0 ? (equityDelta - putIn) / growthBase : null;
-  const valueDelta = current.value - yearAgo.value;
-  const debtDelta = current.debt - yearAgo.debt;
+  const valueDelta = current.value - then.value;
+  const debtDelta = current.debt - then.debt;
   const points = options.path === 'payoff'
-    ? payoffPoints(tracks, options.series)
+    ? payoffPoints(tracks, options.series, now)
     : historyPoints(tracks, options.series, options.period, now);
   const flowMonths = cashMonths(properties, units, transactions, now);
   const completedMonths = flowMonths.filter(month => !month.current);
   const entered = completedMonths.reduce((sum, month) => sum + month.postedProperties, 0);
   const propertyMonths = completedMonths.reduce((sum, month) => sum + month.owned, 0);
-  const yearFlow = cashFlowThisYear(transactions, properties.map(property => property.id), now);
-  const latest = latestMonth(transactions, properties.map(property => property.id), now);
+  const year = yearCash(properties, units, transactions, now);
   const rows = propertyRows(tracks, units, transactions, current.equity, now);
   const coming = comingUp(properties, units, now);
   const averages = monthlyAverages(tracks, units, transactions, now);
@@ -74,12 +84,19 @@ export function buildPortfolioLanding(
     debtDelta,
     putIn,
     growth,
+    periodLabel: PERIOD_LABEL[options.period],
+    windowValue: seriesValue(then, options.series),
     points,
     flowMonths,
     entered,
     propertyMonths,
-    yearFlow,
-    latest,
+    yearFlow: year.cashFlow,
+    year,
+    lines: {
+      value: tracks.map(item => ({ label: shortName(item.property.address), amount: item.track.at(-1)?.value || 0 })),
+      debt: tracks.map(item => ({ label: shortName(item.property.address), amount: Number(item.property.mortgage_balance || 0) })),
+      deal: tracks.map(item => ({ label: shortName(item.property.address), amount: invested(item.profile, item.property, new Date(0)) })),
+    },
     rows,
     coming,
     averages,
@@ -136,22 +153,30 @@ function atTime(track: TrackPoint[], time: number) {
   return { value: left.value + (right.value - left.value) * t, debt: left.debt + (right.debt - left.debt) * t };
 }
 
-function historyPoints(tracks: { track: TrackPoint[] }[], series: LandingSeries, period: LandingPeriod, now: Date): PositionPoint[] {
+function windowStart(period: LandingPeriod, tracks: { track: TrackPoint[] }[], now: Date) {
+  if (period === 'All') {
+    const earliest = tracks.reduce((min, item) => Math.min(min, item.track[0]?.time || now.getTime()), now.getTime());
+    return new Date(earliest);
+  }
+  return new Date(now.getFullYear(), now.getMonth() - PERIOD_MONTHS[period], now.getDate());
+}
+
+function historyPoints(tracks: { track: TrackPoint[] }[], series: LandingSeries, period: LandingPeriod, now: Date): LandingPoint[] {
   const earliest = tracks.reduce((min, item) => Math.min(min, item.track[0]?.time || now.getTime()), now.getTime());
   const start = period === 'All' ? new Date(earliest) : new Date(now.getFullYear(), now.getMonth() - (PERIOD_MONTHS[period] - 1), 1);
   const months = Math.max(1, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1);
   const step = months > 36 ? Math.ceil(months / 24) : 1;
-  const points: PositionPoint[] = [];
+  const points: LandingPoint[] = [];
   for (let offset = months - 1; offset >= 0; offset -= step) {
     const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
     const snap = snapshot(tracks, date.getTime());
     const showYear = date.getMonth() === 0 || offset === 0 || points.length === 0;
-    points.push({ label: date.toLocaleDateString('en-US', showYear ? { month: 'short', year: '2-digit' } : { month: 'short' }), value: seriesValue(snap, series) });
+    points.push({ label: date.toLocaleDateString('en-US', showYear ? { month: 'short', year: '2-digit' } : { month: 'short' }), value: seriesValue(snap, series), time: date.getTime() });
   }
   return points;
 }
 
-function payoffPoints(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], series: LandingSeries): PositionPoint[] | null {
+function payoffPoints(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], series: LandingSeries, now: Date): LandingPoint[] | null {
   const models = tracks.map(item => {
     const value = item.profile && item.profile.estimated_value > 0 ? item.profile.estimated_value : Number(item.property.purchase_price || 0);
     return { property: item.property, model: payoffModel(item.property, value), value };
@@ -167,7 +192,7 @@ function payoffPoints(tracks: { property: Property; profile?: PropertyProfile; t
     }, 0);
     const labeled = models.find(item => (series === 'debt' ? item.model?.debt : item.model?.equity)?.[index]);
     const source = series === 'debt' ? labeled?.model?.debt : labeled?.model?.equity;
-    return { label: source?.[index]?.label || (index === 0 ? 'Now' : String(index)), value };
+    return { label: source?.[index]?.label || (index === 0 ? 'Now' : String(index)), value, time: now.getTime() + index * 365 * 86400000 };
   });
 }
 
@@ -195,7 +220,7 @@ function cashMonths(properties: Property[], units: LandingUnit[], transactions: 
         totals.mortgage += month.mortgage;
         totals.cashFlow += month.cashFlow;
         postedThisMonth += 1;
-        if (!current) totals.postedProperties += 1;
+        totals.postedProperties += 1;
       } else {
         const rent = recurringRent(property, units);
         const payment = Number(property.monthly_mortgage_payment || 0);
@@ -221,8 +246,9 @@ function cashMonths(properties: Property[], units: LandingUnit[], transactions: 
       cashFlow: totals.cashFlow,
       status,
       current,
-      postedProperties: current ? 0 : totals.postedProperties,
+      postedProperties: totals.postedProperties,
       owned: totals.owned,
+      enteredLabel: status === 'estimated' ? 'Estimated' : status === 'partial' && current ? 'Partly entered' : `${postedThisMonth} of ${totals.owned} entered`,
     };
   });
 }
@@ -241,31 +267,48 @@ function ownedDuring(property: Property, monthStart: Date) {
   return start.getTime() < new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).getTime();
 }
 
-function cashFlowThisYear(transactions: HistoryTransaction[], propertyIds: string[], now: Date) {
-  const year = String(now.getFullYear());
-  return transactions.reduce((sum, tx) => {
-    if ((tx.status || 'posted') !== 'posted' || tx.type === 'transfer' || !propertyIds.includes(String(tx.property_id || '')) || !tx.transaction_date.startsWith(year)) return sum;
-    const amount = Math.abs(Number(tx.amount || 0));
-    if (tx.type === 'income') return sum + amount;
-    if (tx.type === 'expense') return sum - amount;
-    return sum;
-  }, 0);
-}
-
-function latestMonth(transactions: HistoryTransaction[], propertyIds: string[], now: Date) {
-  const year = String(now.getFullYear());
-  const months = new Map<string, number>();
-  transactions.forEach(tx => {
-    if ((tx.status || 'posted') !== 'posted' || tx.type === 'transfer' || !propertyIds.includes(String(tx.property_id || '')) || !tx.transaction_date.startsWith(year)) return;
-    const key = tx.transaction_date.slice(0, 7);
-    const amount = Math.abs(Number(tx.amount || 0));
-    const signed = tx.type === 'income' ? amount : tx.type === 'expense' ? -amount : 0;
-    months.set(key, (months.get(key) || 0) + signed);
-  });
-  const key = [...months.keys()].sort().at(-1);
-  if (!key) return null;
-  const [yearNumber, monthNumber] = key.split('-').map(Number);
-  return { label: new Date(yearNumber, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long' }), cashFlow: months.get(key) || 0 };
+function yearCash(properties: Property[], units: LandingUnit[], transactions: HistoryTransaction[], now: Date) {
+  const finished = now.getMonth();
+  const totals = { income: 0, expenses: 0, mortgage: 0, cashFlow: 0, entered: 0, slots: 0, latest: 0 };
+  for (let month = 0; month < finished; month += 1) {
+    const date = new Date(now.getFullYear(), month, 1);
+    const key = monthKey(date);
+    let monthCash = 0;
+    properties.forEach(property => {
+      if (!ownedDuring(property, date)) return;
+      totals.slots += 1;
+      if (postedCount(transactions, property.id, key) > 0) {
+        const activity = monthActivity(transactions, property.id, date);
+        totals.income += activity.cashFlow + activity.expenses + activity.mortgage;
+        totals.expenses += activity.expenses;
+        totals.mortgage += activity.mortgage;
+        totals.cashFlow += activity.cashFlow;
+        monthCash += activity.cashFlow;
+        totals.entered += 1;
+      } else {
+        const rent = recurringRent(property, units);
+        const payment = Number(property.monthly_mortgage_payment || 0);
+        totals.income += rent;
+        totals.mortgage += payment;
+        totals.cashFlow += rent - payment;
+        monthCash += rent - payment;
+      }
+    });
+    totals.latest = monthCash;
+  }
+  const end = finished > 0 ? new Date(now.getFullYear(), finished - 1, 1) : now;
+  return {
+    cashFlow: totals.cashFlow,
+    income: totals.income,
+    expenses: totals.expenses,
+    mortgage: totals.mortgage,
+    entered: totals.entered,
+    slots: totals.slots,
+    range: finished > 0 ? `${new Date(now.getFullYear(), 0, 1).toLocaleDateString('en-US', { month: 'short' })} to ${end.toLocaleDateString('en-US', { month: 'short' })}` : 'No finished month yet',
+    estimated: totals.slots > totals.entered,
+    latestLabel: finished > 0 ? end.toLocaleDateString('en-US', { month: 'long' }) : '',
+    latestCash: totals.latest,
+  };
 }
 
 function propertyRows(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], units: LandingUnit[], transactions: HistoryTransaction[], totalEquity: number, now: Date) {
@@ -319,19 +362,24 @@ function comingUp(properties: Property[], units: LandingUnit[], now: Date) {
 }
 
 function monthlyAverages(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], units: LandingUnit[], transactions: HistoryTransaction[], now: Date) {
-  const cashFlow = tracks.reduce((sum, item) => {
-    const ownedStart = new Date(Math.max(item.track[0]?.time || now.getTime(), new Date(now.getFullYear(), now.getMonth() - 12, 1).getTime()));
-    const history = buildMonthlyFinancialHistory(transactions, '1Y', item.property.id).filter(month => {
-      const [year, monthNumber] = month.key.split('-').map(Number);
-      const date = new Date(year, monthNumber - 1, 1);
-      return date >= ownedStart && date < new Date(now.getFullYear(), now.getMonth(), 1) && (month.income > 0.5 || month.cashExpenses > 0.5);
-    });
-    if (!history.length) return sum;
-    return sum + history.reduce((total, month) => total + month.cashFlow, 0) / history.length;
-  }, 0);
+  const details = tracks.map(item => {
+    let sum = 0;
+    let months = 0;
+    for (let offset = 12; offset >= 1; offset -= 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      if (!ownedDuring(item.property, date)) continue;
+      const ownedFrom = item.track[0]?.time || now.getTime();
+      if (date.getTime() < new Date(new Date(ownedFrom).getFullYear(), new Date(ownedFrom).getMonth(), 1).getTime()) continue;
+      months += 1;
+      if (postedCount(transactions, item.property.id, monthKey(date)) > 0) sum += monthActivity(transactions, item.property.id, date).cashFlow;
+      else sum += recurringRent(item.property, units) - Number(item.property.monthly_mortgage_payment || 0);
+    }
+    return { label: shortName(item.property.address), months, cashFlow: months ? sum / months : 0 };
+  });
+  const cashFlow = details.reduce((sum, item) => sum + item.cashFlow, 0);
   const paydown = tracks.reduce((sum, item) => sum + nextPaymentParts(item.property).principal, 0);
   const cashIn = tracks.reduce((sum, item) => sum + invested(item.profile, item.property, new Date(0)), 0);
-  return { cashFlow, paydown, total: cashFlow + paydown, cashInDeal: cashIn };
+  return { cashFlow, paydown, total: cashFlow + paydown, cashInDeal: cashIn, details };
 }
 
 function investorSummary(properties: Property[], transactions: HistoryTransaction[], equity: number, cashIn: number) {
