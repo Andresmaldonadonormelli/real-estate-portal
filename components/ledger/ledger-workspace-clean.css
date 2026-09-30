@@ -92,7 +92,7 @@
 .ledger-view-toggle button[aria-pressed='true']{border-color:var(--border-color);background:var(--theme-card);color:var(--text-primary);font-weight:var(--weight-medium)}
 .ledger-table{overflow:hidden;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}
 @media (min-width:768px){
-  .ledger-table,.ledger-months-list,.ledger-v230-page .statement-feed,.ledger-v230-page .document-feed{background:var(--color-surface);border:var(--border-width) solid var(--color-border);border-radius:var(--radius-card);box-shadow:var(--shadow-card)}
+  .ledger-table,.ledger-months-list,.ledger-v230-page .statement-feed,.ledger-v230-page .document-feed{background:var(--color-surface);border:var(--border-width) solid var(--color-border);border-radius:var(--radius-large);box-shadow:var(--shadow-card)}
   .ledger-month-section .ledger-table,.ledger-table-row,.ledger-v230-toolbar,.ledger-v230-filter-panel,.ledger-v230-filter-chips button{box-shadow:none}
   .ledger-months-list .ledger-month-head{padding-inline:var(--space-4)}
   .ledger-months-list .ledger-month-section:last-child{border-bottom:0}
@@ -133,6 +133,9 @@
 .ledger-filter-needs.active{background:var(--surface-subtle)}
 .ledger-filter-needs em{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:var(--radius-pill);background:var(--warning-soft);color:var(--warning);font:var(--font-label);font-style:normal}
 .ledger-v230-page .statement-feed,.ledger-v230-page .document-feed{overflow:hidden;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}
+@media (min-width: 768px) {
+  .ledger-v230-page .statement-feed,.ledger-v230-page .document-feed,.ledger-table,.ledger-months-list{border-radius:var(--radius-large)}
+}
 .ledger-v230-page .statement-feed-row,.ledger-v230-page .document-feed-row{padding-left:var(--space-4);padding-right:var(--space-4)}
 .ledger-v230-page .statement-feed-row:last-child,.ledger-v230-page .document-feed-row:last-child{border-bottom:0}
 @media (hover:hover) and (pointer:fine){.ledger-v230-tools>button.ledger-filters:hover{border-color:var(--border-color);background:var(--surface-hover)}}

@@ -57,6 +57,7 @@
 }
 @media (min-width: 768px) {
   .dashboard-module {
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
   }
 }

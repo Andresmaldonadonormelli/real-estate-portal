@@ -1,7 +1,7 @@
 /* Shared contained-module foundation. */
 .portfolio-rail,.property-pulse-rail,.improve-planner,.unit-directory-item,.utility-directory-card{border:1px solid var(--border-color);border-radius:var(--radius-card);box-shadow:none}
 @media (min-width: 768px) {
-  .portfolio-rail,.property-pulse-rail,.improve-planner,.utility-directory-card:not(.utility-directory-row){background:var(--color-surface);box-shadow:var(--shadow-card)}
+  .portfolio-rail,.property-pulse-rail,.improve-planner,.utility-directory-card:not(.utility-directory-row){background:var(--color-surface);border-radius:var(--radius-large);box-shadow:var(--shadow-card)}
 }
 
 @media(max-width:1050px){

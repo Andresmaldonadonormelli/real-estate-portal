@@ -423,11 +423,15 @@
 }
 
 @media (min-width: 768px) {
+  :root:not([data-theme="dark"]) {
+    --color-page: #f4f4f4;
+  }
+
   :root {
-    --shadow-card: 0 1px 2px rgba(18, 22, 20, 0.06);
+    --shadow-card: 0 2px 10px rgba(18, 22, 20, 0.04);
   }
 
   [data-theme="dark"] {
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.22);
   }
 }

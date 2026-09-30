@@ -10,6 +10,7 @@
   .property-directory-row,
   .unit-directory-item {
     background: var(--color-surface) !important;
+    border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-card) !important;
   }
 }
