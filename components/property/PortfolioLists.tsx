@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ArrowUpRight, ChevronDown } from 'lucide-react';
 import type { Property } from '@/lib/types';
 import type { HistoryTransaction } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
@@ -172,19 +172,24 @@ export function PropertiesList({ properties, unitsByProperty, transactions, view
 
   return <div className="property-directory-cards">
     {rows.map(row => <Link key={row.property.id} href={`/properties/${row.property.id}`} className="property-directory-card">
+      <span className="property-directory-arrow" aria-hidden="true"><ArrowUpRight size={14} /></span>
       <span className="portfolio-property-copy">
         <strong>{row.property.address}</strong>
         <small>{row.property.city}, {row.property.state}</small>
         <small>{propertyTypeLabel(row.property.property_type)} · {row.units} {row.units === 1 ? 'unit' : 'units'}</small>
       </span>
-      <dl>
+      <dl className="property-directory-figures">
         <div><dt>Equity</dt><dd>{moneyOrDash(row.equity)}</dd></div>
-        <div><dt>Cash flow</dt><dd className={`property-signed ${signedTone(row.month)}`}>{formatKpiCurrency(row.month)}</dd><small>12-month average {formatKpiCurrency(row.average)}</small></div>
-        <div><dt>Cash return</dt><dd>{percentOrDash(row.cashReturn)}</dd></div>
-        <div><dt>Return on equity</dt><dd>{percentOrDash(row.returnOnEquity)}</dd></div>
+        <div><dt>Cash flow / mo</dt><dd className={`property-signed ${signedTone(row.month)}`}>{signedCash(row.month)}</dd><small>12-mo avg {formatKpiCurrency(row.average)}</small></div>
       </dl>
+      <p className="property-directory-returns">Cash return {percentOrDash(row.cashReturn)} · Return on equity {percentOrDash(row.returnOnEquity)}</p>
     </Link>)}
   </div>;
+}
+
+function signedCash(value: number) {
+  const text = formatKpiCurrency(value);
+  return value > 0 ? `+${text}` : text;
 }
 
 export function UnitsList({ properties, unitsByProperty, imageUrls, onAddTenant }: {
