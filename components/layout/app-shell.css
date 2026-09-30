@@ -13,6 +13,12 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .nav-count-review{border:0!important;background:var(--positive)!important;color:var(--theme-status-on-positive)!important}
 .side-nav-footer{display:grid;gap:var(--space-1);padding:var(--space-4) var(--space-3)}
 .side-nav-footer .nav-link{margin:0}
+.nav-subheader{margin:var(--space-3) var(--space-3) var(--space-1);color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-medium);letter-spacing:.08em;text-transform:uppercase}
+.nav-property{padding-left:var(--space-4)!important}
+.nav-property span,.side-nav-footer .nav-link{min-width:0}
+.nav-property span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-alert-icon{position:relative;display:inline-flex;flex:0 0 auto}
+.nav-alert-icon .dashboard-bell-count{top:-6px;right:-8px}
 .primary-action,.quick-add-submit,.add-transaction-fab,.action-center-see-all,.actions-page-cta,.property-open-button,.workspace-primary-button,.pulse-add-button,.ledger-v230-add,.pulse-see-all,.mobile-sheet-submit{font:var(--font-button-strong)}
 .secondary-pill,.property-secondary-action{font:var(--font-button)}
 @media (hover:hover) and (pointer:fine){.nav-link:hover,.property-nav-link:hover,.bottom-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover{background:var(--surface-hover)!important;color:var(--text-primary)!important}}

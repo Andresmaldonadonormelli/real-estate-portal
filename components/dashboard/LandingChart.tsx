@@ -12,7 +12,7 @@ export default function LandingChart({ points, label, onScrub }: {
 }) {
   const width = 640;
   const height = 300;
-  const pad = { left: 40, right: 8, top: 16, bottom: 28 };
+  const pad = { left: 40, right: 18, top: 16, bottom: 28 };
   const [active, setActive] = useState<number | null>(null);
   const layout = useMemo(() => layoutChart(points, width, height, pad), [points]);
 
@@ -36,8 +36,10 @@ export default function LandingChart({ points, label, onScrub }: {
   }
 
   const scrub = active == null ? null : layout.samples[active];
+  const end = layout.samples.length ? layout.samples[layout.samples.length - 1] : null;
 
-  return <svg
+  return <>
+  <svg
     className="landing-chart"
     viewBox={`0 0 ${width} ${height}`}
     preserveAspectRatio="none"
@@ -65,10 +67,12 @@ export default function LandingChart({ points, label, onScrub }: {
       <clipPath id="landing-solid"><rect x="0" y="0" width={scrub.x} height={height} /></clipPath>
       <path className="landing-chart-line" d={layout.line} clipPath="url(#landing-solid)" />
       <line className="landing-chart-guide" x1={scrub.x} x2={scrub.x} y1={pad.top} y2={height - pad.bottom} />
-      <circle className="landing-chart-dot" cx={scrub.x} cy={scrub.y} r="5" />
     </> : null}
     {layout.labels.map(point => <text key={`${point.label}-${point.x}`} className="landing-chart-label" x={point.x} y={height - 8} textAnchor="middle">{point.label}</text>)}
-  </svg>;
+  </svg>
+  {end ? <span className="landing-chart-dot" style={{ left: `${(end.x / width) * 100}%`, top: `${(end.y / height) * 100}%` }} /> : null}
+  {scrub ? <span className="landing-chart-dot" style={{ left: `${(scrub.x / width) * 100}%`, top: `${(scrub.y / height) * 100}%` }} /> : null}
+  </>;
 }
 
 function layoutChart(points: LandingPoint[], width: number, height: number, pad: { left: number; right: number; top: number; bottom: number }) {

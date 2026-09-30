@@ -1,0 +1,697 @@
+"use client";
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth/AuthContext";
+import PageSkeleton from "@/components/common/PageSkeleton";
+import type { Property, UtilityAccount } from "@/lib/types";
+import { withTimeout } from "@/lib/async";
+import { cachedSupabaseRequest, PROPERTY_FIELDS } from "@/lib/supabaseData";
+import { PageAction, ProductSelect } from "@/components/common/ProductControls";
+import { Button } from "@/components/ui/Button";
+
+const types = [
+  "Electric",
+  "Gas",
+  "Water",
+  "Sewer",
+  "Internet",
+  "Trash",
+  "Other",
+];
+const empty = {
+  utility_type: "Electric",
+  provider: "",
+  account_number: "",
+  username_email: "",
+  login_url: "",
+  autopay: false,
+  responsibility: "Owner" as const,
+  billing_cycle: "",
+  password_reference: "",
+  notes: "",
+};
+type UtilityLink = { utility_account_id: string; property_id: string };
+type UtilityWithProperties = UtilityAccount & { property_ids: string[] };
+
+export default function UtilitiesWorkspace() {
+  const { user } = useAuth();
+  const [items, setItems] = useState<UtilityWithProperties[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [show, setShow] = useState(false);
+  const [editing, setEditing] = useState<UtilityWithProperties | null>(null);
+  const [detail, setDetail] = useState<UtilityWithProperties | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [form, setForm] = useState<any>(empty);
+  const [propertyIds, setPropertyIds] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const [u, p, l] = await withTimeout(
+        Promise.all([
+          supabase
+            .from("utility_accounts")
+            .select("id,property_id,utility_type,provider,account_number,username_email,login_url,autopay,responsibility,billing_cycle,password_reference,notes,created_at,archived_at")
+            .is("archived_at", null)
+            .order("utility_type"),
+          cachedSupabaseRequest('shared:properties',async()=>await supabase.from("properties").select(PROPERTY_FIELDS).is("archived_at", null).order("address")),
+          supabase
+            .from("utility_account_properties")
+            .select("utility_account_id,property_id"),
+        ]),
+        8000,
+        "Utilities took too long to load. Please retry.",
+      );
+      if (u.error || p.error || l.error) throw u.error || p.error || l.error;
+      const links = (l.data || []) as UtilityLink[];
+      const byUtility = new Map<string, string[]>();
+      links.forEach((link) =>
+        byUtility.set(link.utility_account_id, [
+          ...(byUtility.get(link.utility_account_id) || []),
+          link.property_id,
+        ]),
+      );
+      const hydrated = ((u.data || []) as UtilityAccount[]).map((x) => ({
+        ...x,
+        property_ids: byUtility.get(x.id)?.length
+          ? byUtility.get(x.id)!
+          : [x.property_id].filter(Boolean),
+      }));
+      setItems(hydrated);
+      setProperties((p.data || []) as Property[]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load utilities");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  const groups = useMemo(
+    () =>
+      properties
+        .map((property) => ({
+          property,
+          utilities: items.filter((x) => x.property_ids.includes(property.id)),
+        }))
+        .filter((group) => group.utilities.length > 0),
+    [properties, items],
+  );
+  const utilityCount = groups.reduce((sum, group) => sum + group.utilities.length, 0);
+
+  const propertyName = (id: string) =>
+    properties.find((p) => p.id === id)?.address || "Unknown property";
+  function add() {
+    setEditing(null);
+    setDetail(null);
+    setShowDetails(false);
+    setForm({ ...empty });
+    setPropertyIds(properties[0]?.id ? [properties[0].id] : []);
+    setShow(true);
+  }
+  function edit(x: UtilityWithProperties) {
+    setDetail(null);
+    setEditing(x);
+    setShowDetails(true);
+    setPropertyIds(x.property_ids);
+    setForm({
+      utility_type: x.utility_type,
+      provider: x.provider,
+      account_number: x.account_number || "",
+      username_email: x.username_email || "",
+      login_url: x.login_url || "",
+      autopay: x.autopay,
+      responsibility: x.responsibility,
+      billing_cycle: x.billing_cycle || "",
+      password_reference: x.password_reference || "",
+      notes: x.notes || "",
+    });
+    setShow(true);
+  }
+  function openDetail(x: UtilityWithProperties) {
+    setDetail(x);
+  }
+  function toggleProperty(id: string) {
+    setPropertyIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!propertyIds.length) {
+      setError("Choose at least one property for this utility.");
+      return;
+    }
+    const payload = {
+      ...form,
+      user_id: user.id,
+      property_id: propertyIds[0],
+      account_number: form.account_number || null,
+      username_email: form.username_email || null,
+      login_url: form.login_url || null,
+      billing_cycle: form.billing_cycle || null,
+      password_reference: form.password_reference || null,
+      notes: form.notes || null,
+    };
+    const r = editing
+      ? await supabase
+          .from("utility_accounts")
+          .update(payload)
+          .eq("id", editing.id)
+          .select("id")
+          .single()
+      : await supabase
+          .from("utility_accounts")
+          .insert(payload)
+          .select("id")
+          .single();
+    if (r.error) {
+      setError(r.error.message);
+      return;
+    }
+    const utilityId = r.data.id as string;
+    const cleared = await supabase
+      .from("utility_account_properties")
+      .delete()
+      .eq("utility_account_id", utilityId);
+    if (cleared.error) {
+      setError(cleared.error.message);
+      return;
+    }
+    const linked = await supabase
+      .from("utility_account_properties")
+      .insert(
+        propertyIds.map((property_id) => ({
+          utility_account_id: utilityId,
+          property_id,
+          user_id: user.id,
+        })),
+      );
+    if (linked.error) {
+      setError(linked.error.message);
+      return;
+    }
+    setShow(false);
+    setEditing(null);
+    await load();
+  }
+  async function del(x: UtilityWithProperties) {
+    if (
+      !confirm(
+        `Archive ${x.utility_type} — ${x.provider}? You can restore it later from Archive.`,
+      )
+    )
+      return;
+    setDeleting(true);
+    const r = await supabase
+      .from("utility_accounts")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", x.id);
+    if (r.error) setError(r.error.message);
+    else {
+      setShow(false);
+      setEditing(null);
+      setDetail(null);
+      await load();
+    }
+    setDeleting(false);
+  }
+
+  return (
+    <div className="utilities-embedded">
+      <div className="utilities-embedded-bar">
+        <PageAction onClick={add} disabled={!properties.length}>Add utility</PageAction>
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+
+      {loading ? (
+        <PageSkeleton variant="utilities" />
+      ) : (
+        <div className="portfolio-panel">
+          <div className="portfolio-panel-head">
+            <strong>Utilities</strong>
+            <span>{utilityCount}</span>
+          </div>
+          {groups.length === 0 ? (
+            <p className="portfolio-empty">No utility accounts yet.</p>
+          ) : (
+            <>
+              <div className="portfolio-columns portfolio-utility-grid" aria-hidden="true">
+                <span />
+                <span>Utility</span>
+                <span>Provider</span>
+                <span>Responsibility</span>
+                <span>Autopay</span>
+                <span>Account</span>
+              </div>
+              {groups.map(({ property, utilities }) => (
+                <section key={property.id} className="portfolio-utility-group">
+                  <div className="portfolio-utility-property">
+                    {property.address}
+                    <span>
+                      {property.city}, {property.state}
+                    </span>
+                  </div>
+                  {utilities.map((utility) => (
+                    <button
+                      key={`${property.id}-${utility.id}`}
+                      type="button"
+                      className="portfolio-utility-row portfolio-utility-grid"
+                      onClick={() => openDetail(utility)}
+                    >
+                      <UtilityMark type={utility.utility_type} />
+                      <span className="portfolio-utility-type">{utility.utility_type}</span>
+                      <span className="portfolio-utility-provider">{utility.provider}</span>
+                      <span className="portfolio-utility-responsibility">{utility.responsibility}</span>
+                      <span className="portfolio-utility-autopay">{utility.autopay ? "On" : "Off"}</span>
+                      <span className="portfolio-utility-account">
+                        {utility.account_number ? maskedAccount(utility.account_number) : "—"}
+                      </span>
+                    </button>
+                  ))}
+                </section>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      <Drawer title={detail?.utility_type || ""} open={Boolean(detail)} onClose={() => setDetail(null)}>
+        {detail && (
+          <>
+          <div className="utility-drawer-hero">
+            <UtilityMark type={detail.utility_type} />
+            <div>
+              <strong>{detail.provider}</strong>
+              <span>{detail.property_ids.map(propertyName).join(" · ")}</span>
+            </div>
+          </div>
+          <dl className="utility-drawer-facts">
+            {detail.account_number && <DetailRow l="Account number" v={detail.account_number} />}
+            {detail.username_email && <DetailRow l="Username / email" v={detail.username_email} />}
+            <DetailRow l="Autopay" v={detail.autopay ? "On" : "Off"} />
+            <DetailRow l="Responsibility" v={detail.responsibility} />
+            {detail.billing_cycle && <DetailRow l="Billing cycle" v={detail.billing_cycle} />}
+            {detail.notes && <DetailRow l="Notes" v={detail.notes} />}
+          </dl>
+          <div className="utility-drawer-actions">
+            {detail.login_url && (
+              <Button
+                onClick={() => window.open(detail.login_url!, "_blank", "noopener,noreferrer")}
+                variant="secondary"
+              >
+                Open provider
+              </Button>
+            )}
+            <Button onClick={() => edit(detail)}>Edit utility</Button>
+          </div>
+          </>
+        )}
+      </Drawer>
+
+      {show && (
+        <Modal
+          title={editing ? "Edit utility" : "Add utility"}
+          onClose={() => {
+            setShow(false);
+            setEditing(null);
+          }}
+        >
+          <form onSubmit={save} className="mobile-sheet-form utility-edit-form">
+            <Field label="Properties">
+              <div className="utility-property-picker">
+                {properties.map((p) => (
+                  <label
+                    key={p.id}
+                    className={`utility-property-option ${propertyIds.includes(p.id) ? "selected" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={propertyIds.includes(p.id)}
+                      onChange={() => toggleProperty(p.id)}
+                    />
+                    <span>{p.address}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <div style={two}>
+              <ProductSelect label="Utility type"
+                  value={form.utility_type}
+                  onChange={(e) =>
+                    setForm({ ...form, utility_type: e.target.value })
+                  }
+                >
+                  {types.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </ProductSelect>
+              <Field label="Provider">
+                <input
+                  required
+                  value={form.provider}
+                  onChange={(e) =>
+                    setForm({ ...form, provider: e.target.value })
+                  }
+                  style={input}
+                />
+              </Field>
+            </div>
+            <ProductSelect label="Responsibility"
+                value={form.responsibility}
+                onChange={(e) =>
+                  setForm({ ...form, responsibility: e.target.value })
+                }
+              >
+                <option>Owner</option>
+                <option>Tenant</option>
+                <option>Shared</option>
+              </ProductSelect>
+            <button
+              type="button"
+              className={`sheet-details-toggle ${showDetails ? "expanded" : ""}`}
+              onClick={() => setShowDetails((v) => !v)}
+            >
+              <span>
+                {showDetails ? "Hide account details" : "Add account details"}
+              </span>
+              <ChevronDown size={16} aria-hidden="true" />
+            </button>
+            {showDetails && (
+              <div className="sheet-details-panel">
+                <div style={two}>
+                  <Field label="Account number">
+                    <input
+                      value={form.account_number}
+                      onChange={(e) =>
+                        setForm({ ...form, account_number: e.target.value })
+                      }
+                      style={input}
+                    />
+                  </Field>
+                  <Field label="Username / email">
+                    <input
+                      value={form.username_email}
+                      onChange={(e) =>
+                        setForm({ ...form, username_email: e.target.value })
+                      }
+                      style={input}
+                    />
+                  </Field>
+                </div>
+                <Field label="Provider login URL">
+                  <input
+                    placeholder="https://..."
+                    value={form.login_url}
+                    onChange={(e) =>
+                      setForm({ ...form, login_url: e.target.value })
+                    }
+                    style={input}
+                  />
+                </Field>
+                <Field label="Billing cycle">
+                  <input
+                    placeholder="Monthly"
+                    value={form.billing_cycle}
+                    onChange={(e) =>
+                      setForm({ ...form, billing_cycle: e.target.value })
+                    }
+                    style={input}
+                  />
+                </Field>
+                <label
+                  style={{
+                    display: "flex",
+                    gap: "var(--space-2)",
+                    alignItems: "center",
+                    fontSize: "var(--type-small-size)",
+                    lineHeight: "var(--type-small-line)",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.autopay}
+                    onChange={(e) =>
+                      setForm({ ...form, autopay: e.target.checked })
+                    }
+                  />
+                  Autopay enabled
+                </label>
+                <Field label="Notes">
+                  <textarea
+                    rows={3}
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm({ ...form, notes: e.target.value })
+                    }
+                    style={input}
+                  />
+                </Field>
+              </div>
+            )}
+            <Button type="submit" className="mobile-sheet-submit">
+              Save utility
+            </Button>
+            {editing && (
+              <div className="danger-zone">
+                <div>
+                  <div
+                    style={{
+                      fontWeight: "var(--weight-semibold)",
+                      fontSize: "var(--type-small-size)",
+                    }}
+                  >
+                    Danger zone
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "var(--type-label-size)",
+                      lineHeight: "var(--type-label-line)",
+                      color: "var(--text-secondary)",
+                      marginTop: "var(--space-1)",
+                    }}
+                  >
+                    Archive removes this utility from the active directory
+                    without deleting its history.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => del(editing)}
+                  className="product-destructive-outline"
+                >
+                  {deleting ? "Archiving…" : "Archive utility"}
+                </button>
+              </div>
+            )}
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+const utilityMarks: Record<string, string> = {
+  Electric: "/utilities/electric.png",
+  Gas: "/utilities/gas.png",
+  Water: "/utilities/water.png",
+};
+function UtilityMark({ type }: { type: string }) {
+  const src = utilityMarks[type];
+  return src ? (
+    <img src={src} alt="" className="portfolio-utility-mark" width="40" height="40" />
+  ) : (
+    <span className="portfolio-utility-mark is-empty" aria-hidden="true" />
+  );
+}
+function maskedAccount(v: string) {
+  const clean = v.trim();
+  return clean.length > 4 ? `•••• ${clean.slice(-4)}` : clean;
+}
+function DetailRow({ l, v }: { l: string; v: string }) {
+  return (
+    <div>
+      <dt>{l}</dt>
+      <dd>{v}</dd>
+    </div>
+  );
+}
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      style={{
+        display: "grid",
+        gap: "var(--space-2)",
+        fontSize: "var(--type-small-size)",
+        lineHeight: "var(--type-small-line)",
+      }}
+    >
+      {label}
+      {children}
+    </label>
+  );
+}
+function useOverlayLock() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = old;
+    };
+  }, []);
+  return mounted;
+}
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const mounted = useOverlayLock();
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      className="portfolio-dialog-overlay"
+      onMouseDown={(e) => {
+        if (e.currentTarget === e.target) onClose();
+      }}
+    >
+      <div className="portfolio-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="portfolio-dialog-head">
+          <h2>{title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="portfolio-dialog-body">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+function Drawer({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [present, setPresent] = useState(false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!present) return;
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = old; };
+  }, [present]);
+  const held = useRef<{ title: string; children: ReactNode }>({ title, children });
+  if (open) held.current = { title, children };
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) {
+        setShown(true);
+        return;
+      }
+      const frame = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setPresent(false), reduce ? 0 : 280);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!mounted || !present) return null;
+  return createPortal(
+    <div
+      className="utility-drawer-overlay"
+      data-open={shown ? "true" : "false"}
+      onMouseDown={(e) => {
+        if (e.currentTarget === e.target) onClose();
+      }}
+    >
+      <aside className="utility-drawer" role="dialog" aria-modal="true" aria-label={held.current.title}>
+        <div className="utility-drawer-head">
+          <h2>{held.current.title}</h2>
+          <button onClick={onClose} type="button" className="sheet-close-button" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        {held.current.children}
+      </aside>
+    </div>,
+    document.body,
+  );
+}
+const input: React.CSSProperties = {
+  width: "100%",
+  padding: "var(--space-3)",
+  border: "1px solid var(--border-color)",
+  borderRadius: "var(--radius-control)",
+  background: "var(--input-bg)",
+  color: "var(--text-primary)",
+};
+const primary: React.CSSProperties = {
+  padding: "var(--space-3) var(--space-4)",
+  border: 0,
+  borderRadius: "var(--radius-pill)",
+  background: "var(--accent)",
+  color: "var(--accent-contrast)",
+  fontSize: "var(--type-button-size)",
+  lineHeight: "var(--type-button-line)",
+  fontWeight: "var(--type-button-weight)",
+  cursor: "pointer",
+};
+const secondary: React.CSSProperties = {
+  padding: "var(--space-3) var(--space-4)",
+  border: "1px solid var(--border-color)",
+  borderRadius: "var(--radius-pill)",
+  background: "var(--bg-primary)",
+  color: "var(--text-primary)",
+  fontSize: "var(--type-button-size)",
+  lineHeight: "var(--type-button-line)",
+  fontWeight: "var(--type-button-weight)",
+  cursor: "pointer",
+};
+const danger: React.CSSProperties = { ...secondary, color: "var(--danger)" };
+const two: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+  gap: "var(--space-3)",
+};
+const errorBox: React.CSSProperties = {
+  padding: "var(--space-3)",
+  color: "var(--danger)",
+  border: "1px solid var(--danger)",
+  borderRadius: "var(--radius-control)",
+  marginBottom: "var(--space-4)",
+};

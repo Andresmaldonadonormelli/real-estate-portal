@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Archive, LogOut, UserRound, X } from 'lucide-react';
 import { NotificationInboxProvider } from '@/components/dashboard/notificationInbox';
 import BottomNav from './BottomNav';
+import PortfolioIdentity from './PortfolioIdentity';
 import SideNav from './SideNav';
 import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
@@ -31,7 +32,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="app-frame">
       <div className="app-shell">
         {!isMobile && <SideNav />}
-        <main className="main-content">{children}</main>
+        <main className="main-content"><PortfolioIdentity />{children}</main>
       </div>
       {isMobile && <BottomNav />}
       {isMobile && showNav && (

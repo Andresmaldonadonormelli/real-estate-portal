@@ -64,7 +64,7 @@ export default function NotificationsPage() {
     <div className="notifications-page">
       <header className="notifications-page-bar">
         <button type="button" className="notifications-back" aria-label="Back" onClick={goBack}><ArrowLeft size={22} strokeWidth={1.75} /></button>
-        <h1>Notifications</h1>
+        <h1>Alerts</h1>
       </header>
       <NotificationFeed onOpen={item => { void openNotification(item); }} />
       {activeTransaction && !detailEditing && (

@@ -11,10 +11,10 @@
   gap: var(--space-4);
 }
 .dashboard-operating-header h1 {
-  font-size: var(--type-section-title-size);
-  line-height: var(--type-section-title-line);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 .dashboard-operating-header p,
 .dashboard-month-chip {
@@ -647,6 +647,7 @@
   border-radius: var(--radius-control-compact);
   background: var(--theme-card);
   color: var(--text-primary);
+  text-decoration: none;
   cursor: pointer;
 }
 .dashboard-bell-count {
@@ -867,10 +868,10 @@
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
-    font-size: var(--type-page-title-size);
-    line-height: var(--type-page-title-line);
+    font-size: var(--type-small-size);
+    line-height: var(--type-small-line);
     font-weight: var(--weight-semibold);
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
   }
   .dashboard-heading {
     display: none;
@@ -1177,10 +1178,10 @@
 }
 .notifications-page-bar h1 {
   margin: 0;
-  font-size: var(--type-page-title-size);
-  line-height: var(--type-page-title-line);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 .notifications-page .dashboard-drawer-tabs {
   margin-top: 0;
