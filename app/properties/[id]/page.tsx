@@ -193,7 +193,7 @@ export default function PropertyWorkspacePage(){
     <UnderlineTabs primary value={tab} onChange={setTab} label="Property sections" className="property-menu" options={[{value:'overview',label:'Overview'},{value:'cashflow',label:'Cash flow'},{value:'tenants',label:'Tenants'},{value:'loan',label:'Loan'},{value:'improve',label:'Improve'},{value:'documents',label:'Documents'}]}/>
 
     {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} profile={profile}/>}
-    {tab==='cashflow' && <PropertyCashflow propertyId={property.id} transactions={transactions}/>}
+    {tab==='cashflow' && <PropertyCashflow property={property} units={units} transactions={transactions}/>}
     {tab==='tenants' && <PropertyUnits units={units} propertyId={property.id} documents={documents} transactions={transactions} managementFeePercent={property.management_fee_percent} profile={profile} onUnitsUpdated={next=>setUnits(next)} onProfileSaved={next=>{setProfile(next);invalidateSupabaseCache(`property:${propertyId}`);}} onManagementFee={fee=>setProperty(prev=>prev?{...prev,management_fee_percent:fee}:prev)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>}
     {tab==='loan' && <PropertyLoan property={property} profile={profile}/>}
     {tab==='improve' && <PropertyImprove property={property} units={units} transactions={transactions}/>}
