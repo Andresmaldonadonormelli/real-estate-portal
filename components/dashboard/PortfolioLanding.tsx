@@ -97,14 +97,16 @@ export default function PortfolioLanding({ properties, units, transactions, prof
                 { label: 'Change', amount: signed(model.equityDelta), prefix: '=', strong: true },
               ] : [{ label: series === 'debt' ? 'Debt change' : 'Value change', amount: signed(movement), strong: true }]} footer={scrub ? `The breakdown is for the ${model.periodLabel}. Move off the chart to see it.` : `This follows the ${model.periodLabel} on the chart.`} onClose={() => setOpen(null)} /> : null}
             </div>
-            {scrub ? <p className="landing-growth">The breakdown is for the {model.periodLabel}. Move off the chart to see it.</p> : series === 'equity' ? <>
-              <p className="landing-growth">Includes {formatKpiCurrency(model.putIn)} you put in{model.growth == null ? '.' : `, so ${percentOrDash(model.growth)} growth.`}</p>
-              <div className="landing-parts">
-                <span><i className="is-paydown" />Loan paydown <b>{signed(model.paydown)}</b></span>
-                <span><i className="is-value" />Value change (estimated) <b>{signed(model.valueChange)}</b></span>
-                <span><i className="is-bought" />Bought <b>{signed(model.bought)}</b></span>
-              </div>
-            </> : null}
+            <div className="landing-composition">
+              {scrub ? <p className="landing-growth">The breakdown is for the {model.periodLabel}. Move off the chart to see it.</p> : series === 'equity' ? <>
+                <p className="landing-growth">Includes {formatKpiCurrency(model.putIn)} you put in{model.growth == null ? '.' : `, so ${percentOrDash(model.growth)} growth.`}</p>
+                <div className="landing-parts">
+                  <span><i className="is-paydown" />Loan paydown <b>{signed(model.paydown)}</b></span>
+                  <span><i className="is-value" />Value change (estimated) <b>{signed(model.valueChange)}</b></span>
+                  <span><i className="is-bought" />Bought <b>{signed(model.bought)}</b></span>
+                </div>
+              </> : null}
+            </div>
           </div>
           <div className="property-chart-pills" role="group" aria-label="Chart series">
             {SERIES.map(option => <button key={option.value} type="button" className={series === option.value ? 'active' : ''} aria-pressed={series === option.value} onClick={() => setSeries(option.value)}>{option.label}</button>)}

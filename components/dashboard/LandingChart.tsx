@@ -40,7 +40,7 @@ export default function LandingChart({ points, label, onScrub }: {
   return <svg
     className="landing-chart"
     viewBox={`0 0 ${width} ${height}`}
-    preserveAspectRatio="xMinYMid meet"
+    preserveAspectRatio="none"
     role="img"
     aria-label={label}
     onPointerDown={event => { try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Pointer capture is unavailable for this event. */ } scrubAt(event); }}
