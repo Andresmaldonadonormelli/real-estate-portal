@@ -241,16 +241,52 @@ export function upcomingLeases(units: LeaseUnit[], withinDays = 90) {
 }
 
 export function nextLeaseLabel(units: LeaseUnit[]) {
+  const upcoming = upcomingLeaseEnds(units);
+  return upcoming[0] ? `Next lease ends ${upcoming[0].end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'No upcoming lease end';
+}
+
+export function nextLeaseStatus(units: LeaseUnit[]) {
+  const next = upcomingLeaseEnds(units)[0];
+  if (!next) return { value: 'No lease dates', detail: 'Add lease dates to stay ahead' };
+  const dayLabel = `${next.days} ${next.days === 1 ? 'day' : 'days'}`;
+  const value = `${next.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${dayLabel}`;
+  return { value, detail: next.unit };
+}
+
+export function monthsEntered(transactions: HistoryTransaction[], propertyId: string, startedAt?: string | null, now = new Date()) {
+  const keys = new Set<string>();
+  let earliest: Date | null = null;
+  postedRows(transactions, propertyId).forEach(tx => {
+    const raw = tx.transaction_date || '';
+    const key = raw.slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(key)) return;
+    keys.add(key);
+    const date = new Date(`${raw.slice(0, 10)}T12:00:00`);
+    if (!Number.isNaN(date.getTime()) && (!earliest || date < earliest)) earliest = date;
+  });
+  const slots = Array.from({ length: 11 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const fallback = startedAt ? new Date(`${startedAt.slice(0, 10)}T12:00:00`) : null;
+  const started = earliest || (fallback && !Number.isNaN(fallback.getTime()) ? fallback : null);
+  return {
+    entered: slots.filter(key => keys.has(key)).length,
+    total: slots.length,
+    detail: started ? `You started tracking in ${started.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'Tracking has not started',
+  };
+}
+
+function upcomingLeaseEnds(units: LeaseUnit[]) {
   const today = startOfToday();
-  const upcoming = units.flatMap(unit => {
+  return units.flatMap(unit => {
     if (!unit.occupied || !unit.lease_end_date) return [];
     const end = new Date(`${unit.lease_end_date.slice(0, 10)}T12:00:00`);
     if (Number.isNaN(end.getTime())) return [];
     const days = Math.ceil((end.getTime() - today.getTime()) / 86400000);
     if (days < 0) return [];
-    return [{ days, label: end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }];
+    return [{ unit: unit.unit_number || 'Unit', days, end }];
   }).sort((a, b) => a.days - b.days);
-  return upcoming[0] ? `Next lease ends ${upcoming[0].label}` : 'No upcoming lease end';
 }
 
 function trailingDscr(transactions: HistoryTransaction[], propertyId: string) {
