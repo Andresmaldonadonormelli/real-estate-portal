@@ -41,6 +41,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
         setError('');
       } while (refreshAgain.current);
     } catch (cause) {
+      console.error('Notification inbox reconciliation failed.', cause);
       setError(notificationLoadError(cause));
     } finally {
       refreshing.current = false;

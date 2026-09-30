@@ -3,35 +3,11 @@ import { isPropertyManagementDeposit } from '@/lib/managementPayout';
 import { unitAttention } from '@/lib/portfolioAttention';
 import { supabase } from '@/lib/supabase';
 import { historyStart } from '@/lib/supabaseData';
-import type { Notification, NotificationOrigin, NotificationType } from '@/lib/types';
+import type { Notification, NotificationType } from '@/lib/types';
 
 export const LARGE_EXPENSE_MIN = 250;
 
-export const NOTIFICATION_TYPES = [
-  'bank_transfer_received',
-  'transaction_needs_category',
-  'large_expense_posted',
-  'lease_ending_soon',
-  'unit_vacant',
-] as const satisfies readonly NotificationType[];
-
 const NOTIFICATION_FIELDS = 'id,user_id,type,read_at,created_at,title,body,amount,property_id,unit_id,transaction_id,dedupe_key,metadata,origin,archived_at';
-
-const SEED_AGE_MS: Record<NotificationType, number> = {
-  bank_transfer_received: 2 * 60 * 60 * 1000,
-  transaction_needs_category: 3 * 60 * 60 * 1000,
-  large_expense_posted: 6 * 60 * 60 * 1000,
-  lease_ending_soon: 2 * 24 * 60 * 60 * 1000,
-  unit_vacant: 4 * 24 * 60 * 60 * 1000,
-};
-
-const SEED_TITLE: Record<NotificationType, string> = {
-  bank_transfer_received: 'Bank transfer received',
-  transaction_needs_category: 'Transaction needs category',
-  large_expense_posted: 'Large expense posted',
-  lease_ending_soon: 'Lease ending soon',
-  unit_vacant: 'Unit vacant',
-};
 
 export type NotificationGroup = 'transaction' | 'property';
 
@@ -82,8 +58,7 @@ export type DesiredNotification = {
   transaction_id: string | null;
   dedupe_key: string;
   metadata: Record<string, unknown>;
-  origin: Extract<NotificationOrigin, 'seed' | 'app'>;
-  created_at?: string;
+  origin: 'app';
 };
 
 export type FeedNotification = {
@@ -182,11 +157,6 @@ export function buildDesiredNotifications(source: NotificationSource): DesiredNo
 
   transactions.forEach(transaction => add(transactionNotification(source.userId, transaction, properties, transactions)));
   units.forEach(unit => add(unitNotification(source.userId, unit, properties, now)));
-
-  const covered = new Set(rows.map(row => row.type));
-  NOTIFICATION_TYPES.forEach(type => {
-    if (!covered.has(type)) add(seedNotification(type, source.userId, properties, units, transactions, now));
-  });
   return rows;
 }
 
@@ -344,41 +314,6 @@ function unitNotification(userId: string, unit: NotificationUnit, properties: No
   return null;
 }
 
-function seedNotification(type: NotificationType, userId: string, properties: NotificationProperty[], units: NotificationUnit[], transactions: NotificationTransaction[], now: Date): DesiredNotification {
-  const income = transactions.find(transaction => transaction.type === 'income') || null;
-  const expense = transactions.find(transaction => transaction.type === 'expense') || null;
-  const any = transactions[0] || null;
-  const unit = units[0] || null;
-  const linked = type === 'bank_transfer_received' ? income : type === 'large_expense_posted' ? expense : type === 'transaction_needs_category' ? any : null;
-  const propertyId = linked?.property_id || unit?.property_id || properties[0]?.id || null;
-  const address = addressFor(properties, propertyId);
-  const place = [address, unit && propertyId === unit.property_id ? unitLabel(unit.unit_number) : ''].filter(Boolean);
-  const detail = type === 'lease_ending_soon' || type === 'unit_vacant'
-    ? place
-    : [address, linked ? party(linked) : ''].filter(Boolean);
-  const amount = type === 'bank_transfer_received'
-    ? signedAmount(income?.amount, 'positive')
-    : type === 'large_expense_posted'
-      ? signedAmount(expense?.amount, 'negative')
-      : type === 'transaction_needs_category'
-        ? signedAmount(any?.amount, 'signed')
-        : null;
-  return {
-    user_id: userId,
-    type,
-    title: SEED_TITLE[type],
-    body: sampleBody(detail),
-    amount,
-    property_id: propertyId,
-    unit_id: unit && (type === 'lease_ending_soon' || type === 'unit_vacant') ? unit.id : linked?.unit_id || null,
-    transaction_id: linked?.id || null,
-    dedupe_key: `seed:${type}`,
-    metadata: { sample: true },
-    origin: 'seed',
-    created_at: new Date(now.getTime() - SEED_AGE_MS[type]).toISOString(),
-  };
-}
-
 function isPosted(transaction: NotificationTransaction) {
   return !transaction.archived_at && (transaction.status || 'posted') === 'posted';
 }
@@ -436,11 +371,6 @@ function signedAmount(amount: number | null | undefined, sign: 'positive' | 'neg
   return value;
 }
 
-function sampleBody(parts: string[]) {
-  const detail = parts.filter(Boolean).join(' · ');
-  return detail ? `Sample · ${detail}` : 'Sample';
-}
-
 function dateKey(value?: string | null) {
   if (!value) return '';
   const key = value.slice(0, 10);
@@ -480,7 +410,6 @@ function insertPayload(row: DesiredNotification) {
     metadata: row.metadata,
     origin: row.origin,
   };
-  if (row.created_at) payload.created_at = row.created_at;
   return payload;
 }
 

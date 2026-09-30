@@ -77,33 +77,34 @@ test('does not alert on an approved manager deduction or rent gap', () => {
   assert.equal(rows.some(row => row.unit_id === 'u-soon' || row.unit_id === 'u-stable'), false);
 });
 
-test('seeds one sample of each missing type without inventing a second live event', () => {
+test('does not fabricate missing notification types and keeps stable dedupe keys', () => {
   const rows = buildDesiredNotifications({
     userId: 'user-1',
     properties: [property],
     units: [{ id: 'u1', property_id: 'p1', unit_number: '1', occupied: true, lease_end_date: '2027-01-01' }],
-    transactions: [tx({ id: 'tx-rent', type: 'income', category: 'Rent', description: 'Rent', amount: 1200, notes: 'Confirmed fee split from Chase/net payout 1200.' })],
+    transactions: [tx({ id: 'tx-rent', type: 'income', category: 'Rent', description: 'Rent', amount: 1200 })],
     now,
   });
-  const seeds = rows.filter(row => row.origin === 'seed');
-  assert.deepEqual(seeds.map(row => row.type), [
-    'transaction_needs_category',
-    'large_expense_posted',
-    'lease_ending_soon',
-    'unit_vacant',
-  ]);
-  assert.ok(seeds.every(row => row.body.startsWith('Sample · 15334 Triskett')));
-  assert.ok(seeds.every(row => row.metadata.sample === true));
-  assert.ok(seeds.every(row => row.dedupe_key.startsWith('seed:')));
-  assert.equal(rows.filter(row => row.type === 'bank_transfer_received' && row.origin === 'app').length, 1);
+  assert.deepEqual(rows, []);
+
+  const realRows = buildDesiredNotifications({
+    userId: 'user-1',
+    properties: [property],
+    units: [{ id: 'u1', property_id: 'p1', unit_number: '1', occupied: false, lease_end_date: '2026-09-15' }],
+    transactions: [tx({ id: 'tx-review', type: 'expense', category: 'Needs Review', description: 'Imported repair', amount: -90, source: 'plaid', needs_review: true })],
+    now,
+  });
   const again = buildDesiredNotifications({
     userId: 'user-1',
     properties: [property],
-    units: [{ id: 'u1', property_id: 'p1', unit_number: '1', occupied: true, lease_end_date: '2027-01-01' }],
-    transactions: [tx({ id: 'tx-rent', type: 'income', category: 'Rent', description: 'Rent', amount: 1200, notes: 'Confirmed fee split from Chase/net payout 1200.' })],
+    units: [{ id: 'u1', property_id: 'p1', unit_number: '1', occupied: false, lease_end_date: '2026-09-15' }],
+    transactions: [tx({ id: 'tx-review', type: 'expense', category: 'Needs Review', description: 'Imported repair', amount: -90, source: 'plaid', needs_review: true })],
     now,
   });
-  assert.deepEqual(again.map(row => row.dedupe_key), rows.map(row => row.dedupe_key));
+  assert.deepEqual(realRows.map(row => row.type), ['transaction_needs_category', 'unit_vacant']);
+  assert.ok(realRows.every(row => row.origin === 'app'));
+  assert.ok(realRows.every(row => !row.dedupe_key.startsWith('seed:')));
+  assert.deepEqual(again.map(row => row.dedupe_key), realRows.map(row => row.dedupe_key));
 });
 
 function notificationGroupOf(type?: string) {
