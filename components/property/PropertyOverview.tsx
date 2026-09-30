@@ -13,7 +13,8 @@ import {
   investorNumbers,
   latestYearCashFlow,
   monthActivity,
-  nextLeaseLabel,
+  monthsEntered,
+  nextLeaseStatus,
   payoffModel,
   percentOrDash,
   ratioOrDash,
@@ -47,6 +48,10 @@ export default function PropertyOverview({ property, units, transactions, profil
   const [showKnown, setShowKnown] = useState(false);
   const leaseUnits = units as LeaseUnit[];
   const occupancy = occupancyCounts(leaseUnits);
+  const leaseStatus = useMemo(() => nextLeaseStatus(leaseUnits), [leaseUnits]);
+  const tracking = useMemo(() => monthsEntered(transactions, property.id, property.created_at), [transactions, property.id, property.created_at]);
+  const occupancyLabel = !occupancy.total ? 'No units' : occupancy.occupied === occupancy.total ? 'Fully occupied' : occupancy.occupied === 0 ? 'Vacant' : 'Partially occupied';
+  const occupancyDetail = !occupancy.total ? 'No units' : occupancy.total === 1 ? '1 unit' : `${occupancy.total} units`;
   const equity = currentEquity(property, profile);
   const debt = Number(property.mortgage_balance || 0);
   const price = Number(property.purchase_price || 0);
@@ -134,20 +139,25 @@ export default function PropertyOverview({ property, units, transactions, profil
       </div>
     </section>
 
-    <section className="property-module property-status-line">
-      <span>{occupancy.total ? `${occupancy.occupied} of ${occupancy.total} occupied` : 'No units'}</span>
-      <span>{nextLeaseLabel(leaseUnits)}</span>
+    <section className="property-module property-status-board" aria-label="Property status">
+      <div>
+        <span>Occupancy</span>
+        <strong className={occupancyLabel === 'Fully occupied' ? 'property-signed is-positive' : ''}>{occupancyLabel}</strong>
+        <small>{occupancyDetail}</small>
+      </div>
+      <div>
+        <span>Lease ends</span>
+        <strong>{leaseStatus.value}</strong>
+        <small>{leaseStatus.detail}</small>
+      </div>
+      <div>
+        <span>Months entered, last 12</span>
+        <strong>{tracking.entered} of {tracking.total} entered</strong>
+        <small>{tracking.detail}</small>
+      </div>
     </section>
 
     <div className="property-quad">
-      <section className="property-module property-flow-chart">
-        <div className="property-module-head">
-          <h2>Monthly cash flow</h2>
-          <PillGroup label="Cash flow period" value={flowPeriod} onChange={setFlowPeriod} options={PERIODS} />
-        </div>
-        <FinancialHistoryChart rows={history} label="Monthly cash flow" />
-      </section>
-      <EquityComposition property={property} profile={profile} equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
       <section className="property-module property-last-month">
         <h2>Last month — {lastLabel}</h2>
         <dl>
@@ -167,6 +177,14 @@ export default function PropertyOverview({ property, units, transactions, profil
           <span>Lease ends, renewals and due dates will show here.</span>
         </div>}
       </section>
+      <section className="property-module property-flow-chart">
+        <div className="property-module-head">
+          <h2>Monthly cash flow</h2>
+          <PillGroup label="Cash flow period" value={flowPeriod} onChange={setFlowPeriod} options={PERIODS} />
+        </div>
+        <FinancialHistoryChart rows={history} label="Monthly cash flow" />
+      </section>
+      <EquityComposition property={property} profile={profile} equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
     </div>
   </div>;
 }

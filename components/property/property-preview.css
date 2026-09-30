@@ -252,7 +252,7 @@
 .properties-page .product-page-header p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .property-directory-toolbar{display:flex;justify-content:flex-end;margin-bottom:var(--space-4)}
 .property-directory-cards{display:grid;gap:var(--space-4)}
-.property-directory-card{position:relative;display:grid;gap:var(--space-3);min-height:44px;padding:var(--space-4) var(--space-5);border:1px solid var(--border-color);border-radius:var(--radius-module);background:var(--theme-card);box-shadow:var(--shadow-card);color:inherit;text-decoration:none}
+.property-directory-card{position:relative;display:grid;gap:var(--space-3);min-height:44px;padding:var(--space-4) var(--space-5);border:1px solid var(--border-color);border-radius:var(--radius-module);background:var(--theme-card);box-shadow:var(--shadow-card);color:inherit;text-decoration:none;transition:box-shadow var(--motion-fast)}
 .property-directory-card .portfolio-property-copy{padding-right:var(--space-8)}
 .property-directory-card .portfolio-property-copy strong{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);white-space:normal}
 .property-directory-arrow{position:absolute;top:var(--space-4);right:var(--space-4);display:grid;place-items:center;width:28px;height:28px;border-radius:var(--radius-pill);background:var(--surface-subtle);color:var(--text-secondary)}
@@ -267,7 +267,7 @@
 .property-directory-columns,.property-directory-row{grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(110px,.8fr))}
 .property-directory-row{color:inherit;text-decoration:none}
 @media (hover:hover) and (pointer:fine){
-  .property-directory-card:hover{background:var(--surface-hover)}
+  .property-directory-card:hover{background:var(--theme-card);box-shadow:var(--shadow-card-hover);opacity:1}
 }
 @media (min-width:768px){
   .property-directory-card{border-radius:var(--radius-card)}
