@@ -136,11 +136,45 @@ export function cashFlowYear(transactions: HistoryTransaction[], propertyId: str
   });
 }
 
-export function payoffModel(property: Property) {
+export function latestYearCashFlow(transactions: HistoryTransaction[], propertyId: string, now = new Date()) {
+  const year = String(now.getFullYear());
+  const months = new Map<string, number>();
+  postedRows(transactions, propertyId).forEach(tx => {
+    if (!tx.transaction_date.startsWith(year)) return;
+    const key = tx.transaction_date.slice(0, 7);
+    const amount = Math.abs(Number(tx.amount || 0));
+    const signed = tx.type === 'income' ? amount : tx.type === 'expense' ? -amount : 0;
+    months.set(key, (months.get(key) || 0) + signed);
+  });
+  const key = [...months.keys()].sort().at(-1);
+  if (!key) return null;
+  const [yearNumber, monthNumber] = key.split('-').map(Number);
+  return {
+    label: new Date(yearNumber, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long' }),
+    cashFlow: months.get(key) || 0,
+  };
+}
+
+export function nextPaymentParts(property: Property) {
+  const balance = Number(property.mortgage_balance || 0);
+  const rate = Number(property.mortgage_interest_rate || 0);
+  const payment = Number(property.monthly_mortgage_payment || 0);
+  const escrow = Number(property.mortgage_escrow_amount || 0);
+  const savedFees = Number(property.mortgage_pmi_amount || 0);
+  const savedPrincipalInterest = Number(property.mortgage_principal_interest_payment || 0);
+  const principalInterest = savedPrincipalInterest > 0 ? savedPrincipalInterest : Math.max(0, payment - escrow - savedFees);
+  const interest = balance > 0 && rate > 0 ? balance * (rate / 1200) : 0;
+  const principal = Math.max(0, principalInterest - interest);
+  const total = payment > 0 ? payment : principal + interest + escrow + savedFees;
+  const fees = savedFees > 0 ? savedFees : Math.max(0, total - principal - interest - escrow);
+  return { principal, interest, escrow, fees, total };
+}
+
+export function payoffModel(property: Property, valueBasis?: number | null) {
   const balance = Number(property.mortgage_balance || 0);
   const rate = Number(property.mortgage_interest_rate || 0);
   const payment = Number(property.mortgage_principal_interest_payment || property.monthly_mortgage_payment || 0);
-  const price = Number(property.purchase_price || 0);
+  const price = Number(valueBasis || property.purchase_price || 0);
   if (balance <= 0 || rate <= 0 || payment <= 0) return null;
   const loan = amortize(balance, rate, payment);
   if (loan.points.length < 2) return null;
@@ -168,7 +202,30 @@ export function payoffModel(property: Property) {
   }).filter(row => row.principal > 0 || row.interest > 0);
   const payoff = new Date();
   if (loan.payoffMonth) payoff.setMonth(payoff.getMonth() + loan.payoffMonth);
-  return { debt, equity, schedule, payoffMonth: loan.payoffMonth, payoffLabel: loan.payoffMonth ? payoff.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null };
+  return { debt, equity, schedule, payoffMonth: loan.payoffMonth, payoffLabel: loan.payoffMonth ? payoff.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null, points: loan.points };
+}
+
+export function calendarPayoff(property: Property, now = new Date()) {
+  const model = payoffModel(property);
+  if (!model?.points) return { rows: [] as { year: number; principal: number; interest: number; balance: number; current: boolean }[], monthsLeft: 0, yearEndBalance: null as number | null };
+  const monthsLeft = 12 - now.getMonth();
+  const yearEnd = model.points[Math.min(monthsLeft, model.points.length - 1)];
+  const rows = new Map<number, { principal: number; interest: number; balance: number }>();
+  model.points.forEach(point => {
+    if (point.month === 0) return;
+    const date = new Date(now.getFullYear(), now.getMonth() + point.month - 1, 1);
+    const year = date.getFullYear();
+    const bucket = rows.get(year) || { principal: 0, interest: 0, balance: point.balance };
+    bucket.principal += point.principal;
+    bucket.interest += point.interest;
+    bucket.balance = point.balance;
+    rows.set(year, bucket);
+  });
+  return {
+    rows: [...rows.entries()].map(([year, row]) => ({ year, ...row, current: year === now.getFullYear() })),
+    monthsLeft,
+    yearEndBalance: yearEnd ? yearEnd.balance : null,
+  };
 }
 
 export function upcomingLeases(units: LeaseUnit[], withinDays = 90) {

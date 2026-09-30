@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Unit } from '@/lib/types';
+import type { PropertyDocument, Unit } from '@/lib/types';
 import { formatKpiCurrency } from '@/lib/propertyFinancials';
 import { UNIT_DETAIL_FIELDS, invalidateSupabaseCache } from '@/lib/supabaseData';
 import { SecondaryButton } from '@/components/common/ProductControls';
+import { emptyProfile, type PropertyProfile } from '@/lib/propertyProfile';
+import { monthActivity, nextLeaseLabel } from '@/lib/propertyPosition';
+import type { HistoryTransaction } from '@/lib/financialHistory';
 
 const LEASE_DOC_PREFIX = 'property-documents:';
 function leaseStorageRef(value?: string | null) {
@@ -13,46 +16,111 @@ function leaseStorageRef(value?: string | null) {
   return leasePath.startsWith(LEASE_DOC_PREFIX) ? { bucket: 'property-documents', path: leasePath.slice(LEASE_DOC_PREFIX.length) } : { bucket: 'unit-leases', path: leasePath };
 }
 
-export default function PropertyUnits({units,propertyId,managementFeePercent=0,onUnitsUpdated,onLeaseSynced}:{units:Unit[];propertyId:string;managementFeePercent?:number|null;onUnitsUpdated:(units:Unit[])=>void;onLeaseSynced:()=>void|Promise<void>}){
+export default function PropertyUnits({units,propertyId,documents=[],transactions=[],managementFeePercent=0,profile=emptyProfile(),onUnitsUpdated,onLeaseSynced,onProfileSaved,onManagementFee}:{units:Unit[];propertyId:string;documents?:PropertyDocument[];transactions?:HistoryTransaction[];managementFeePercent?:number|null;profile?:PropertyProfile;onUnitsUpdated:(units:Unit[])=>void;onLeaseSynced:()=>void|Promise<void>;onProfileSaved?:(profile:PropertyProfile)=>void;onManagementFee?:(fee:number)=>void}){
   const [editingUnitId,setEditingUnitId]=useState<string|null>(null);
   const [adding,setAdding]=useState(false);
+  const [leaseUnitId,setLeaseUnitId]=useState(units[0]?.id||'');
+  const [uploading,setUploading]=useState(false);
+  const [editingManagement,setEditingManagement]=useState(false);
+  const [managerName,setManagerName]=useState(profile.manager_name||'');
+  const [managementType,setManagementType]=useState(profile.management_type||'self');
+  const [feeInput,setFeeInput]=useState(String(managementFeePercent||0));
+  const [managementError,setManagementError]=useState('');
   const editingUnit=(units.find(u=>u.id===editingUnitId)||null) as any;
   const handleSaved=(unitId:string,patch:Record<string,unknown>)=>{ onUnitsUpdated(units.map(u=>u.id===unitId?({...u,...patch} as Unit):u)); setEditingUnitId(null); };
-  const occupied=units.filter(unit=>unit.occupied);
-  const inPlace=occupied.reduce((sum,unit)=>sum+Number(unit.current_rent||0),0);
   const expected=units.reduce((sum,unit)=>sum+Number(unit.current_rent||0),0);
+  const occupiedCount=units.filter(unit=>unit.occupied).length;
+  const occupancyLabel=!units.length?'No units':occupiedCount===units.length?'Fully occupied':occupiedCount===0?'Vacant':'Partially occupied';
+  const lastMonthDate=useMemo(()=>{const date=new Date();date.setDate(1);date.setMonth(date.getMonth()-1);return date;},[]);
+  const lastRent=monthActivity(transactions,propertyId,lastMonthDate).rent;
+  const lastLabel=lastMonthDate.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const leaseLine=nextLeaseLabel(units as any);
+  const leases=documents.filter(document=>document.category==='Lease'&&!document.archived_at);
   const fee=Number(managementFeePercent||0);
+  async function setOccupied(unit:Unit,occupied:boolean){
+    const result=await supabase.from('units').update({occupied}).eq('id',unit.id);
+    if(!result.error)onUnitsUpdated(units.map(item=>item.id===unit.id?{...item,occupied}:item));
+  }
+  async function uploadLease(file:File){
+    const unit=units.find(item=>item.id===leaseUnitId)||units[0];
+    if(!unit)return;
+    setUploading(true);
+    try{
+      const auth=await supabase.auth.getUser();
+      const user=auth.data.user;
+      if(!user)throw new Error('You need to be signed in.');
+      const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');
+      const storagePath=`${user.id}/${propertyId}/${unit.id}/${Date.now()}-${safe}`;
+      const upload=await supabase.storage.from('property-documents').upload(storagePath,file,{upsert:false,contentType:file.type||undefined});
+      if(upload.error)throw upload.error;
+      const leasePath=`${LEASE_DOC_PREFIX}${storagePath}`;
+      const unitUpdate=await supabase.from('units').update({lease_document_path:leasePath}).eq('id',unit.id);
+      if(unitUpdate.error)throw unitUpdate.error;
+      const docPatch={user_id:user.id,property_id:propertyId,unit_id:unit.id,category:'Lease',title:`${unit.unit_number||'Unit'} Lease${unit.tenant_name?` · ${unit.tenant_name}`:''}`,file_name:file.name,storage_path:storagePath,mime_type:file.type||null,file_size:file.size,document_date:(unit as any).lease_start_date||null,expires_at:(unit as any).lease_end_date||null,reminder_days:60,notes:unit.tenant_name?`Signed lease for ${unit.tenant_name}`:null,archived_at:null};
+      const inserted=await supabase.from('documents').insert(docPatch);
+      if(inserted.error)throw inserted.error;
+      onUnitsUpdated(units.map(item=>item.id===unit.id?{...item,lease_document_path:leasePath} as Unit:item));
+      await onLeaseSynced();
+    }finally{setUploading(false);}
+  }
+  async function saveManagement(){
+    setManagementError('');
+    const nextFee=Number(feeInput||0);
+    const nextProfile={...profile,management_type:managementType,manager_name:managementType==='manager'?managerName.trim():''};
+    const result=await supabase.from('properties').update({management_fee_percent:nextFee,property_profile:nextProfile}).eq('id',propertyId);
+    if(result.error){setManagementError(result.error.message.includes('property_profile')?'Run V246_PROPERTY_PROFILE.sql, then save again.':result.error.message);return;}
+    invalidateSupabaseCache(`property:${propertyId}`);
+    onManagementFee?.(nextFee);
+    onProfileSaved?.(nextProfile);
+    setEditingManagement(false);
+  }
   return <>
     <div className="property-stack">
       <section className="property-module">
-        <h2>Rent</h2>
-        <div className="property-stat-row">
-          <div><span>In place</span><strong>{formatKpiCurrency(inPlace)}/mo</strong></div>
-          <div><span>Expected</span><strong>{formatKpiCurrency(expected)}/mo</strong></div>
-          <div><span>Vacant</span><strong>{units.length-occupied.length}</strong></div>
+        <h2>Rent at a glance</h2>
+        <p className="property-module-note">What the units should bring in, and what came in last month.</p>
+        <div className="property-glance">
+          <div><span>Expected rent</span><strong>{formatKpiCurrency(expected)}/mo</strong><small>All units</small></div>
+          <div><span>Occupancy</span><strong className={occupancyLabel==='Fully occupied'?'property-signed is-positive':''}>{occupancyLabel}</strong></div>
+          <div><span>Rent · {lastLabel}</span><strong>{lastRent>0?formatKpiCurrency(lastRent):'Not entered'}</strong></div>
+          <div><span>Lease ends</span><strong>{leaseLine==='No upcoming lease end'?'No lease dates':leaseLine.replace('Next lease ends ','')}</strong></div>
         </div>
-        {fee>0&&<p className="property-module-note">Management fee is {fee}% of collected rent.</p>}
       </section>
       <section className="property-module">
-        <div className="property-module-head"><h2>Tenants</h2><SecondaryButton onClick={()=>setAdding(true)}>Add unit</SecondaryButton></div>
-        {!units.length?<p className="property-module-note">No units yet.</p>:<div className="property-table-scroll"><table className="property-tenant-table">
-          <thead><tr><th>Unit</th><th>Tenant</th><th>Rent</th><th>Lease</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            {units.map((rawUnit,index)=>{
-              const unit=rawUnit as any;
-              const lease=leaseStatus(unit.lease_start_date,unit.lease_end_date,unit.occupied);
-              const hasLease=Boolean(unit.lease_document_path);
-              return <tr key={unit.id}>
-                <td>{unit.unit_number||`Unit ${index+1}`}</td>
-                <td>{unit.tenant_name||'—'}</td>
-                <td>{formatKpiCurrency(Number(unit.current_rent||0))}</td>
-                <td>{unit.lease_end_date?longDate(unit.lease_end_date):'—'}</td>
-                <td>{unit.occupied?lease.short:'Vacant'}</td>
-                <td className="property-tenant-actions">{hasLease?<LeaseViewButton path={unit.lease_document_path}/>:<button type="button" className="property-text-action" onClick={()=>setEditingUnitId(unit.id)}>Add lease</button>}<SecondaryButton className="unit-edit-action" onClick={()=>setEditingUnitId(unit.id)}>Edit</SecondaryButton></td>
-              </tr>;
-            })}
-          </tbody>
-        </table></div>}
+        <div className="property-module-head"><div><h2>Units</h2><p className="property-module-note">Rent, deposit, lease dates and status per unit.</p></div><SecondaryButton onClick={()=>setAdding(true)}>Add unit</SecondaryButton></div>
+        {!units.length?<p className="property-module-note">No units yet.</p>:<div className="property-unit-rows">
+          {units.map((rawUnit,index)=>{
+            const unit=rawUnit as any;
+            return <div className="property-unit-row" key={unit.id}>
+              <div><strong>{unit.unit_number||`Unit ${index+1}`}</strong><span>{formatKpiCurrency(Number(unit.current_rent||0))}/mo · {unit.lease_end_date?`lease ends ${longDate(unit.lease_end_date)}`:'no lease date'}</span></div>
+              <div className="property-unit-tools">
+                <select aria-label={`${unit.unit_number||'Unit'} status`} value={unit.occupied?'occupied':'vacant'} onChange={event=>setOccupied(unit,event.target.value==='occupied')}><option value="occupied">Occupied</option><option value="vacant">Vacant</option></select>
+                <button type="button" className="property-text-action" onClick={()=>setEditingUnitId(unit.id)}>Edit</button>
+              </div>
+            </div>;
+          })}
+        </div>}
+      </section>
+      <section className="property-module">
+        <div className="property-module-head">
+          <div><h2>Lease documents</h2><p className="property-module-note">Signed leases and rental agreements, kept with the rent details.</p></div>
+          <label className="property-secondary-action">{uploading?'Uploading…':'Upload lease'}<input type="file" accept="application/pdf,image/*" hidden disabled={uploading||!units.length} onChange={event=>{const file=event.target.files?.[0];if(file)void uploadLease(file);event.target.value='';}} /></label>
+        </div>
+        {units.length>1?<label className="property-lease-unit">Attach to<select value={leaseUnitId} onChange={event=>setLeaseUnitId(event.target.value)}>{units.map(unit=><option key={unit.id} value={unit.id}>{unit.unit_number||'Unit'}</option>)}</select></label>:null}
+        {leases.length?<ul className="property-coming-list">{leases.map(document=><li key={document.id}><span>{document.title||document.file_name}</span><LeaseViewButton path={`${LEASE_DOC_PREFIX}${document.storage_path}`} /></li>)}</ul>:<p className="property-module-note">No lease uploaded yet — add the signed lease so it’s on hand at renewal time.</p>}
+      </section>
+      <section className="property-module">
+        <div className="property-module-head"><div><h2>Property management</h2><p className="property-module-note">Who runs this property day to day.</p></div><button type="button" className="property-secondary-action" onClick={()=>setEditingManagement(open=>!open)}>Edit</button></div>
+        {editingManagement?<div className="property-management-form">
+          <div className="property-chart-pills">
+            <button type="button" className={managementType==='self'?'active':''} onClick={()=>setManagementType('self')}>Self-managed</button>
+            <button type="button" className={managementType==='manager'?'active':''} onClick={()=>setManagementType('manager')}>Manager</button>
+          </div>
+          {managementType==='manager'?<label>Manager<input value={managerName} onChange={event=>setManagerName(event.target.value)} /></label>:null}
+          <label>Fee percent<input type="number" min="0" max="100" step="0.1" value={feeInput} onChange={event=>setFeeInput(event.target.value)} /></label>
+          {managementError?<p className="property-module-note">{managementError}</p>:null}
+          <button type="button" className="ui-button ui-button--primary" onClick={saveManagement}>Save</button>
+        </div>:<span className="property-management-pill">{profile.management_type==='manager'&&profile.manager_name?profile.manager_name:'Self-managed'}{fee>0?` · ${fee}%`:''}</span>}
       </section>
     </div>
     {adding&&<UnitAddModal propertyId={propertyId} onClose={()=>setAdding(false)} onCreated={unit=>{onUnitsUpdated([...units,unit]);setAdding(false);}}/>}
@@ -125,5 +193,4 @@ function UnitAddModal({propertyId,onClose,onCreated}:{propertyId:string;onClose:
   return <div className="workspace-modal-overlay"><div className="workspace-modal unit-edit-modal"><div className="workspace-modal-head"><div><div className="eyebrow">UNIT</div><h2>Add unit</h2></div><button type="button" className="workspace-modal-close" onClick={onClose}>×</button></div>{error&&<div className="workspace-form-error">{error}</div>}<form onSubmit={save} className="workspace-form"><label>Unit name / number<input required value={form.unit_number} onChange={event=>setForm({...form,unit_number:event.target.value})}/></label><div className="workspace-form-grid two"><label>Monthly rent<input type="number" min="0" step="0.01" value={form.current_rent} onChange={event=>setForm({...form,current_rent:event.target.value})}/></label><label>Tenant<input value={form.tenant_name} onChange={event=>setForm({...form,tenant_name:event.target.value})}/></label></div><label className="workspace-checkbox"><input type="checkbox" checked={form.occupied} onChange={event=>setForm({...form,occupied:event.target.checked})}/><span>Occupied</span></label><div className="workspace-form-grid three"><label>Bedrooms<input type="number" min="0" step="1" value={form.bedroom_count} onChange={event=>setForm({...form,bedroom_count:event.target.value})}/></label><label>Bathrooms<input type="number" min="0" step="0.5" value={form.bathroom_count} onChange={event=>setForm({...form,bathroom_count:event.target.value})}/></label><label>Sqft<input type="number" min="0" step="1" value={form.sqft} onChange={event=>setForm({...form,sqft:event.target.value})}/></label></div><div className="workspace-modal-footer"><button type="button" className="property-secondary-action" onClick={onClose}>Cancel</button><button disabled={saving} className="workspace-primary-button">{saving?'Saving…':'Add unit'}</button></div></form></div></div>;
 }
 
-function leaseStatus(start?:string|null,end?:string|null,occupied?:boolean){if(!occupied)return{label:'Vacant',short:'Vacant',tone:'neutral'};if(!end)return{label:'Lease dates not set',short:'Not set',tone:'neutral'};const today=new Date();today.setHours(0,0,0,0);const endDate=new Date(`${end.slice(0,10)}T12:00:00`);const days=Math.ceil((endDate.getTime()-today.getTime())/86400000);if(days<0)return{label:`Lease expired ${Math.abs(days)} days ago`,short:'Expired',tone:'danger'};if(days===0)return{label:'Lease ends today',short:'Ends today',tone:'warning'};if(days<=60)return{label:`Lease ends in ${days} days`,short:`${days} days left`,tone:'warning'};return{label:`${days} days remaining on lease`,short:`${days} days left`,tone:'good'};}
 function longDate(value:string){const d=new Date(`${value.slice(0,10)}T12:00:00`);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}

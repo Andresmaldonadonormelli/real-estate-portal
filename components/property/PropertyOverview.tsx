@@ -7,10 +7,11 @@ import PositionChart from '@/components/property/PositionChart';
 import { buildMonthlyFinancialHistory, type HistoryPeriod, type HistoryTransaction } from '@/lib/financialHistory';
 import { formatKpiCurrency } from '@/lib/propertyFinancials';
 import { occupancyCounts } from '@/lib/portfolioAttention';
+import { cashInDeal, currentEquity, emptyProfile, loanPaidDown, valueChange, type PropertyProfile } from '@/lib/propertyProfile';
 import {
   cashFlowThisYear,
-  equityOf,
   investorNumbers,
+  latestYearCashFlow,
   monthActivity,
   nextLeaseLabel,
   payoffModel,
@@ -32,10 +33,11 @@ const PERIODS: { value: HistoryPeriod; label: string }[] = [
   { value: '1Y', label: '1Y' },
 ];
 
-export default function PropertyOverview({ property, units, transactions }: {
+export default function PropertyOverview({ property, units, transactions, profile = emptyProfile() }: {
   property: Property;
   units: Unit[];
   transactions: HistoryTransaction[];
+  profile?: PropertyProfile;
 }) {
   const [series, setSeries] = useState<Series>('equity');
   const [path, setPath] = useState<Path>('to-date');
@@ -45,12 +47,17 @@ export default function PropertyOverview({ property, units, transactions }: {
   const [showKnown, setShowKnown] = useState(false);
   const leaseUnits = units as LeaseUnit[];
   const occupancy = occupancyCounts(leaseUnits);
-  const equity = equityOf(property);
+  const equity = currentEquity(property, profile);
   const debt = Number(property.mortgage_balance || 0);
   const price = Number(property.purchase_price || 0);
-  const model = useMemo(() => payoffModel(property), [property]);
+  const deal = cashInDeal(profile);
+  const dealAmount = deal > 0 ? deal : price;
+  const value = Number(profile.estimated_value || 0);
+  const ltv = value > 0 ? debt / value : null;
+  const model = useMemo(() => payoffModel(property, value > 0 ? value : null), [property, value]);
   const numbers = useMemo(() => investorNumbers(property, transactions), [property, transactions]);
   const yearFlow = useMemo(() => cashFlowThisYear(transactions, property.id), [transactions, property.id]);
+  const latestMonth = useMemo(() => latestYearCashFlow(transactions, property.id), [transactions, property.id]);
   const comingUp = useMemo(() => upcomingLeases(leaseUnits), [leaseUnits]);
   const history = useMemo(() => buildMonthlyFinancialHistory(transactions, flowPeriod, property.id), [transactions, flowPeriod, property.id]);
   const lastMonthDate = useMemo(() => {
@@ -87,9 +94,28 @@ export default function PropertyOverview({ property, units, transactions }: {
         </div>
         <aside className="property-position-side">
           <p className="property-kicker">Current position</p>
-          <div><span>Cash flow this year</span><strong className={`property-signed ${signedTone(yearFlow)}`}>{yearFlow > 0 ? `+${formatKpiCurrency(yearFlow)}` : formatKpiCurrency(yearFlow)}</strong></div>
-          <div><span>Loan balance</span><strong>{formatKpiCurrency(debt)}</strong></div>
-          <div><span>Cash in the deal</span><strong>{formatKpiCurrency(price)}</strong><small>Purchase price</small></div>
+          <div className="property-position-metrics">
+            <div>
+              <span>Cash flow this year</span>
+              <strong className={`property-signed ${signedTone(yearFlow)}`}>{yearFlow > 0 ? `+${formatKpiCurrency(yearFlow)}` : formatKpiCurrency(yearFlow)}</strong>
+              {latestMonth ? <small>{latestMonth.label} {latestMonth.cashFlow > 0 ? `+${formatKpiCurrency(latestMonth.cashFlow)}` : formatKpiCurrency(latestMonth.cashFlow)}</small> : <small>No activity this year</small>}
+            </div>
+            <div>
+              <span>Estimated value</span>
+              <strong>{formatKpiCurrency(value)}</strong>
+              <small>{value > 0 && profile.estimated_value_as_of ? `As of ${shortDate(profile.estimated_value_as_of)}` : 'Not saved'}</small>
+            </div>
+            <div>
+              <span>Loan balance</span>
+              <strong>{formatKpiCurrency(debt)}</strong>
+              {ltv != null ? <small>{percentOrDash(ltv)} loan-to-value</small> : null}
+            </div>
+            <div>
+              <span>Cash in the deal</span>
+              <strong>{formatKpiCurrency(dealAmount)}</strong>
+              <small>{deal > 0 ? 'Down payment and closing costs' : 'Purchase price'}</small>
+            </div>
+          </div>
         </aside>
         <div className="property-investor">
           <button type="button" aria-expanded={showInvestors} onClick={() => setShowInvestors(open => !open)}>
@@ -113,7 +139,7 @@ export default function PropertyOverview({ property, units, transactions }: {
       <span>{nextLeaseLabel(leaseUnits)}</span>
     </section>
 
-    <div className="property-split">
+    <div className="property-quad">
       <section className="property-module property-flow-chart">
         <div className="property-module-head">
           <h2>Monthly cash flow</h2>
@@ -121,10 +147,7 @@ export default function PropertyOverview({ property, units, transactions }: {
         </div>
         <FinancialHistoryChart rows={history} label="Monthly cash flow" />
       </section>
-      <EquityComposition equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
-    </div>
-
-    <div className="property-split property-split-lower">
+      <EquityComposition property={property} profile={profile} equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
       <section className="property-module property-last-month">
         <h2>Last month — {lastLabel}</h2>
         <dl>
@@ -148,23 +171,32 @@ export default function PropertyOverview({ property, units, transactions }: {
   </div>;
 }
 
-function EquityComposition({ equity, open, onToggle }: { equity: number | null; open: boolean; onToggle: () => void }) {
+function EquityComposition({ property, profile, equity, open, onToggle }: { property: Property; profile: PropertyProfile; equity: number | null; open: boolean; onToggle: () => void }) {
+  const down = Number(profile.down_payment || 0);
+  const paidDown = loanPaidDown(property, profile);
+  const change = valueChange(property, profile);
+  const parts = [Math.max(0, down), Math.max(0, paidDown), Math.max(0, change)];
+  const total = parts.reduce((sum, part) => sum + part, 0) || 1;
   return <section className="property-module property-composition">
     <h2>Equity composition</h2>
     <p className="property-module-note">How your equity is built.</p>
-    <div className="equity-bar" aria-hidden="true"><i /></div>
+    <div className="equity-bar" aria-hidden="true">
+      <i className="is-down" style={{ width: `${(parts[0] / total) * 100}%` }} />
+      <i className="is-paydown" style={{ width: `${(parts[1] / total) * 100}%` }} />
+      <i className="is-value" style={{ width: `${(parts[2] / total) * 100}%` }} />
+    </div>
     <dl>
-      <Row label="Down payment" value={formatKpiCurrency(0)} swatch="is-down" />
-      <Row label="Loan paid down since purchase" value={formatKpiCurrency(0)} swatch="is-paydown" />
-      <Row label="Value change since purchase" value={formatKpiCurrency(0)} swatch="is-value" />
+      <Row label="Down payment" value={formatKpiCurrency(down)} swatch="is-down" />
+      <Row label="Loan paid down since purchase" value={formatKpiCurrency(paidDown)} swatch="is-paydown" />
+      <Row label="Value change since purchase" value={formatKpiCurrency(change)} swatch="is-value" />
     </dl>
     <div className="property-composition-total"><span>Equity</span><strong className={equity && equity > 0 ? 'property-signed is-positive' : ''}>{formatKpiCurrency(equity ?? 0)}</strong></div>
     <div className="property-composition-deal">
       <h3>Cash in the deal</h3>
       <p>The cash you have put in, minus cash you have taken out. Cash return is worked out on this.</p>
-      <Row label="Down payment" value={formatKpiCurrency(0)} />
-      <Row label="Closing costs" value={formatKpiCurrency(0)} />
-      <div className="property-composition-total"><span>Cash in the deal</span><strong>{formatKpiCurrency(0)}</strong></div>
+      <Row label="Down payment" value={formatKpiCurrency(down)} />
+      <Row label="Closing costs" value={formatKpiCurrency(Number(profile.closing_costs || 0))} />
+      <div className="property-composition-total"><span>Cash in the deal</span><strong>{formatKpiCurrency(down + Number(profile.closing_costs || 0))}</strong></div>
     </div>
     <button type="button" className="property-known" aria-expanded={open} onClick={onToggle}>
       <span>Known values</span>
@@ -172,6 +204,12 @@ function EquityComposition({ equity, open, onToggle }: { equity: number | null; 
     </button>
     {open && <p className="property-module-note">Down payment, closing costs, loan paydown, and value change are not saved yet.</p>}
   </section>;
+}
+
+function shortDate(value: string) {
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function EmptyPlot() {
