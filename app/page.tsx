@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -17,11 +16,10 @@ import { resolveNotificationTransaction } from '@/lib/notificationMatch';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
-import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
 import NotificationBell from '@/components/dashboard/NotificationBell';
-import FinancialHealth from '@/components/dashboard/FinancialHealth';
-import RecentActivity from '@/components/dashboard/RecentActivity';
-import { ChartLegend, ProductSelect } from '@/components/common/ProductControls';
+import PortfolioLanding from '@/components/dashboard/PortfolioLanding';
+import { ProductSelect } from '@/components/common/ProductControls';
+import { parseProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
 
@@ -31,6 +29,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, PropertyProfile>>({});
   const [units, setUnits] = useState<Unit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
@@ -120,6 +119,14 @@ export default function Dashboard() {
       ]), 8000, 'Dashboard data took too long to load. Please retry.');
       const err=p.error||u.error||t.error||d.error; if(err) throw err;
       const props=(p.data||[]) as Property[]; const unitRows=(u.data||[]) as Unit[]; const txRows=(t.data||[]) as Transaction[];
+      const profileResult = await cachedSupabaseRequest('dashboard:property-profiles', async () => {
+        const extended = await supabase.from('properties').select('id,property_profile').is('archived_at', null);
+        if (extended.error) return { data: [] as { id: string; property_profile?: unknown }[], error: null };
+        return extended;
+      });
+      const profileMap: Record<string, PropertyProfile> = {};
+      ((profileResult.data || []) as { id: string; property_profile?: unknown }[]).forEach(row => { profileMap[row.id] = parseProfile(row.property_profile); });
+      setProfiles(profileMap);
 
       // Show the useful dashboard as soon as the core data arrives.
       const docRows=(d.data||[]) as PropertyDocument[];
@@ -333,54 +340,7 @@ export default function Dashboard() {
       </div>
     </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
-    {loading?<PageSkeleton variant="dashboard"/>:<>
-      <FinancialHealth transactions={transactions} properties={properties} propertyId={cashPropertyId} />
-      <section className="dashboard-module dashboard-summary" aria-label="Financial summary">
-        <div><span><span className="dashboard-kpi-full">Rent collected</span><span className="dashboard-kpi-short">Rent</span></span><strong>{formatKpiCurrency(rentCollected)}</strong><SummaryChange change={rentChange}/></div>
-        <div><span><span className="dashboard-kpi-full">Operating expenses</span><span className="dashboard-kpi-short">Expenses</span></span><strong>{formatKpiCurrency(currentCashFlow?.operatingExpenses||0)}</strong><SummaryChange change={expenseChange}/></div>
-        <div><span><span className="dashboard-kpi-full">Net cash flow</span><span className="dashboard-kpi-short">Net</span></span><strong className={monthNetTone?`amount-${monthNetTone}`:''}>{formatKpiCurrency(monthNet)}</strong><SummaryChange change={cashChange}/></div>
-      </section>
-      <div className="dashboard-main-row">
-        <section className="dashboard-module dashboard-chart-module" aria-label="Monthly cash flow">
-          <div className="dashboard-chart-top">
-            <div>
-              <h2>Net cash flow</h2>
-              <div className={`dashboard-chart-value ${monthNetTone?`amount-${monthNetTone}`:''}`}>{formatKpiCurrency(monthNet)}</div>
-            </div>
-            <div className="dashboard-periods" aria-label="Chart history"><span>History</span>{(['3M','6M','9M','1Y'] as HistoryPeriod[]).map(period=><button key={period} type="button" className={cashPeriod===period?'active':''} onClick={()=>setCashPeriod(period)}>{period}</button>)}</div>
-          </div>
-          <ChartLegend variant="incomeExpense"/>
-          <FinancialHistoryChart rows={cashFlow} mode="cashFlow" kind="incomeExpense" label="Monthly portfolio income and expenses"/>
-        </section>
-        <section className="dashboard-module dashboard-rent-status" aria-label="Rent this month">
-          <h2>Rent this month</h2>
-          <div className="dashboard-rent-figure">
-            {collectedPercent!==null&&<strong>{collectedPercent}% rent collected</strong>}
-            <span>{formatKpiCurrency(rentPicture.gross)} received of {formatKpiCurrency(rentPicture.expected)} expected</span>
-          </div>
-          <span className="dashboard-rent-track" aria-hidden="true"><i style={{width:`${rentBar}%`}}/></span>
-          {rentPicture.deductions>0.5&&<p className="dashboard-rent-note">Net proceeds: {formatKpiCurrency(rentPicture.net)}</p>}
-          {rentPicture.deductions>0.5&&<p className="dashboard-rent-note">{formatKpiCurrency(rentPicture.deductions)} in approved deductions</p>}
-          {rentPicture.unpaid>0.5&&<p className="dashboard-rent-outstanding">{formatKpiCurrency(rentPicture.unpaid)} outstanding</p>}
-          {rentPicture.rows.length>0&&<h3>{cashPropertyId?'Unit status':'Property status'}</h3>}
-          <div className="dashboard-rent-list">
-            {rentPicture.rows.map(row=><div className="dashboard-rent-row" key={row.id}><span className="dashboard-rent-copy"><strong>{row.name}</strong><small>{row.occupancy}{row.reason?` · ${row.reason}`:''}</small></span><b data-status={row.status}>{row.statusLabel}</b></div>)}
-          </div>
-        </section>
-      </div>
-      <div className="dashboard-lower-row">
-        <section className="dashboard-module" aria-label="Expenses">
-          <div className="dashboard-expense-head"><h2>Expenses</h2><Link href={ledgerHref} className="dashboard-tx-all">View all expenses<ChevronRight size={14} aria-hidden="true"/></Link></div>
-          <p className="dashboard-expense-scope">{monthLabel} {overviewYear} · Operating expenses only</p>
-          <strong className="dashboard-expense-total">{formatKpiCurrency(expenseBreakdown.total)} total</strong>
-          <div className="dashboard-expense-list">{expenseBreakdown.rows.map(item=>{
-            const spent=item.amount>0.5;
-            return <div className="dashboard-expense-row" key={item.key} data-spent={spent?'true':'false'}><div className="dashboard-expense-label"><span className="dashboard-expense-name"><strong>{spent?`${item.label} (${Math.round(item.share*100)}%)`:item.label}</strong>{item.review&&<Link href={reviewHref} className="dashboard-expense-review">Review</Link>}</span><b>{spent?formatKpiCurrency(item.amount):`${formatKpiCurrency(0)} (0%)`}</b></div><span className="dashboard-expense-track">{spent&&<i style={{width:`${item.share*100}%`,background:item.color}}/>}</span></div>;
-          })}</div>
-        </section>
-        <RecentActivity variant="table" items={recentItems} ledgerHref={ledgerHref} onOpenTransaction={id=>{setFromNotifications(false);setDetailEditing(false);setActiveTransaction(transactions.find(tx=>tx.id===id)||null)}}/>
-      </div>
-    </>}
+    {loading?<PageSkeleton variant="dashboard"/>:<PortfolioLanding properties={cashPropertyId?properties.filter(property=>property.id===cashPropertyId):properties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} />}
     {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal back={fromNotifications} transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false);setFromNotifications(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {(showQuickAdd||(activeTransaction&&detailEditing))&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={detailEditing?activeTransaction:null} onClose={()=>{if(detailEditing){setDetailEditing(false);return;}setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated');setShowQuickAdd(false);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}

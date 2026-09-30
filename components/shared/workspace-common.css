@@ -43,7 +43,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .ledger-v230-more-wrap>button:hover,
   .ledger-v230-review:hover,
   .document-feed-detail:hover,
-  .property-menu button:hover { transform: none; }
+  .property-menu button:hover,
+  .property-chart-pills button:hover,
+  .landing-disclosure:hover { transform: none; }
   .icon-button:hover { background: var(--surface-hover); }
   a:hover { opacity: .88; }
 }
