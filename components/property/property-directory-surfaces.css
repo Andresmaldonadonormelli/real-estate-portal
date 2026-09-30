@@ -14,3 +14,4 @@
     box-shadow: var(--shadow-card) !important;
   }
 }
+.property-directory-table .property-directory-row{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}

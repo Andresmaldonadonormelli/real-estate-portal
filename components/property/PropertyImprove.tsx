@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import PortfolioImprove from '@/components/property/PortfolioImprove';
+import { supabase } from '@/lib/supabase';
 import type { Property, Unit } from '@/lib/types';
 import { buildBreakdown, calculateMetrics, formatKpiCurrency, type PropertyTransaction as Tx } from '@/lib/propertyFinancials';
 import { SegmentedControl, UnderlineTabs } from '@/components/common/ProductControls';
@@ -15,11 +17,14 @@ const EMPTY:Changes={rent:0,management:null,maintenance:null,other:null};
 export default function PropertyImprove({property,units,transactions}:{property:Property;units:Unit[];transactions:Tx[]}){
   const storageKey=`property-improve:${property.id}`;
   const [tool,setTool]=useState<Tool>('landing');
+  const [userId,setUserId]=useState('');
+  const [addSignal,setAddSignal]=useState(0);
   const [lever,setLever]=useState<Lever>('rent');
   const [changes,setChanges]=useState<Changes>(EMPTY);
   const [extra,setExtra]=useState('50');
   const [custom,setCustom]=useState('');
   const year=new Date().getFullYear(),months=Math.max(1,new Date().getMonth()+1);
+  useEffect(()=>{supabase.auth.getUser().then(({data})=>setUserId(data.user?.id||''));},[]);
   useEffect(()=>{try{const saved=localStorage.getItem(storageKey);if(saved)setChanges({...EMPTY,...JSON.parse(saved)})}catch{}},[storageKey]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(changes))}catch{}},[changes,storageKey]);
   const rows=useMemo(()=>transactions.filter(t=>t.status!=='declined'&&Number(t.transaction_date.slice(0,4))===year),[transactions,year]);
@@ -39,7 +44,7 @@ export default function PropertyImprove({property,units,transactions}:{property:
   const setChange=(key:Lever,value:number)=>setChanges(previous=>({...previous,[key]:value}));
   const clear=()=>{setChanges(EMPTY);try{localStorage.removeItem(storageKey)}catch{}};
 
-  if(tool==='landing')return <section className="improve-simple"><p>Choose what you want to improve.</p><div className="improve-choice-list"><button onClick={()=>setTool('cash')}><span>Improve cash flow</span><ChevronRight size={18}/></button><button onClick={()=>setTool('mortgage')}><span>Pay off mortgage sooner</span><ChevronRight size={18}/></button></div></section>;
+  if(tool==='landing')return <div className="property-stack"><section className="improve-simple property-module"><p>Choose what you want to improve.</p><div className="improve-choice-list"><button onClick={()=>setTool('cash')}><span>Improve cash flow</span><ChevronRight size={18}/></button><button onClick={()=>setTool('mortgage')}><span>Pay off mortgage sooner</span><ChevronRight size={18}/></button></div></section>{userId&&<PortfolioImprove properties={[property]} userId={userId} addSignal={addSignal} propertyId={property.id} onAdd={()=>setAddSignal(value=>value+1)}/>}</div>;
   return <section className="improve-tool"><button className="improve-back" onClick={()=>setTool('landing')}><ChevronLeft size={18}/>Improve</button><h2>{tool==='cash'?'Improve cash flow':'Pay off mortgage sooner'}</h2>
     {tool==='cash'?<div className="improve-tool-grid"><div className="improve-controls"><UnderlineTabs value={lever} onChange={setLever} label="Cash-flow lever" className="improve-lever-tabs" options={[{value:'rent',label:'Rent'},{value:'management',label:'Management'},{value:'maintenance',label:'Maintenance'},{value:'other',label:'Other'}]}/><CashControl lever={lever} value={changes[lever]} setValue={value=>setChange(lever,value)} managementRate={managementRate} maintenance={maintenance} other={other}/><div className="improve-assumptions"><LeverDetails lever={lever} units={occupied} managementRate={managementRate} management={management} maintenance={maintenance} other={other}/></div>{totalGain>0&&<div className="improve-change-summary"><div><strong>Saved changes</strong><button onClick={clear}>Clear changes</button></div>{changes.rent>0&&<span>Rent +{formatKpiCurrency(changes.rent)} per unit</span>}{changes.management!==null&&<span>Management {managementRate}% → {changes.management}%</span>}{changes.maintenance!==null&&<span>Maintenance {formatKpiCurrency(maintenance)} → {formatKpiCurrency(changes.maintenance)}/mo</span>}{changes.other!==null&&<span>Other {formatKpiCurrency(other)} → {formatKpiCurrency(changes.other)}/mo</span>}</div>}</div><Results current={current} next={current+totalGain} difference={totalGain}/></div>
     :<div className="improve-tool-grid"><div className="improve-controls"><div className="improve-control-head"><span className="improve-control-label">Extra monthly principal</span><button onClick={()=>{setExtra('0');setCustom('')}}>Clear</button></div><SegmentedControl value={extra} onChange={setExtra} label="Extra monthly principal" className="improve-mortgage-options" options={[{value:'0',label:'$0'},{value:'20',label:'+$20'},{value:'50',label:'+$50'},{value:'100',label:'+$100'},{value:'custom',label:'Custom'}]}/>{extra==='custom'&&<label className="improve-custom"><span>Custom amount</span><input type="number" min="0" value={custom} onChange={e=>setCustom(e.target.value)} inputMode="decimal"/></label>}<div className="improve-mortgage-assumptions"><MortgageDetails model={loan}/><button onClick={openMortgageEditor}>Edit mortgage</button></div></div><MortgageResults model={loan} extra={monthlyExtra}/></div>}

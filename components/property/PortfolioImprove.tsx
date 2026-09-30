@@ -88,7 +88,7 @@ function statusText(item: Improvement) {
   return `${STATUS_LABEL[item.status]} · ${PRIORITY_LABEL[item.priority]}`;
 }
 
-export default function PortfolioImprove({ properties, userId, addSignal }: { properties: Property[]; userId: string; addSignal: number }) {
+export default function PortfolioImprove({ properties, userId, addSignal, propertyId = '', onAdd }: { properties: Property[]; userId: string; addSignal: number; propertyId?: string; onAdd?: () => void }) {
   const [items, setItems] = useState<Improvement[]>([]);
   const [ready, setReady] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -110,9 +110,9 @@ export default function PortfolioImprove({ properties, userId, addSignal }: { pr
   useEffect(() => {
     if (addSignal < 1) return;
     setEditingId(null);
-    setForm({ ...EMPTY, propertyId: propertiesRef.current[0]?.id || '' });
+    setForm({ ...EMPTY, propertyId: propertyId || propertiesRef.current[0]?.id || '' });
     setOpen(true);
-  }, [addSignal]);
+  }, [addSignal, propertyId]);
 
   useEffect(() => {
     if (!open) return;
@@ -129,14 +129,15 @@ export default function PortfolioImprove({ properties, userId, addSignal }: { pr
   const propertyName = useMemo(() => new Map(properties.map(property => [property.id, property.address])), [properties]);
   const propertyOrder = useMemo(() => new Map(properties.map((property, index) => [property.id, index])), [properties]);
 
-  const active = items.filter(item => item.status !== 'done').sort((a, b) => {
+  const scoped = propertyId ? items.filter(item => item.propertyId === propertyId) : items;
+  const active = scoped.filter(item => item.status !== 'done').sort((a, b) => {
     const priority = Number(a.priority !== 'high') - Number(b.priority !== 'high');
     if (priority) return priority;
     const status = Number(a.status !== 'active') - Number(b.status !== 'active');
     if (status) return status;
     return (propertyOrder.get(a.propertyId) ?? 99) - (propertyOrder.get(b.propertyId) ?? 99);
   });
-  const completed = items.filter(item => item.status === 'done').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const completed = scoped.filter(item => item.status === 'done').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
   function edit(item: Improvement) {
     setEditingId(item.id);
@@ -179,9 +180,9 @@ export default function PortfolioImprove({ properties, userId, addSignal }: { pr
     setOpen(false);
   }
 
-  return <div className="portfolio-improve portfolio-panel">
-    <div className="portfolio-panel-head"><strong>Improve</strong><span>{items.length}</span></div>
-    {!items.length ? <p className="portfolio-empty">No improvements yet. Add one when you want to compare a project against a property.</p> : <>
+  return <div className={propertyId ? 'property-module property-improvement-list' : 'portfolio-improve portfolio-panel'}>
+    <div className="portfolio-panel-head"><strong>{propertyId ? 'Improvements' : 'Improve'}</strong><span>{scoped.length}</span>{onAdd && <button type="button" className="property-text-action" onClick={onAdd}>Add improvement</button>}</div>
+    {!scoped.length ? <p className="portfolio-empty">No improvements yet. Add one when you want to compare a project against this property.</p> : <>
       {active.length ? <ImproveGroup title="To do next" items={active} propertyName={propertyName} onEdit={edit} showHeader /> : <p className="portfolio-empty">Nothing in progress. Completed improvements stay below.</p>}
       {completed.length ? <ImproveGroup title="Completed" items={completed} propertyName={propertyName} onEdit={edit} showHeader={!active.length} /> : null}
     </>}
@@ -192,7 +193,7 @@ export default function PortfolioImprove({ properties, userId, addSignal }: { pr
           <button type="button" className="sheet-close-button" aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></button>
         </div>
         <form className="portfolio-form" onSubmit={save}>
-          <ProductSelect label="Property" required value={form.propertyId} onChange={event => setForm({ ...form, propertyId: event.target.value })}>
+          <ProductSelect label="Property" required value={form.propertyId} onChange={event => setForm({ ...form, propertyId: event.target.value })} disabled={Boolean(propertyId)}>
             {properties.map(property => <option key={property.id} value={property.id}>{property.address}</option>)}
           </ProductSelect>
           <label>Project<input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>

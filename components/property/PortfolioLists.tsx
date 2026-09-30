@@ -2,12 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ArrowUpRight, ChevronDown } from 'lucide-react';
 import type { Property } from '@/lib/types';
 import type { HistoryTransaction } from '@/lib/financialHistory';
 import { formatCurrency } from '@/lib/formatters';
 import { formatLeaseDate, leaseRangeLabel, nextMortgagePaymentLabel, occupancyCounts, propertyWatch, unitAttention, type PortfolioUnit, type UnitKind } from '@/lib/portfolioAttention';
-import { cashFlowThisMonth, rentThisMonth } from '@/lib/portfolioMonth';
+import { equityOf, moneyOrDash, percentOrDash, propertyTypeLabel, signedTone, trailingCashFlow, monthActivity } from '@/lib/propertyPosition';
+import { formatKpiCurrency } from '@/lib/propertyFinancials';
 
 export type PortfolioDocument = {
   id: string;
@@ -128,84 +129,67 @@ function PropertyDetail({ open, id, label, children }: { open: boolean; id: stri
   </div>;
 }
 
-export function PropertiesList({ properties, unitsByProperty, transactions, documents, imageUrls, onAddFinancing }: {
+export function PropertiesList({ properties, unitsByProperty, transactions, view }: {
   properties: Property[];
   unitsByProperty: Record<string, PortfolioUnit[]>;
   transactions: HistoryTransaction[];
-  documents: PortfolioDocument[];
-  imageUrls: Record<string, string>;
-  onAddFinancing: (property: Property) => void;
+  view: 'cards' | 'table';
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const rentHeading = `${monthName()} rent`;
-  const flowHeading = `${monthName()} net cash flow`;
-  const docsByProperty = documents.reduce<Record<string, PortfolioDocument[]>>((acc, doc) => {
-    (acc[doc.property_id] ||= []).push(doc);
-    return acc;
-  }, {});
+  const rows = properties.map(property => {
+    const units = unitsByProperty[property.id] || [];
+    const equity = equityOf(property);
+    const trailing = trailingCashFlow(transactions, property.id);
+    const price = Number(property.purchase_price || 0);
+    const month = monthActivity(transactions, property.id).cashFlow;
+    return {
+      property,
+      units: units.length,
+      equity,
+      month,
+      average: trailing / 12,
+      cashReturn: price > 0 ? trailing / price : null,
+      returnOnEquity: equity != null && equity > 0 ? trailing / equity : null,
+    };
+  });
 
-  return <div className="portfolio-panel">
-    <div className="portfolio-panel-head"><strong>Properties</strong><span>{properties.length}</span></div>
-    <div className="portfolio-columns portfolio-property-grid" aria-hidden="true">
-      <span>Property</span>
-      <span>Units</span>
-      <span>{rentHeading}</span>
-      <span>{flowHeading}</span>
-      <span>Watch</span>
-      <span />
-    </div>
-    {properties.map((property, index) => {
-      const units = [...(unitsByProperty[property.id] || [])].sort((a, b) => a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true }));
-      const watch = propertyWatch(units);
-      const flow = signedMoney(cashFlowThisMonth(transactions, property.id));
-      const open = expandedId === property.id;
-      const detailId = `property-detail-${property.id}`;
-      const docs = documentSummary(docsByProperty[property.id] || []);
-      const acquired = formatLeaseDate(property.purchase_date);
-      const financed = hasMortgage(property);
-      return <div key={property.id} className="portfolio-property-block">
-        <button type="button" className="portfolio-property-row portfolio-property-grid" aria-expanded={open} aria-controls={detailId} onClick={() => setExpandedId(current => current === property.id ? null : property.id)}>
-          <PropertyFace property={property} image={imageUrls[property.id]} eager={index === 0} />
-          <OccupancyRing units={units} />
-          <span className="portfolio-figure">
-            <span className="portfolio-figure-label">{rentHeading}</span>
-            <strong>{formatCurrency(rentThisMonth(transactions, property.id))}</strong>
-          </span>
-          <span className="portfolio-figure">
-            <span className="portfolio-figure-label">{flowHeading}</span>
-            <strong className={flow.tone === 'positive' ? 'amount-positive' : flow.tone === 'negative' ? 'amount-negative' : ''}>{flow.text}</strong>
-          </span>
-          <span className="portfolio-watch" data-tone={watch.tone}>{watch.label}</span>
-          <ChevronDown className="portfolio-row-chevron" size={16} aria-hidden="true" />
-        </button>
-        <PropertyDetail open={open} id={detailId} label={`${property.address} details`}>
-          <section className="portfolio-detail-section">
-            <div className="portfolio-detail-head">
-              <h3>Mortgage</h3>
-              <button type="button" className="portfolio-detail-action" onClick={() => onAddFinancing(property)}>{financed ? 'Edit mortgage' : 'Add financing'}</button>
-            </div>
-            {financed ? <dl className="portfolio-detail-facts">
-              {knownMoney(property.mortgage_balance) && <Fact label="Balance" value={knownMoney(property.mortgage_balance)} />}
-              {knownRate(property.mortgage_interest_rate) && <Fact label="Interest rate" value={knownRate(property.mortgage_interest_rate)} />}
-              {knownMoney(property.monthly_mortgage_payment) && <Fact label="Monthly payment" value={knownMoney(property.monthly_mortgage_payment)} />}
-              {property.mortgage_start_date && <Fact label="Next payment" value={nextMortgagePaymentLabel(property.mortgage_start_date)} />}
-            </dl> : <p className="portfolio-detail-empty">Mortgage details not added</p>}
-          </section>
-          <section className="portfolio-detail-section">
-            <div className="portfolio-detail-head"><h3>Property details</h3></div>
-            <dl className="portfolio-detail-facts">
-              {acquired && <Fact label="Acquired" value={acquired} />}
-              {knownMoney(property.purchase_price) && <Fact label="Purchase price" value={knownMoney(property.purchase_price)} />}
-              <div className="portfolio-detail-docs">
-                <Fact label="Documents" value={docs.count} />
-                <Link href={`/properties/${property.id}?tab=documents`}>View documents</Link>
-              </div>
-            </dl>
-          </section>
-        </PropertyDetail>
-      </div>;
-    })}
+  if (view === 'table') {
+    return <div className="portfolio-panel property-directory-table">
+      <div className="portfolio-columns property-directory-columns" aria-hidden="true">
+        <span>Property</span><span>Equity</span><span>Cash flow</span><span>Cash return</span><span>Return on equity</span>
+      </div>
+      {rows.map(row => <Link key={row.property.id} href={`/properties/${row.property.id}`} className="portfolio-property-row property-directory-row">
+        <span className="portfolio-property-copy">
+          <strong>{row.property.address}</strong>
+          <small>{row.property.city}, {row.property.state} · {propertyTypeLabel(row.property.property_type)} · {row.units} {row.units === 1 ? 'unit' : 'units'}</small>
+        </span>
+        <span className="portfolio-figure"><span className="portfolio-figure-label">Equity</span><strong>{moneyOrDash(row.equity)}</strong></span>
+        <span className="portfolio-figure"><span className="portfolio-figure-label">Cash flow</span><strong className={`property-signed ${signedTone(row.month)}`}>{formatKpiCurrency(row.month)}</strong><small>12-mo avg {formatKpiCurrency(row.average)}</small></span>
+        <span className="portfolio-figure"><span className="portfolio-figure-label">Cash return</span><strong>{percentOrDash(row.cashReturn)}</strong></span>
+        <span className="portfolio-figure"><span className="portfolio-figure-label">Return on equity</span><strong>{percentOrDash(row.returnOnEquity)}</strong></span>
+      </Link>)}
+    </div>;
+  }
+
+  return <div className="property-directory-cards">
+    {rows.map(row => <Link key={row.property.id} href={`/properties/${row.property.id}`} className="property-directory-card">
+      <span className="property-directory-arrow" aria-hidden="true"><ArrowUpRight size={14} /></span>
+      <span className="portfolio-property-copy">
+        <strong>{row.property.address}</strong>
+        <small>{row.property.city}, {row.property.state}</small>
+        <small>{propertyTypeLabel(row.property.property_type)} · {row.units} {row.units === 1 ? 'unit' : 'units'}</small>
+      </span>
+      <dl className="property-directory-figures">
+        <div><dt>Equity</dt><dd>{moneyOrDash(row.equity)}</dd></div>
+        <div><dt>Cash flow / mo</dt><dd className={`property-signed ${signedTone(row.month)}`}>{signedCash(row.month)}</dd><small>12-mo avg {formatKpiCurrency(row.average)}</small></div>
+      </dl>
+      <p className="property-directory-returns">Cash return {percentOrDash(row.cashReturn)} · Return on equity {percentOrDash(row.returnOnEquity)}</p>
+    </Link>)}
   </div>;
+}
+
+function signedCash(value: number) {
+  const text = formatKpiCurrency(value);
+  return value > 0 ? `+${text}` : text;
 }
 
 export function UnitsList({ properties, unitsByProperty, imageUrls, onAddTenant }: {
