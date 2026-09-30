@@ -1,205 +1,126 @@
 'use client';
 
-import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { categoryKey } from '@/lib/accounting';
-import { buildBreakdown, calculateMetrics, formatDate, formatKpiCurrency, type PropertyTransaction } from '@/lib/propertyFinancials';
-import type { Property, Unit } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import { SegmentedControl } from '@/components/common/ProductControls';
 import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
-import PropertyExpenseTrendsChart from '@/components/charts/PropertyExpenseTrendsChart';
-import ActionCenter, { type ActionCenterItem } from '@/components/dashboard/ActionCenter';
-import RecentActivity from '@/components/dashboard/RecentActivity';
-import { ChartLegend } from '@/components/common/ProductControls';
+import PositionChart from '@/components/property/PositionChart';
+import { buildMonthlyFinancialHistory, type HistoryPeriod, type HistoryTransaction } from '@/lib/financialHistory';
+import { formatKpiCurrency } from '@/lib/propertyFinancials';
+import { occupancyCounts } from '@/lib/portfolioAttention';
 import {
-  buildMonthlyFinancialHistory,
-  type HistoryPeriod,
-  type MonthlyFinancialPoint,
-} from '@/lib/financialHistory';
+  cashFlowThisYear,
+  equityOf,
+  investorNumbers,
+  moneyOrDash,
+  monthActivity,
+  nextLeaseLabel,
+  payoffModel,
+  percentOrDash,
+  ratioOrDash,
+  signedTone,
+  upcomingLeases,
+} from '@/lib/propertyPosition';
+import type { Property, Unit } from '@/lib/types';
 
-type PropertyTab = 'overview' | 'improve' | 'units' | 'documents';
+type Series = 'equity' | 'debt';
+type Path = 'to-date' | 'payoff';
+type LeaseUnit = Unit & { lease_end_date?: string | null };
 
-type Props = {
+const PERIODS: { value: HistoryPeriod; label: string }[] = [
+  { value: '3M', label: '3M' },
+  { value: '6M', label: '6M' },
+  { value: '9M', label: '9M' },
+  { value: '1Y', label: '1Y' },
+];
+
+export default function PropertyOverview({ property, units, transactions }: {
   property: Property;
   units: Unit[];
-  transactions: PropertyTransaction[];
-  expectedRent: number;
-  onNavigate: (tab: PropertyTab) => void;
-  onOpenTransaction: (id: string) => void;
-};
-
-export default function PropertyOverview({ property, units, transactions, expectedRent, onNavigate, onOpenTransaction }: Props) {
+  transactions: HistoryTransaction[];
+}) {
+  const [series, setSeries] = useState<Series>('equity');
+  const [path, setPath] = useState<Path>('to-date');
   const [period, setPeriod] = useState<HistoryPeriod>('1Y');
-  const [inspected, setInspected] = useState<MonthlyFinancialPoint | null>(null);
-  const collapseStorageKey = `property-overview-collapsed:${property.id}`;
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [flowPeriod, setFlowPeriod] = useState<HistoryPeriod>('1Y');
+  const leaseUnits = units as LeaseUnit[];
+  const occupancy = occupancyCounts(leaseUnits);
+  const equity = equityOf(property);
+  const debt = Number(property.mortgage_balance || 0);
+  const price = Number(property.purchase_price || 0);
+  const model = useMemo(() => payoffModel(property), [property]);
+  const numbers = useMemo(() => investorNumbers(property, transactions), [property, transactions]);
+  const month = useMemo(() => monthActivity(transactions, property.id), [transactions, property.id]);
+  const yearFlow = useMemo(() => cashFlowThisYear(transactions, property.id), [transactions, property.id]);
+  const comingUp = useMemo(() => upcomingLeases(leaseUnits), [leaseUnits]);
+  const history = useMemo(() => buildMonthlyFinancialHistory(transactions, flowPeriod, property.id), [transactions, flowPeriod, property.id]);
+  const current = series === 'equity' ? equity : debt;
+  const payoffPoints = series === 'equity' ? model?.equity : model?.debt;
 
-  useEffect(() => {
-    try { setCollapsedSections(JSON.parse(localStorage.getItem(collapseStorageKey) || '{}')); } catch { setCollapsedSections({}); }
-  }, [collapseStorageKey]);
+  return <div className="property-stack">
+    <section className="property-module property-position">
+      <div className="property-position-main">
+        <div className="property-position-switches">
+          <SegmentedControl value={series} onChange={setSeries} label="Chart series" options={[{ value: 'equity', label: 'Equity' }, { value: 'debt', label: 'Debt' }]} />
+          <SegmentedControl value={path} onChange={setPath} label="Chart range" options={[{ value: 'to-date', label: 'To date' }, { value: 'payoff', label: 'Payoff path' }]} />
+        </div>
+        <p className="property-kicker">{series === 'equity' ? 'Equity' : 'Debt'}</p>
+        <strong className={`property-position-value property-signed ${signedTone(current)}`}>{moneyOrDash(current)}</strong>
+        {path === 'to-date' ? <div className="position-chart-empty"><span>{period} view uses the saved {series === 'equity' ? 'equity' : 'balance'}. Earlier balances are not stored, so this does not draw a trend.</span></div> : payoffPoints ? <PositionChart points={payoffPoints} label={`${series} payoff path`} /> : <div className="position-chart-empty"><span>{series === 'equity' && price <= 0 ? 'Add a purchase price to chart equity.' : 'Add a balance, rate, and payment to chart the payoff path.'}</span></div>}
+        {path === 'to-date' && <div className="property-chart-periods" role="group" aria-label="Equity and debt period">
+          {PERIODS.map(option => <button key={option.value} type="button" className={period === option.value ? 'active' : ''} onClick={() => setPeriod(option.value)}>{option.label}</button>)}
+        </div>}
+      </div>
+      <dl className="property-position-side">
+        <div><dt>Cash flow</dt><dd className={`property-signed ${signedTone(yearFlow)}`}>{formatKpiCurrency(yearFlow)}</dd><small>This year</small></div>
+        <div><dt>Loan balance</dt><dd>{moneyOrDash(debt > 0 ? debt : null)}</dd></div>
+        <div><dt>Cash in the deal</dt><dd>{moneyOrDash(price > 0 ? price : null)}</dd><small>Purchase price</small></div>
+      </dl>
+    </section>
 
-  function toggleSection(id:string) {
-    setCollapsedSections(current => {
-      const next = {...current, [id]: !current[id]};
-      localStorage.setItem(collapseStorageKey, JSON.stringify(next));
-      return next;
-    });
-  }
+    <section className="property-module">
+      <h2>Investor numbers</h2>
+      <div className="property-stat-row">
+        <Stat label="DSCR" value={numbers.dscr == null ? '—' : `${ratioOrDash(numbers.dscr)}×`} />
+        <Stat label="Return on equity" value={percentOrDash(numbers.returnOnEquity)} />
+        <Stat label="Cash return" value={percentOrDash(numbers.cashReturn)} />
+      </div>
+      <p className="property-module-note">Returns use the last 12 months of posted cash flow. DSCR uses operating income and mortgage payments from that same window.</p>
+    </section>
 
-  const history = useMemo(() => buildMonthlyFinancialHistory(transactions, period, property.id), [transactions, period, property.id]);
-  const current = history[history.length - 1];
-  const displayed = inspected || current;
-  const currentValue = displayed?.cashFlow || 0;
-  const currentExpenses = displayed?.cashExpenses || 0;
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const collectedRent = transactions.filter(tx => tx.transaction_date.startsWith(currentMonth) && tx.type === 'income' && tx.category === 'Rent' && (tx.status || 'posted') === 'posted').reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0);
-  const periodTransactions = transactions.filter(tx => tx.status !== 'declined' && history.some(month => tx.transaction_date.startsWith(month.key)));
-  const periodMetrics = calculateMetrics(periodTransactions);
-  const expenseRatio = periodMetrics.income > 0 ? periodMetrics.operatingExpenses / periodMetrics.income : 0;
-  const breakdown = buildBreakdown(periodTransactions);
-  const breakdownTotal = breakdown.reduce((sum, item) => sum + item.amount, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const leaseUnits = units as (Unit & { lease_end_date?: string | null })[];
-  const leaseCandidates = leaseUnits.filter(unit => unit.occupied && unit.lease_end_date).map(unit => ({ unit, date: new Date(`${unit.lease_end_date}T12:00:00`) }));
-  const nextLease = leaseCandidates.filter(item => item.date >= today).sort((a, b) => a.date.getTime() - b.date.getTime())[0] || leaseCandidates.filter(item => item.date < today).sort((a, b) => b.date.getTime() - a.date.getTime())[0];
-  const leaseDays = nextLease ? Math.ceil((nextLease.date.getTime() - today.getTime()) / 86400000) : null;
-  const occupied = units.filter(unit => unit.occupied).length;
-  const vacantUnits = leaseUnits.filter(unit => !unit.occupied);
-  const vacancyStarts = vacantUnits.map(unit => unit.lease_end_date || property.purchase_date).filter(Boolean).map(value => new Date(`${value}T12:00:00`)).filter(date => date <= today);
-  const vacancyDays = vacancyStarts.length ? Math.max(...vacancyStarts.map(date => Math.max(0, Math.floor((today.getTime() - date.getTime()) / 86400000)))) : null;
-  const repairExpenses = periodTransactions.filter(tx => tx.type === 'expense' && ['maintenance', 'repairs'].includes(categoryKey(tx.category))).reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0);
-  const recentAverage = period === '3M' ? repairExpenses / 3 : period === '6M' ? repairExpenses / 6 : period === '9M' ? repairExpenses / 9 : repairExpenses / 12;
-  const currentRepairs = periodTransactions.filter(tx => tx.type === 'expense' && tx.transaction_date.startsWith(currentMonth) && ['maintenance', 'repairs'].includes(categoryKey(tx.category))).reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0);
-  const priorRows = history.slice(0, -1);
-  const priorCashFlow = priorRows.reduce((sum, row) => sum + row.cashFlow, 0) / Math.max(1, priorRows.length);
-  const currentCashFlow = current?.cashFlow || 0;
-  const baselineThreshold = Math.max(100, expectedRent * .1);
-  const hasCashHistory = priorRows.filter(row => Math.abs(row.cashFlow) > 0).length >= 3 && Math.abs(priorCashFlow) >= baselineThreshold;
-  const cashDelta = currentCashFlow - priorCashFlow;
-  const expectedPayout = expectedRent * .92;
-  const rentProgress = expectedPayout ? Math.min(100, Math.round(collectedRent / expectedPayout * 100)) : 0;
-  const rentOutstanding = Math.max(0, expectedPayout - collectedRent);
-  const rentDueDay = Math.min(28, Math.max(1, Math.min(...units.map(unit => Number((unit as any).rent_due_day || 5)), 5)));
-  const isPastRentDue = today.getDate() > rentDueDay;
-  const expectedByToday = expectedPayout ? Math.min(100, Math.round(today.getDate() / new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() * 100)) : 0;
-  const expenseDelta = currentRepairs - recentAverage;
-  const expenseRatioToTypical = recentAverage > 0 ? expenseDelta / recentAverage : 0;
-  const expenseTone = recentAverage <= 0 ? 'neutral' : expenseRatioToTypical >= .5 ? 'negative' : expenseRatioToTypical >= .2 ? 'warning' : expenseRatioToTypical <= -.2 ? 'positive' : 'neutral';
-  const expenseStatus = expenseTone === 'negative' ? 'Materially above normal' : expenseTone === 'warning' ? 'Above normal' : expenseTone === 'positive' ? 'Better than normal' : 'Within normal range';
-  const expenseUnusual = expenseTone === 'negative' || expenseTone === 'warning';
-  const rentLate = isPastRentDue && rentOutstanding > 0;
-  const cashBelowTypical = hasCashHistory && cashDelta < -baselineThreshold;
-  const fullyVacant = units.length > 0 && occupied === 0;
-  const holdingCosts = current?.cashExpenses || 0;
-  const pulseHeadline = fullyVacant ? `Vacant for ${vacancyDays || 0} days` : rentLate ? `Rent is ${formatKpiCurrency(rentOutstanding)} behind pace` : cashBelowTypical ? 'Repairs pushed cash flow below typical' : rentProgress === 100 ? `${new Date().toLocaleDateString('en-US', { month: 'long' })} rent is complete` : expenseUnusual ? 'Expenses are above the recent average' : 'Performance is stable';
-  const pulseExplanation = fullyVacant ? `Holding costs have reached ${formatKpiCurrency(holdingCosts)} this month.` : rentLate ? `${formatKpiCurrency(collectedRent)} received of ${formatKpiCurrency(expectedPayout)} expected after management fees.` : cashBelowTypical ? `${formatKpiCurrency(Math.abs(cashDelta))} below a typical month.` : rentProgress === 100 ? `${formatKpiCurrency(expectedPayout)} received.` : expenseUnusual ? `Repairs are ${formatKpiCurrency(expenseDelta)} above the recent monthly average.` : hasCashHistory ? 'Cash flow is within the recent monthly range.' : 'Current property status based on recorded activity.';
-  const occupancyTone = units.length === 0 ? 'neutral' : occupied === units.length ? 'positive' : occupied === 0 ? 'negative' : 'warning';
-  const leaseTone = leaseDays == null || leaseDays > 90 ? 'neutral' : leaseDays <= 30 ? 'negative' : 'warning';
-  const leaseValue = leaseDays == null || leaseDays > 90 ? 'None within 90 days' : leaseDays < 0 ? `Expired ${Math.abs(leaseDays)} days ago` : leaseDays === 0 ? 'Ends today' : `Ends in ${leaseDays} days`;
-  const standardPulseSignals = [
-    { key: 'cash', label: 'Cash flow this month', value: formatKpiCurrency(currentCashFlow), tone: currentCashFlow > 0 ? 'positive' : currentCashFlow < 0 ? 'negative' : 'neutral', priority: cashBelowTypical ? 1 : 3, action: () => location.href = `/ledger?property=${property.id}` },
-    { key: 'occupancy', label: 'Occupancy', value: vacantUnits.length && vacancyDays != null ? `${occupied}/${units.length} · ${vacancyDays}d vacant` : `${occupied}/${units.length} occupied`, tone: occupancyTone, priority: occupied < units.length ? 1 : 4, action: () => onNavigate('units') },
-    { key: 'lease', label: 'Lease risk', value: leaseValue, tone: leaseTone, priority: leaseTone === 'negative' ? 1 : leaseTone === 'warning' ? 2 : 5, action: () => onNavigate('units') },
-    { key: 'expenses', label: 'Expenses', value: expenseStatus, tone: expenseTone, priority: expenseTone === 'negative' ? 1 : expenseTone === 'warning' ? 2 : 6, action: () => location.href = `/ledger?property=${property.id}` },
-  ].sort((a, b) => a.priority - b.priority);
-  const pulseSignals = fullyVacant ? [
-    { key: 'vacancy', label: 'Vacant for', value: `${vacancyDays || 0} days`, tone: 'negative', action: () => onNavigate('units') },
-    { key: 'holding', label: 'Holding costs', value: `${formatKpiCurrency(holdingCosts)} this month`, tone: 'negative', action: () => location.href = `/ledger?property=${property.id}` },
-    { key: 'expenses', label: 'Expenses', value: expenseStatus, tone: expenseTone, action: () => location.href = `/ledger?property=${property.id}` },
-  ] : standardPulseSignals;
-  const needsReview = transactions.filter(tx => (tx.status || 'posted') === 'posted' && (tx.needs_review || tx.category === 'Needs Review')).length;
-  const actionItems: ActionCenterItem[] = [];
-  if (needsReview) actionItems.push({ id: 'review', kind: 'review', title: `Review ${needsReview} transaction${needsReview === 1 ? '' : 's'}`, detail: `Categorize ${needsReview === 1 ? 'it' : 'them'} before September reporting.`, actionLabel: 'Review', onSelect: () => location.href = `/ledger?property=${property.id}&review=1` });
-  if (leaseDays != null && leaseDays <= 90) actionItems.push({ id: 'lease', kind: 'document', title: leaseDays < 0 ? 'Renew or close the expired lease' : 'Review the upcoming lease end', detail: leaseDays < 0 ? `The lease expired ${Math.abs(leaseDays)} days ago. Update it to keep occupancy records accurate.` : leaseDays === 0 ? 'The lease ends today. Record the next step to keep occupancy current.' : `The lease ends in ${leaseDays} days. Decide whether to renew or prepare the unit.`, actionLabel: 'Review', onSelect: () => onNavigate('units') });
-  const pulseUpdatedAt = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  const periodTotals = history.reduce((sum, row) => ({ income: sum.income + row.income, operating: sum.operating + row.operatingExpenses, cash: sum.cash + row.cashExpenses }), { income: 0, operating: 0, cash: 0 });
-  const totalMortgage = Math.max(0, periodTotals.cash - periodTotals.operating);
-  const periodNoi = periodTotals.income - periodTotals.operating;
-  const periodCashFlow = periodTotals.income - periodTotals.cash;
-  const recentItems = transactions.filter(tx => (tx.status || 'posted') === 'posted').map(tx => ({ id: tx.id, title: tx.description || tx.category, detail: `${tx.category} · ${formatDate(tx.transaction_date)}`, amount: Number(tx.amount || 0), type: tx.type, href: `/ledger?property=${property.id}` }));
+    <section className="property-module property-status-line">
+      <span>{occupancy.total ? `${occupancy.occupied} of ${occupancy.total} occupied` : 'No units'}</span>
+      <span>{nextLeaseLabel(leaseUnits)}</span>
+    </section>
 
-  return <div className="property-overview-pulse"><div className="property-overview-layout">
-    <main className="property-overview-main">
-      <section className="property-overview-chart-open">
-        <div className="property-overview-chart-head"><div className="property-overview-chart-metric"><h2>{fullyVacant?(inspected?`${inspected.fullLabel} holding costs`:'Holding costs this month'):(inspected?`${inspected.fullLabel} net cash flow`:'Net cash flow this month')}</h2><div className="property-overview-summary"><div className="property-overview-value-row"><span className={fullyVacant||currentValue<0?'amount-negative':'amount-positive'}><AnimatedValue value={fullyVacant?currentExpenses:currentValue} animate={!inspected} tone={fullyVacant?'negative':undefined}/></span></div>{!fullyVacant&&<div className="property-chart-breakdown"><b><span>Income</span><em className="amount-positive">{formatKpiCurrency(displayed?.income || 0)}</em></b><b><span>Expenses</span><em className="amount-negative">{formatKpiCurrency(currentExpenses)}</em></b></div>}</div></div></div>
-        {fullyVacant?<div className="product-chart-legend" aria-label="Chart legend"><span><i className="is-expense"/>Holding costs</span></div>:<ChartLegend negative={currentValue<0}/>} 
-        <FinancialHistoryChart rows={history} mode="cashFlow" kind={fullyVacant?'holdingCosts':'cashFlow'} label={fullyVacant?`Monthly holding costs for ${property.address}`:`Monthly net cash flow for ${property.address}`} onInspect={setInspected}/>
-        <div className="property-chart-footer"><div className={`property-chart-periods ${fullyVacant||currentValue<0?'is-negative':'is-positive'}`} aria-label="Chart period">{(['3M', '6M', '9M', '1Y'] as HistoryPeriod[]).map(value => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}</div></div>
-      </section>
-      <ActionCenter items={actionItems} title="Actions" onViewAll={() => location.href = `/actions?property=${property.id}`}/>
-      <CollapsibleSection id="financials" title="Financial breakdown" collapsed={Boolean(collapsedSections.financials)} onToggle={toggleSection}><FinancialBreakdown propertyId={property.id} totals={periodTotals} noi={periodNoi} mortgage={totalMortgage} cashFlow={periodCashFlow}/></CollapsibleSection>
-      <CollapsibleSection id="trends" title="Operating expense trends" collapsed={Boolean(collapsedSections.trends)} onToggle={toggleSection}><PropertyExpenseTrendsChart transactions={transactions}/></CollapsibleSection>
-      <CollapsibleSection id="expenses" title="Operating expenses" collapsed={Boolean(collapsedSections.expenses)} onToggle={toggleSection}><OperatingExpenses propertyId={property.id} items={breakdown} total={breakdownTotal}/></CollapsibleSection>
-      <CollapsibleSection id="statistics" title="Key statistics" collapsed={Boolean(collapsedSections.statistics)} onToggle={toggleSection}><KeyStatistics property={property} expectedRent={expectedRent} occupied={occupied} unitCount={units.length} noi={periodNoi} expenseRatio={expenseRatio} hasIncome={Boolean(periodMetrics.income)} mortgage={totalMortgage} period={period}/></CollapsibleSection>
-      <CollapsibleSection id="transactions" title="Recent transactions" collapsed={Boolean(collapsedSections.transactions)} onToggle={toggleSection}><RecentActivity items={recentItems} ledgerHref={`/ledger?property=${property.id}`} showLedgerLink={false} onOpenTransaction={onOpenTransaction}/></CollapsibleSection>
-    </main>
-    <PropertyPulse title={pulseHeadline} explanation={pulseExplanation} updatedAt={pulseUpdatedAt} collectedRent={collectedRent} expectedRent={expectedPayout} rentProgress={rentProgress} expectedByToday={expectedByToday} signals={pulseSignals}/>
-  </div></div>;
+    <section className="property-module">
+      <h2>This month</h2>
+      <div className="property-stat-row">
+        <Stat label="Rent" value={formatKpiCurrency(month.rent)} />
+        <Stat label="Expenses" value={formatKpiCurrency(month.expenses)} />
+        <Stat label="Mortgage" value={formatKpiCurrency(month.mortgage)} />
+        <Stat label="Cash flow" value={formatKpiCurrency(month.cashFlow)} tone={signedTone(month.cashFlow)} />
+      </div>
+    </section>
+
+    <section className="property-module">
+      <h2>Coming up</h2>
+      {comingUp.length ? <ul className="property-coming-list">
+        {comingUp.map(item => <li key={`${item.unit}-${item.label}`}><span>{item.unit}{item.tenant ? ` · ${item.tenant}` : ''}</span><strong>Lease ends {item.label}</strong></li>)}
+      </ul> : <p className="property-module-note">Nothing coming up in the next 90 days.</p>}
+    </section>
+
+    <section className="property-module property-flow-chart">
+      <div className="property-module-head">
+        <h2>Cash flow</h2>
+        <div className="property-chart-periods" role="group" aria-label="Cash flow period">
+          {PERIODS.map(option => <button key={option.value} type="button" className={flowPeriod === option.value ? 'active' : ''} onClick={() => setFlowPeriod(option.value)}>{option.label}</button>)}
+        </div>
+      </div>
+      <FinancialHistoryChart rows={history} label="Monthly cash flow" />
+    </section>
+  </div>;
 }
 
-function CollapsibleSection({id,title,collapsed,onToggle,children}:{id:string;title:string;collapsed:boolean;onToggle:(id:string)=>void;children:React.ReactNode}){
-  return <section className="property-collapsible" data-section={id}>
-    <button type="button" className="property-collapsible-toggle" aria-expanded={!collapsed} onClick={()=>onToggle(id)}>
-      <span>{title}</span>
-      <ChevronDown size={18} aria-hidden="true"/>
-    </button>
-    <div className="property-collapsible-body" hidden={collapsed}>{children}</div>
-  </section>;
+function Stat({ label, value, tone = '' }: { label: string; value: string; tone?: string }) {
+  return <div><span>{label}</span><strong className={tone ? `property-signed ${tone}` : ''}>{value}</strong></div>;
 }
-
-function PropertyPulse({ title, explanation, updatedAt, collectedRent, expectedRent, rentProgress, expectedByToday, signals }: { title: string; explanation: string; updatedAt: string; collectedRent: number; expectedRent: number; rentProgress: number; expectedByToday: number; signals: { key: string; label: string; value: string; tone: string; action: () => void }[] }) {
-  return <aside className="property-pulse-rail"><div className="property-pulse-head"><h2>Property Pulse</h2><span>Updated {updatedAt}</span></div><div className="property-pulse-summary"><strong>{title}</strong><span>{explanation}</span></div><div className="property-pulse-rent-progress" aria-label={`${rentProgress}% of expected rent confirmed; ${expectedByToday}% expected by today`}><i><b style={{ width: `${rentProgress}%` }}/></i><span><b>{formatKpiCurrency(collectedRent)} received</b><small>{formatKpiCurrency(expectedRent)} expected after management fees</small></span></div><div className="property-pulse-list">{signals.map(signal => <button type="button" onClick={signal.action} key={signal.key} className={`property-pulse-row is-${signal.tone}`}><span>{signal.label}</span><strong>{signal.value}</strong></button>)}</div></aside>;
-}
-
-function FinancialBreakdown({ propertyId, totals, noi, mortgage, cashFlow }: { propertyId: string; totals: { income: number; operating: number; cash: number }; noi: number; mortgage: number; cashFlow: number }) {
-  const rows = [['Rental income', totals.income, 'income'], ['Operating expenses', -totals.operating, 'expense'], ['NOI', noi, ''], ['Mortgage payments', -mortgage, 'expense'], ['Net cash flow', cashFlow, cashFlow >= 0 ? 'income' : 'expense']] as const;
-  return <section className="property-financial-breakdown"><div className="property-section-head"><h2>Financial breakdown</h2></div>{rows.map(([label, value, tone]) => <Link href={`/ledger?property=${propertyId}`} key={label}><span>{label}</span><strong className={tone === 'income' ? 'amount-positive' : tone === 'expense' ? 'amount-negative' : ''}>{formatKpiCurrency(value)}</strong></Link>)}</section>;
-}
-
-function OperatingExpenses({ propertyId, items, total }: { propertyId: string; items: ReturnType<typeof buildBreakdown>; total: number }) {
-  return <section className="property-open-panel"><div className="property-panel-head"><div><h2>Operating expenses</h2></div></div><div className="origin-breakdown">{items.length ? items.map((item, index) => <BreakdownRow key={item.category} item={item} index={index} total={total} propertyId={propertyId}/>) : <Empty text="No operating expenses recorded."/>}</div></section>;
-}
-
-function KeyStatistics({ property, expectedRent, occupied, unitCount, noi, expenseRatio, hasIncome, mortgage, period }: { property: Property; expectedRent: number; occupied: number; unitCount: number; noi: number; expenseRatio: number; hasIncome: boolean; mortgage: number; period: HistoryPeriod }) {
-  const rows = [['Purchase price', property.purchase_price ? formatKpiCurrency(Number(property.purchase_price)) : '—'], ['Acquisition date', property.purchase_date ? formatDate(property.purchase_date) : '—'], ['Monthly rent', formatKpiCurrency(expectedRent)], ['Occupancy', `${occupied}/${unitCount}`], ['Trailing NOI', formatKpiCurrency(noi)], ['Cap rate', property.purchase_price && period === '1Y' ? `${(noi / Number(property.purchase_price) * 100).toFixed(1)}%` : '—'], ['Expense ratio', hasIncome ? `${(expenseRatio * 100).toFixed(1)}%` : '—'], ['Debt-service coverage', mortgage ? `${(noi / mortgage).toFixed(2)}×` : '—'], ['Mortgage balance', formatKpiCurrency(Number(property.mortgage_balance || 0))]];
-  return <section className="property-key-statistics"><div className="property-section-head"><h2>Key statistics</h2></div><div>{rows.map(([label, value]) => <span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div></section>;
-}
-
-function AnimatedValue({ value, animate, tone }: { value: number; animate: boolean; tone?:'positive'|'negative' }) {
-  const [display, setDisplay] = useState(value);
-  useEffect(() => {
-    if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setDisplay(value); return; }
-    let frame = 0;
-    const start = performance.now();
-    const tick = (time: number) => { const progress = Math.min(1, (time - start) / 650); setDisplay(value * (1 - Math.pow(1 - progress, 3))); if (progress < 1) frame = requestAnimationFrame(tick); };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, animate]);
-  return <strong className={tone?`amount-${tone}`:display < 0 ? 'amount-negative' : display > 0 ? 'amount-positive' : ''}>{formatKpiCurrency(display)}</strong>;
-}
-
-function BreakdownRow({ item, index, total, propertyId }: { item: ReturnType<typeof buildBreakdown>[number]; index: number; total: number; propertyId: string }) {
-  const [open, setOpen] = useState(false);
-  const key = categoryKey(item.category);
-  const colorMap: Record<string, string> = {
-    maintenance: 'var(--category-maintenance)',
-    management: 'var(--category-management)',
-    leasing: 'var(--category-management)',
-    mortgage: 'var(--category-mortgage)',
-    'mortgage-interest': 'var(--category-mortgage)',
-    'mortgage-principal': 'var(--category-mortgage)',
-    utilities: 'var(--category-utilities)',
-    insurance: 'var(--category-insurance)',
-    taxes: 'var(--category-taxes)',
-    capex: 'var(--category-capex)',
-    legal: 'var(--category-legal)',
-    review: 'var(--category-review)',
-  };
-  const fallback = ['var(--category-maintenance)', 'var(--category-management)', 'var(--category-mortgage)', 'var(--category-utilities)'];
-  const color = colorMap[key] || fallback[index % fallback.length];
-  const pct = total ? Math.round(item.amount / total * 100) : 0;
-  return <div className={`origin-breakdown-row expandable ${open ? 'open' : ''}`}><button type="button" className="origin-breakdown-toggle" onClick={() => setOpen(value => !value)}><div className="origin-breakdown-label"><span className="origin-dot" style={{ background: color }}/><strong>{item.category}</strong><span>{formatKpiCurrency(item.amount)}</span><ChevronDown size={15}/></div><div className="origin-breakdown-track"><i style={{ width: `${pct}%`, background: color }}/></div><div className="origin-breakdown-percent">{pct}%</div></button>{open && <div className="origin-breakdown-details">{item.transactions.slice(0, 8).map(transaction => { const title = transaction.payee_source || transaction.description || item.category; const detail = transaction.payee_source && transaction.description && transaction.payee_source !== transaction.description ? transaction.description : transaction.category; return <Link href={`/ledger?property=${propertyId}`} key={transaction.id}><span><strong>{title}</strong><small>{formatDate(transaction.transaction_date)} · {detail}</small></span><b>{formatKpiCurrency(Math.abs(transaction.amount))}</b></Link>; })}{item.transactions.length > 8 && <Link className="origin-more-link" href={`/ledger?property=${propertyId}`}>+ {item.transactions.length - 8} more transactions</Link>}</div>}</div>;
-}
-
-function Empty({ text }: { text: string }) { return <div className="property-empty-inline">{text}</div>; }

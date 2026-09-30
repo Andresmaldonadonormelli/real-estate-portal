@@ -11,11 +11,10 @@ import { withTimeout } from '@/lib/async';
 import type { HistoryTransaction } from '@/lib/financialHistory';
 import type { PortfolioUnit } from '@/lib/portfolioAttention';
 import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
-import { PageAction, PageHeader, SegmentedControl, UnderlineTabs } from '@/components/common/ProductControls';
-import { PropertiesList, UnitsList, type PortfolioDocument } from '@/components/property/PortfolioLists';
-import PortfolioImprove from '@/components/property/PortfolioImprove';
+import { PageAction, PageHeader, SegmentedControl } from '@/components/common/ProductControls';
+import { PropertiesList, type PortfolioDocument } from '@/components/property/PortfolioLists';
 
-type PortfolioTab = 'properties' | 'units' | 'improve';
+type DirectoryView = 'cards' | 'table';
 
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
@@ -32,8 +31,7 @@ export default function PropertiesPage() {
   const [units, setUnits] = useState<PortfolioUnit[]>([]);
   const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
   const [documents, setDocuments] = useState<PortfolioDocument[]>([]);
-  const [tab, setTab] = useState<PortfolioTab>('properties');
-  const [improveAdd, setImproveAdd] = useState(0);
+  const [view, setView] = useState<DirectoryView>('cards');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPropertyForm, setShowPropertyForm] = useState(false);
@@ -79,6 +77,15 @@ export default function PropertiesPage() {
   }
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const saved = window.localStorage.getItem('properties-directory-view');
+    if (saved === 'cards' || saved === 'table') setView(saved);
+  }, []);
+
+  function chooseView(next: DirectoryView) {
+    setView(next);
+    window.localStorage.setItem('properties-directory-view', next);
+  }
 
   const unitsByProperty = useMemo(() => {
     return units.reduce<Record<string, PortfolioUnit[]>>((acc, unit) => {
@@ -206,7 +213,9 @@ export default function PropertiesPage() {
 
   return (
     <div className="mobile-page-shell properties-page">
-      <PageHeader title="Properties" action={tab === 'improve' && properties.length > 0 ? <PageAction onClick={() => setImproveAdd(value => value + 1)}>Add improvement</PageAction> : <PageAction onClick={startAddProperty}>Add property</PageAction>}/>
+      <PageHeader title="Properties" action={<PageAction onClick={startAddProperty}>Add property</PageAction>}>
+        {!loading && properties.length > 0 ? <p>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p> : null}
+      </PageHeader>
 
       {error && <ErrorBox message={error} />}
       {loading ? <PageSkeleton variant="properties" /> : properties.length === 0 ? (
@@ -217,11 +226,10 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <>
-          <UnderlineTabs primary value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-desktop" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          <SegmentedControl value={tab} onChange={setTab} label="Portfolio sections" className="portfolio-area-tabs portfolio-area-tabs-mobile" options={[{value:'properties',label:'Properties'},{value:'units',label:'Units'},{value:'improve',label:'Improve'}]}/>
-          {tab === 'properties' && <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} documents={documents} imageUrls={imageUrls} onAddFinancing={property => startEditProperty(property, true)} />}
-          {tab === 'units' && <UnitsList properties={properties} unitsByProperty={unitsByProperty} imageUrls={imageUrls} onAddTenant={property => startAddUnit(property.id)} />}
-          {tab === 'improve' && <PortfolioImprove properties={properties} userId={user.id} addSignal={improveAdd} />}
+          <div className="property-directory-toolbar">
+            <SegmentedControl value={view} onChange={chooseView} label="Property view" options={[{ value: 'cards', label: 'Cards' }, { value: 'table', label: 'Table' }]} />
+          </div>
+          <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} view={view} />
         </>
       )}
 

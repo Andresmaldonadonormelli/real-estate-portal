@@ -243,4 +243,24 @@
   .portfolio-improve-overlay{place-items:end stretch;padding:0}
   .portfolio-improve-dialog{width:100%;max-height:calc(100dvh - env(safe-area-inset-top));border-radius:var(--radius-card) var(--radius-card) 0 0}
   .portfolio-form input,.portfolio-form .ui-select select{min-height:var(--control-height-mobile)}
+  .property-directory-table .portfolio-property-row.property-directory-row{grid-template-columns:1fr 1fr;row-gap:var(--space-2)}
+  .property-directory-table .portfolio-property-row.property-directory-row>.portfolio-property-copy{grid-column:1 / -1;grid-row:1}
+  .property-directory-table .portfolio-property-row.property-directory-row>.portfolio-figure{grid-column:auto;grid-row:auto}
+}
+
+.properties-page .product-page-header p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.property-directory-toolbar{display:flex;justify-content:flex-end;margin-bottom:var(--space-4)}
+.property-directory-cards{display:grid;gap:var(--space-4)}
+.property-directory-card{display:grid;gap:var(--space-4);min-height:44px;padding:var(--space-4) var(--space-5);border:1px solid var(--border-color);border-radius:var(--radius-module);background:var(--theme-card);box-shadow:var(--shadow-card);color:inherit;text-decoration:none}
+.property-directory-card dl{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin:0}
+.property-directory-card dt{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.property-directory-card dd{margin:var(--space-1) 0 0;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold)}
+.property-directory-card small,.property-directory-row small{display:block;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.property-directory-columns,.property-directory-row{grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(110px,.8fr))}
+.property-directory-row{color:inherit;text-decoration:none}
+@media (min-width:768px){
+  .property-directory-card{border-radius:var(--radius-card)}
+}
+@media (min-width:900px){
+  .property-directory-cards{grid-template-columns:1fr 1fr}
 }
