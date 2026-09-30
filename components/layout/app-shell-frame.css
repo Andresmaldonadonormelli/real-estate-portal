@@ -1,4 +1,4 @@
-/* Desktop frame: one pale-gray canvas, sidebar on that canvas, white content panel rounded on all four sides. */
+/* Desktop page is one gray canvas. The sidebar sits on that canvas. Modules carry their own quiet surface. */
 html,
 body {
   background: var(--theme-page);
@@ -6,14 +6,14 @@ body {
 @media (min-width: 768px) {
   .app-frame {
     min-height: 100vh;
-    padding: 16px;
+    padding: 0;
     background: var(--theme-page);
   }
   .app-shell {
     display: flex;
     align-items: stretch;
-    gap: 16px;
-    min-height: calc(100vh - 32px);
+    gap: 0;
+    min-height: 100vh;
     overflow: visible;
     border: 0;
     border-radius: 0;
@@ -22,7 +22,7 @@ body {
   }
   .app-shell .side-nav {
     position: sticky !important;
-    top: 16px;
+    top: 0;
     right: auto !important;
     bottom: auto !important;
     left: auto !important;
@@ -32,22 +32,23 @@ body {
     flex-direction: column;
     align-self: flex-start;
     width: 228px;
-    height: calc(100vh - 32px);
-    max-height: calc(100vh - 32px);
+    height: 100vh;
+    max-height: 100vh;
     margin: 0;
-    padding: 8px 10px 12px;
+    padding: var(--space-2) var(--space-3) var(--space-3);
     overflow: hidden;
-    border-right: 0;
-    background: var(--theme-sidebar);
+    border-right: var(--border-width) solid var(--color-border);
+    background: var(--theme-page);
   }
   .app-shell .main-content {
     flex: 1 1 auto;
     min-width: 0;
     padding-left: 0 !important;
-    padding-bottom: var(--space-6) !important;
-    overflow: hidden;
-    background: var(--theme-card) !important;
-    border-radius: var(--radius-shell);
+    padding-bottom: 0 !important;
+    overflow: visible;
+    background: var(--theme-page) !important;
+    border-radius: 0;
+    box-shadow: none;
   }
   .app-shell .side-nav-brand {
     display: flex;

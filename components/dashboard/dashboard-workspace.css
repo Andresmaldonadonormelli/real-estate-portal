@@ -24,6 +24,10 @@
 .dashboard-skeleton-columns .skeleton-block,.dashboard-skeleton-table-row .skeleton-block{height:12px}
 .dashboard-skeleton-table-row{min-height:48px;border-top:1px solid var(--border-color)}
 .module-skeleton-panel{overflow:hidden;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}
+@media (min-width: 768px) {
+  .dashboard-skeleton-module { border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+  .module-skeleton-panel { border-radius: var(--radius-large); box-shadow: var(--shadow-card); }
+}
 .module-skeleton-head{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-4)}
 .module-skeleton-head .skeleton-block:first-child{width:120px;height:16px}
 .module-skeleton-head .skeleton-block:last-child{width:28px;height:14px}
