@@ -177,9 +177,9 @@ function EquityComposition({ equity, open, onToggle }: { equity: number | null; 
 function EmptyPlot() {
   return <svg className="position-chart" viewBox="0 0 640 220" role="img" aria-label="No balance history is saved">
     <line x1="52" x2="628" y1="16" y2="16" />
-    <line x1="52" x2="628" y1="92" y2="92" />
-    <line x1="52" x2="628" y1="168" y2="168" />
-    <text x="44" y="172" textAnchor="end">$0</text>
+    <line x1="52" x2="628" y1="104" y2="104" />
+    <line x1="52" x2="628" y1="192" y2="192" />
+    <text x="44" y="196" textAnchor="end">$0</text>
   </svg>;
 }
 

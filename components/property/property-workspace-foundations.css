@@ -38,7 +38,7 @@
 .unit-status.occupied{color:var(--positive);background:color-mix(in srgb,var(--positive) 11%,transparent)}
 .unit-status.vacant{color:var(--category-review);background:color-mix(in srgb,var(--category-review) 12%,transparent)}
 @media(max-width:720px){.property-workspace{padding:18px 16px calc(104px + env(safe-area-inset-bottom))}}
-@media(max-width:720px){.property-workspace-header{display:grid}}
+@media(max-width:720px){.property-workspace-header{display:flex;align-items:flex-start;justify-content:space-between}}
 @media(max-width:720px){.property-title-block{align-items:flex-start}}
 @media(max-width:720px){.property-workspace-image{width:76px;height:62px;border-radius:var(--radius-control)}}
 @media(max-width:720px){.property-title-block h1{font-size:var(--type-section-title-size)}}
@@ -363,8 +363,8 @@ button.origin-breakdown-toggle:focus:not(:focus-visible){
 @media(max-width:760px){
   .property-subnav button{flex:1}}
 
-/* Ledger is a secondary property action, kept with the property identity instead of floating at far right. */
-.property-workspace-header{justify-content:flex-start !important}
+/* Edit sits at the right of the property identity. */
+.property-workspace-header{justify-content:space-between !important}
 
 .property-title-copy{min-width:0}
 
@@ -381,7 +381,7 @@ button.origin-breakdown-toggle:focus:not(:focus-visible){
 
 .property-ledger-action:hover{color:var(--text-secondary)}
 @media(max-width:760px){
-  .property-workspace-header{display:block !important}}
+  .property-workspace-header{display:flex !important;align-items:flex-start;justify-content:space-between !important}}
 @media(max-width:760px){
   .property-ledger-action{margin-top:9px;font-size:var(--type-compact-size)}}
 

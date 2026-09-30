@@ -31,8 +31,22 @@ export default function PositionChart({ points, label }: { points: PositionPoint
       </g>;
     })}
     <path d={path} />
-    {coords.map((point, index) => (index % labelStep === 0 || index === coords.length - 1) ? <text key={`${point.label}-${index}`} className="position-chart-label" x={point.x} y={height - 8} textAnchor="middle">{point.label}</text> : null)}
+    {axisLabels(coords, labelStep).map(point => <text key={`${point.label}-${point.x}`} className="position-chart-label" x={point.x} y={height - 8} textAnchor="middle">{point.label}</text>)}
   </svg>;
+}
+
+function axisLabels(points: { x: number; label: string }[], step: number) {
+  const chosen: { x: number; label: string }[] = [];
+  points.forEach((point, index) => {
+    if (index % step !== 0 && index !== points.length - 1) return;
+    const previous = chosen[chosen.length - 1];
+    if (previous && Math.abs(point.x - previous.x) < 36) {
+      if (index === points.length - 1) chosen[chosen.length - 1] = point;
+      return;
+    }
+    chosen.push(point);
+  });
+  return chosen;
 }
 
 function compact(value: number) {
