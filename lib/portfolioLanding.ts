@@ -41,6 +41,10 @@ export function buildPortfolioLanding(
   const bought = boughtProperties.reduce((sum, item) => sum + Number(item.property.purchase_price || 0), 0);
   const paydown = yearAgo.debt - current.debt;
   const valueChange = current.value - yearAgo.value - bought;
+  const shownEquity = Math.round(equityDelta);
+  const shownPaydown = Math.round(paydown);
+  const shownBought = Math.round(bought);
+  const shownValue = shownEquity - shownPaydown - shownBought;
   const putIn = boughtProperties.reduce((sum, item) => sum + invested(item.profile, item.property, yearAgoDate), 0)
     + tracks.filter(item => (item.track[0]?.time || 0) <= yearAgoDate.getTime()).reduce((sum, item) => sum + capexSince(item.profile, yearAgoDate), 0);
   const growthBase = yearAgo.equity > 0 ? yearAgo.equity : putIn;
@@ -62,10 +66,10 @@ export function buildPortfolioLanding(
   const investor = investorSummary(properties, transactions, current.equity, averages.cashInDeal);
   return {
     current,
-    equityDelta,
-    bought,
-    paydown,
-    valueChange,
+    equityDelta: shownEquity,
+    bought: shownBought,
+    paydown: shownPaydown,
+    valueChange: shownValue,
     valueDelta,
     debtDelta,
     putIn,
