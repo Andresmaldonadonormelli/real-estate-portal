@@ -1,7 +1,7 @@
 /* Shared application foundations */
 html,body{background:var(--theme-page)}
 body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line-height:var(--type-body-line)}
-.main-content{min-width:0;background:var(--theme-page)}
+.main-content{min-width:0}
 .card{box-shadow:var(--card-shadow)}
 .side-nav{width:240px;background:var(--theme-sidebar);border-right:1px solid var(--border-color)}
 .side-nav-scroll{padding:var(--space-8) var(--space-3) 0}
@@ -17,7 +17,6 @@ body{font-family:var(--font-family-primary);font-size:var(--type-body-size);line
 .secondary-pill,.property-secondary-action{font:var(--font-button)}
 @media (hover:hover) and (pointer:fine){.nav-link:hover,.property-nav-link:hover,.bottom-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover{background:var(--surface-hover)!important;color:var(--text-primary)!important}}
 @media (hover:none){.nav-link:hover,.property-nav-link:hover,.theme-toggle:hover,.mobile-menu-item:hover,.bottom-nav-link:hover{background:transparent!important}.nav-link:active,.property-nav-link:active,.theme-toggle:active,.mobile-menu-item:active,.bottom-nav-link:active{background:var(--surface-hover)!important}}
-@media(min-width:768px){.main-content{padding-left:240px}}
 .app-mascot{display:none}
 @media(min-width:768px){
   .app-mascot{display:block;position:fixed;z-index:45;top:8px;left:16px;width:36px;height:36px;pointer-events:none;user-select:none}
