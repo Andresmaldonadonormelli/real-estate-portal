@@ -12,9 +12,9 @@ import PropertyImprove from '@/components/property/PropertyImprove';
 import PropertyLoan from '@/components/property/PropertyLoan';
 import PropertyUnits from '@/components/property/PropertyUnits';
 import PropertyDocuments from '@/components/property/PropertyDocuments';
-import PropertyEditModal from '@/components/property/PropertyEditModal';
-import { Button } from '@/components/ui/Button';
+import { ButtonLink } from '@/components/ui/Button';
 import { UnderlineTabs } from '@/components/common/ProductControls';
+import { emptyProfile, parseProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { propertyTypeLabel } from '@/lib/propertyPosition';
 import type { PropertyTransaction as Tx } from '@/lib/propertyFinancials';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
@@ -105,7 +105,7 @@ export default function PropertyWorkspacePage(){
   const [documents,setDocuments]=useState<PropertyDocument[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
-  const [editingProperty,setEditingProperty]=useState(false);
+  const [profile,setProfile]=useState<PropertyProfile>(emptyProfile());
 
   useEffect(()=>{
     const requested = requestedTab === 'units' ? 'tenants' : requestedTab;
@@ -115,13 +115,18 @@ export default function PropertyWorkspacePage(){
   useEffect(()=>{ if(!propertyId) return; (async()=>{
     setLoading(true); setError('');
     const [p,u,t,d]=await Promise.all([
-      cachedSupabaseRequest(`property:${propertyId}`,async()=>await supabase.from('properties').select(PROPERTY_FIELDS).eq('id',propertyId).is('archived_at',null).single()),
+      cachedSupabaseRequest(`property:${propertyId}`,async()=>{
+        const extended=await supabase.from('properties').select(`${PROPERTY_FIELDS},property_profile`).eq('id',propertyId).is('archived_at',null).single();
+        if(!extended.error)return extended;
+        return supabase.from('properties').select(PROPERTY_FIELDS).eq('id',propertyId).is('archived_at',null).single();
+      }),
       cachedSupabaseRequest(`property:${propertyId}:units`,async()=>await supabase.from('units').select(UNIT_DETAIL_FIELDS).eq('property_id',propertyId).is('archived_at',null).order('unit_number')),
       cachedSupabaseRequest(`property:${propertyId}:transactions`,async()=>await supabase.from('transactions').select(TRANSACTION_FIELDS).eq('property_id',propertyId).is('archived_at',null).gte('transaction_date',historyStart(121)).order('transaction_date',{ascending:false})),
       cachedSupabaseRequest(`property:${propertyId}:documents`,async()=>await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',propertyId).is('archived_at',null).order('created_at',{ascending:false})),
     ]);
     if(p.error){ setError(p.error.message); setLoading(false); return; }
-    const prop=p.data as Property;
+    const row=p.data as Property & { property_profile?: unknown };
+    const prop=row as Property;
     let unitRows=(u.data||[]) as Unit[];
     if(u.error){
       const fallback=await cachedSupabaseRequest(`property:${propertyId}:units:core`,async()=>await supabase.from('units').select(UNIT_FIELDS).eq('property_id',propertyId).is('archived_at',null).order('unit_number'));
@@ -129,7 +134,7 @@ export default function PropertyWorkspacePage(){
       unitRows=(fallback.data||[]) as Unit[];
     }
     const synced=await syncLegacyUnitLeases(propertyId,unitRows,(d.data||[]) as PropertyDocument[]);
-    setProperty(prop); setUnits(synced.units as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments(synced.documents as PropertyDocument[]);
+    setProperty(prop); setProfile(parseProfile(row.property_profile)); setUnits(synced.units as Unit[]); setTransactions((t.data||[]) as Tx[]); setDocuments(synced.documents as PropertyDocument[]);
     setLoading(false);
   })(); },[propertyId]);
 
@@ -181,18 +186,17 @@ export default function PropertyWorkspacePage(){
         <p>{propertyTypeLabel(property.property_type)} · {units.length} {units.length === 1 ? 'unit' : 'units'}</p>
       </div>
       <div className="property-header-actions">
-        <Button onClick={() => setEditingProperty(true)}>Edit</Button>
+        <ButtonLink variant="primary" href={`/properties/${property.id}/edit`}>Edit</ButtonLink>
       </div>
     </header>
 
     <UnderlineTabs primary value={tab} onChange={setTab} label="Property sections" className="property-menu" options={[{value:'overview',label:'Overview'},{value:'cashflow',label:'Cash flow'},{value:'tenants',label:'Tenants'},{value:'loan',label:'Loan'},{value:'improve',label:'Improve'},{value:'documents',label:'Documents'}]}/>
 
-    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions}/>}
+    {tab==='overview' && <PropertyOverview property={property} units={units} transactions={transactions} profile={profile}/>}
     {tab==='cashflow' && <PropertyCashflow propertyId={property.id} transactions={transactions}/>}
-    {tab==='tenants' && <PropertyUnits units={units} propertyId={property.id} managementFeePercent={property.management_fee_percent} onUnitsUpdated={next=>setUnits(next)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>}
-    {tab==='loan' && <PropertyLoan property={property}/>}
+    {tab==='tenants' && <PropertyUnits units={units} propertyId={property.id} documents={documents} transactions={transactions} managementFeePercent={property.management_fee_percent} profile={profile} onUnitsUpdated={next=>setUnits(next)} onProfileSaved={next=>{setProfile(next);invalidateSupabaseCache(`property:${propertyId}`);}} onManagementFee={fee=>setProperty(prev=>prev?{...prev,management_fee_percent:fee}:prev)} onLeaseSynced={async()=>{const d=await supabase.from('documents').select(DOCUMENT_FIELDS).eq('property_id',property.id).is('archived_at',null).order('created_at',{ascending:false});if(!d.error)setDocuments((d.data||[]) as PropertyDocument[]);}}/>}
+    {tab==='loan' && <PropertyLoan property={property} profile={profile}/>}
     {tab==='improve' && <PropertyImprove property={property} units={units} transactions={transactions}/>}
     {tab==='documents' && <PropertyDocuments documents={documents} propertyId={property.id}/>}
-    {editingProperty&&<PropertyEditModal property={property} onClose={()=>setEditingProperty(false)} onSaved={patch=>{setProperty(prev=>prev?({...prev,...patch} as Property):prev);setEditingProperty(false);invalidateSupabaseCache(`property:${propertyId}`);}}/>}
   </div>;
 }
