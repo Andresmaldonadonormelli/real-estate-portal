@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { UnderlineTabs } from '@/components/common/ProductControls';
 import { presentNotification, type FeedNotification } from '@/lib/notifications';
 import { useNotificationInbox } from '@/components/dashboard/notificationInbox';
 
@@ -23,12 +24,8 @@ export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) 
   }
 
   return (
-    <>
-      <div className="dashboard-drawer-tabs" role="tablist" aria-label="Notification groups">
-        {TABS.map(choice => (
-          <button key={choice.id} type="button" role="tab" aria-selected={tab === choice.id} onClick={() => setTab(choice.id)}>{choice.label}</button>
-        ))}
-      </div>
+    <section className="dashboard-module notifications-board">
+      <UnderlineTabs className="property-menu notifications-tabs" value={tab} onChange={setTab} label="Notification groups" options={TABS.map(choice => ({ value: choice.id, label: choice.label }))} />
       <button type="button" className="dashboard-drawer-mark" disabled={unreadCount === 0} onClick={() => void markAllRead()}>Mark all as read</button>
       {error && items.length === 0 ? <p className="dashboard-empty">{error}</p> : null}
       {!error && loading && items.length === 0 ? <p className="dashboard-empty">Loading notifications</p> : null}
@@ -49,6 +46,6 @@ export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) 
           ))}
         </ul>
       ) : null}
-    </>
+    </section>
   );
 }

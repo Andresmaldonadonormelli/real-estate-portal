@@ -1,6 +1,6 @@
 /* Shared product controls */
 .product-page-header{display:flex;align-items:center;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-8)}
-.product-page-header h1{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);letter-spacing:0}
+.product-page-header h1{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold);letter-spacing:0}
 .product-page-action{display:inline-flex;align-items:center;justify-content:center;min-height:var(--control-height-desktop);padding:0 var(--space-4);border-radius:var(--radius-control);background:var(--text-primary);color:var(--bg-primary);font:var(--font-button-strong);white-space:nowrap;cursor:pointer}
 .product-secondary-button,.document-feed-detail{display:inline-flex;align-items:center;justify-content:center;min-height:var(--control-height-desktop);padding:0 var(--space-4);border:1px solid transparent;border-radius:var(--radius-pill);background:transparent;color:var(--text-primary);font:var(--font-button);text-decoration:none;transform:none;box-shadow:none}.product-secondary-button{border-radius:var(--radius-control);cursor:pointer}.product-secondary-button:focus{outline:0}.product-secondary-button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 @media (hover:hover) and (pointer:fine){.product-secondary-button:hover:not(:disabled),.document-feed-detail:hover{background:var(--control-hover);border-color:transparent;transform:none;box-shadow:none;font:var(--font-button)}}

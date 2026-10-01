@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -11,7 +12,7 @@ import { withTimeout } from '@/lib/async';
 import type { HistoryTransaction } from '@/lib/financialHistory';
 import type { PortfolioUnit } from '@/lib/portfolioAttention';
 import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_DETAIL_FIELDS } from '@/lib/supabaseData';
-import { PageAction, PageHeader, SegmentedControl } from '@/components/common/ProductControls';
+import { PageHeader } from '@/components/common/ProductControls';
 import { PropertiesList, type PortfolioDocument } from '@/components/property/PortfolioLists';
 
 type DirectoryView = 'cards' | 'table';
@@ -27,6 +28,8 @@ const emptyUnit = {
 
 export default function PropertiesPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<PortfolioUnit[]>([]);
   const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
@@ -86,6 +89,16 @@ export default function PropertiesPage() {
     setView(next);
     window.localStorage.setItem('properties-directory-view', next);
   }
+
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return;
+    setEditingProperty(null);
+    setPropertyImage(null);
+    setPropertyForm(emptyProperty);
+    setShowPropertyDetails(false);
+    setShowPropertyForm(true);
+    router.replace('/properties');
+  }, [router, searchParams]);
 
   const unitsByProperty = useMemo(() => {
     return units.reduce<Record<string, PortfolioUnit[]>>((acc, unit) => {
@@ -213,7 +226,7 @@ export default function PropertiesPage() {
 
   return (
     <div className="mobile-page-shell properties-page">
-      <PageHeader title="Properties" action={<PageAction onClick={startAddProperty}>Add property</PageAction>}>
+      <PageHeader title="Properties">
         {!loading && properties.length > 0 ? <p>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p> : null}
       </PageHeader>
 
@@ -227,7 +240,10 @@ export default function PropertiesPage() {
       ) : (
         <>
           <div className="property-directory-toolbar">
-            <SegmentedControl value={view} onChange={chooseView} label="Property view" options={[{ value: 'cards', label: 'Cards' }, { value: 'table', label: 'Table' }]} />
+            <div className="property-chart-pills" role="group" aria-label="Property view">
+              <button type="button" className={view === 'cards' ? 'active' : ''} aria-pressed={view === 'cards'} onClick={() => chooseView('cards')}>Cards</button>
+              <button type="button" className={view === 'table' ? 'active' : ''} aria-pressed={view === 'table'} onClick={() => chooseView('table')}>Table</button>
+            </div>
           </div>
           <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} view={view} />
         </>

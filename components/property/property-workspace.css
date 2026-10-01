@@ -1,5 +1,5 @@
 /* Property directory */
-.properties-page{width:min(1240px,100%);margin:0 auto;padding:var(--space-8)!important}
+.properties-page{width:auto;max-width:none;margin:0;padding:var(--space-5) var(--space-6) var(--space-6)!important}
 .properties-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-8)}
 .properties-page-head h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold);letter-spacing:-.035em}
 .properties-page-head p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -7,7 +7,7 @@
 .properties-empty-state h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .properties-empty-state p{max-width:560px;margin:var(--space-2) 0 var(--space-5);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 /* Individual property */
-.property-workspace{width:min(1240px,100%);padding:var(--space-8)!important}
+.property-workspace{width:auto;max-width:none;margin:0;padding:var(--space-5) var(--space-6) var(--space-6)!important}
 .property-workspace-header{margin-bottom:var(--space-6)}
 .property-workspace-image{width:112px;height:88px;border-radius:var(--radius-control)}
 .property-title-copy h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold)}
@@ -107,7 +107,7 @@
 @media(max-width:767px){.property-overview-pulse{gap:var(--space-5)}.property-overview-chart-head{align-items:flex-end}.property-chart-modes,.property-chart-periods{gap:var(--space-4)}.property-overview-value-row{flex-wrap:wrap;gap:var(--space-2)}.property-collapsible-toggle{min-height:var(--control-height-mobile)}}
 
 .property-workspace-header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4)}
-.property-workspace .property-title-copy h1{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
+.property-workspace .property-title-copy h1{margin:0;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold)}
 .property-title-copy p{margin:var(--space-1) 0 0;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .property-header-actions{margin-top:0}
 .property-header-actions a,.property-header-actions .property-text-action{min-height:44px;color:var(--text-secondary);font:var(--font-button);text-decoration:none}

@@ -7,6 +7,7 @@ import { Archive, LogOut, UserRound, X } from 'lucide-react';
 import { NotificationInboxProvider } from '@/components/dashboard/notificationInbox';
 import BottomNav from './BottomNav';
 import PortfolioIdentity from './PortfolioIdentity';
+import { PortfolioScopeProvider } from './PortfolioScope';
 import SideNav from './SideNav';
 import ThemeToggle from './ThemeToggle';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <NotificationInboxProvider>
+    <PortfolioScopeProvider>
     <div className="app-frame">
       <div className="app-shell">
         {!isMobile && <SideNav />}
@@ -47,6 +49,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       )}
     </div>
+    </PortfolioScopeProvider>
     </NotificationInboxProvider>
   );
 }
