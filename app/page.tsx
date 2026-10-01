@@ -12,7 +12,6 @@ import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
-import { resolveNotificationTransaction } from '@/lib/notificationMatch';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
@@ -46,7 +45,6 @@ export default function Dashboard() {
   const [testActionsActive, setTestActionsActive] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Transaction|null>(null);
-  const [fromNotifications,setFromNotifications]=useState(false);
   const [detailEditing,setDetailEditing]=useState(false);
   const [addMenuOpen,setAddMenuOpen]=useState(false);
   const addMenuRef=useRef<HTMLDivElement|null>(null);
@@ -322,13 +320,13 @@ export default function Dashboard() {
   return <div className="dashboard-operating">
     <header className="dashboard-operating-header">
       <strong className="dashboard-mobile-brand">Overview</strong>
-      <div className="dashboard-heading"><h1>{monthLabel} {overviewYear} overview</h1><p>Portfolio performance for the current month</p></div>
+      <div className="dashboard-heading"><h1>Overview</h1></div>
       <div className="dashboard-operating-controls">
         <div className="dashboard-filter-row">
           {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
           <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
         </div>
-        <NotificationBell hold={fromNotifications&&Boolean(activeTransaction)} onOpenTransaction={item=>{void (async()=>{const match=await resolveNotificationTransaction(item.transactionId,transactions);if(!match){setToast('This transaction is no longer available.');return;}setShowQuickAdd(false);setDetailEditing(false);setFromNotifications(true);setActiveTransaction(match);})();}} onOpenProperty={item=>{if(!item.propertyId){setToast('This property is no longer available.');return;}router.push(`/properties/${item.propertyId}?tab=units`);}} />
+        <NotificationBell />
         {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
       </div>
     </header>
@@ -341,7 +339,7 @@ export default function Dashboard() {
     </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<PortfolioLanding properties={cashPropertyId?properties.filter(property=>property.id===cashPropertyId):properties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} />}
-    {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal back={fromNotifications} transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false);setFromNotifications(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
+    {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {(showQuickAdd||(activeTransaction&&detailEditing))&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={detailEditing?activeTransaction:null} onClose={()=>{if(detailEditing){setDetailEditing(false);return;}setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated');setShowQuickAdd(false);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
     {reviewPropertyId&&<div style={overlay}><div className="card" style={{width:'100%',maxWidth:620,padding:22}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><div><h2 style={{fontSize:'var(--type-section-title-size)'}}>Review {monthLabel} rents</h2>{testPreview&&<div style={{display:'inline-block',marginTop:6,padding:'3px 8px',borderRadius:'var(--radius-pill)',background:'var(--accent-soft)',color:'var(--nav-active-text)',fontSize:'var(--type-label-size)',fontWeight:'var(--weight-bold)'}}>TEST PREVIEW</div>}</div><button onClick={()=>{setReviewPropertyId(null);setTestPreview(false);}} style={secondaryButton}>✕</button></div><p style={{color:'var(--text-secondary)',fontSize:'var(--type-small-size)',marginBottom:18}}>{testPreview?'This preview lets you test the rent-review interface today. It does not write anything to your ledger.':"Confirm only the rent payments you actually received. Decline removes that unit's suggestion for this month."}</p><div style={{display:'grid',gap:10}}>

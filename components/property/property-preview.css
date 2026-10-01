@@ -248,7 +248,7 @@
   .property-directory-table .portfolio-property-row.property-directory-row>.portfolio-figure{grid-column:auto;grid-row:auto}
 }
 
-.properties-page .product-page-header h1{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line)}
+.properties-page .product-page-header h1{font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .properties-page .product-page-header p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .property-directory-toolbar{display:flex;justify-content:flex-end;margin-bottom:var(--space-4)}
 .property-directory-cards{display:grid;gap:var(--space-4)}

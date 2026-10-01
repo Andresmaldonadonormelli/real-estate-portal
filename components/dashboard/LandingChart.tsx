@@ -12,7 +12,7 @@ export default function LandingChart({ points, label, onScrub }: {
 }) {
   const width = 640;
   const height = 300;
-  const pad = { left: 40, right: 8, top: 16, bottom: 28 };
+  const pad = { left: 8, right: 24, top: 18, bottom: 36 };
   const [active, setActive] = useState<number | null>(null);
   const layout = useMemo(() => layoutChart(points, width, height, pad), [points]);
 
@@ -36,39 +36,48 @@ export default function LandingChart({ points, label, onScrub }: {
   }
 
   const scrub = active == null ? null : layout.samples[active];
+  const end = layout.samples.length ? layout.samples[layout.samples.length - 1] : null;
 
-  return <svg
-    className="landing-chart"
-    viewBox={`0 0 ${width} ${height}`}
-    preserveAspectRatio="none"
-    role="img"
-    aria-label={label}
-    onPointerDown={event => { try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Pointer capture is unavailable for this event. */ } scrubAt(event); }}
-    onPointerMove={move}
-    onPointerUp={event => { if (event.pointerType !== 'mouse') clear(); }}
-    onPointerLeave={event => { if (event.pointerType === 'mouse') clear(); }}
-    onPointerCancel={clear}
-  >
-    <defs>
-      <linearGradient id="landing-area" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.28" />
-        <stop offset="100%" stopColor="var(--positive)" stopOpacity="0" />
-      </linearGradient>
-    </defs>
-    {layout.ticks.map(tick => <g key={tick.value} className="landing-chart-grid">
-      <line x1={pad.left} x2={width - pad.right} y1={tick.y} y2={tick.y} />
-      <text x={pad.left - 6} y={tick.y + 4} textAnchor="end">{tick.label}</text>
-    </g>)}
-    <path className="landing-chart-area" d={layout.area} />
-    <path className={`landing-chart-line ${scrub ? 'is-faded' : ''}`} d={layout.line} />
-    {scrub ? <>
-      <clipPath id="landing-solid"><rect x="0" y="0" width={scrub.x} height={height} /></clipPath>
-      <path className="landing-chart-line" d={layout.line} clipPath="url(#landing-solid)" />
-      <line className="landing-chart-guide" x1={scrub.x} x2={scrub.x} y1={pad.top} y2={height - pad.bottom} />
-      <circle className="landing-chart-dot" cx={scrub.x} cy={scrub.y} r="5" />
-    </> : null}
-    {layout.labels.map(point => <text key={`${point.label}-${point.x}`} className="landing-chart-label" x={point.x} y={height - 8} textAnchor="middle">{point.label}</text>)}
-  </svg>;
+  return <div className="landing-chart-frame">
+    <div className="landing-chart-scale" aria-hidden="true">
+      <span className="landing-chart-sizer">{layout.ticks.reduce((widest, tick) => tick.label.length > widest.length ? tick.label : widest, '$0')}</span>
+      {layout.ticks.map(tick => <span key={tick.value} className="landing-chart-y" style={{ top: `${(tick.y / height) * 100}%` }}>{tick.label}</span>)}
+    </div>
+    <div className="landing-chart-stage">
+      <svg
+        className="landing-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={label}
+        onPointerDown={event => { try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Pointer capture is unavailable for this event. */ } scrubAt(event); }}
+        onPointerMove={move}
+        onPointerUp={event => { if (event.pointerType !== 'mouse') clear(); }}
+        onPointerLeave={event => { if (event.pointerType === 'mouse') clear(); }}
+        onPointerCancel={clear}
+      >
+        <defs>
+          <linearGradient id="landing-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--positive)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {layout.ticks.map(tick => <g key={tick.value} className="landing-chart-grid">
+          <line x1={pad.left} x2={width - pad.right} y1={tick.y} y2={tick.y} />
+        </g>)}
+        <path className="landing-chart-area" d={layout.area} />
+        <path className={`landing-chart-line ${scrub ? 'is-faded' : ''}`} d={layout.line} />
+        {scrub ? <>
+          <clipPath id="landing-solid"><rect x="0" y="0" width={scrub.x} height={height} /></clipPath>
+          <path className="landing-chart-line" d={layout.line} clipPath="url(#landing-solid)" />
+          <line className="landing-chart-guide" x1={scrub.x} x2={scrub.x} y1={pad.top} y2={height - pad.bottom} />
+        </> : null}
+      </svg>
+      {layout.labels.map((point, index) => <span key={`${point.label}-${point.x}`} className={`landing-chart-x${index === 0 ? ' is-start' : ''}${index === layout.labels.length - 1 && index !== 0 ? ' is-end' : ''}`} style={{ left: `${(point.x / width) * 100}%` }}>{point.label}</span>)}
+      {end ? <span className="landing-chart-dot" style={{ left: `${(end.x / width) * 100}%`, top: `${(end.y / height) * 100}%` }} /> : null}
+      {scrub ? <span className="landing-chart-dot" style={{ left: `${(scrub.x / width) * 100}%`, top: `${(scrub.y / height) * 100}%` }} /> : null}
+    </div>
+  </div>;
 }
 
 function layoutChart(points: LandingPoint[], width: number, height: number, pad: { left: number; right: number; top: number; bottom: number }) {
@@ -159,7 +168,7 @@ function axisLabels(points: Array<{ x: number; label: string }>) {
   points.forEach((point, index) => {
     if (index % step !== 0 && index !== points.length - 1) return;
     const previous = chosen[chosen.length - 1];
-    if (previous && Math.abs(point.x - previous.x) < 48) {
+    if (previous && Math.abs(point.x - previous.x) < 150) {
       if (index === points.length - 1) chosen[chosen.length - 1] = point;
       return;
     }

@@ -111,7 +111,7 @@
 
 .actions-page-header { margin-bottom: var(--space-6); }
 
-.actions-page-header h1 { font-size: var(--type-page-title-size); line-height: var(--type-page-title-line); font-weight: var(--weight-semibold); margin-top: var(--space-3); }
+.actions-page-header h1 { font-size: var(--type-small-size); line-height: var(--type-small-line); font-weight: var(--weight-semibold); margin-top: var(--space-3); }
 
 .actions-page-header p { font-size: var(--type-small-size); line-height: var(--type-small-line); color: var(--text-secondary); margin-top: var(--space-1); }
 

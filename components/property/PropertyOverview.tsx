@@ -126,14 +126,14 @@ export default function PropertyOverview({ property, units, transactions, profil
           <button type="button" aria-expanded={showInvestors} onClick={() => setShowInvestors(open => !open)}>
             <span>
               <strong>Investor numbers</strong>
-              <small>DSCR, return on equity, and cash return · last 12 months</small>
+              <small>Cash return, return on equity, and DSCR · last 12 months</small>
             </span>
-            <em>{showInvestors ? 'Hide' : 'Show'} <ChevronDown size={14} aria-hidden="true" /></em>
+            <em>{showInvestors ? 'Hide' : 'Show'}</em>
           </button>
           {showInvestors && <div className="property-stat-row">
-            <Stat label="DSCR" value={numbers.dscr == null ? '—' : `${ratioOrDash(numbers.dscr)}×`} />
-            <Stat label="Return on equity" value={percentOrDash(numbers.returnOnEquity)} />
-            <Stat label="Cash return" value={percentOrDash(numbers.cashReturn)} />
+            <Stat label="Cash return" value={percentOrDash(numbers.cashReturn)} tone={numbers.cashReturn != null && numbers.cashReturn > 0 ? 'is-positive' : ''} caption={dealAmount > 0 ? `on ${formatKpiCurrency(dealAmount)} cash in the deal` : 'Last 12 months'} />
+            <Stat label="Return on equity" value={percentOrDash(numbers.returnOnEquity)} caption="Last 12 months" />
+            <Stat label="DSCR" value={numbers.dscr == null ? '—' : `${ratioOrDash(numbers.dscr)}×`} caption="Last 12 months" />
           </div>}
         </div>
       </div>
@@ -250,8 +250,8 @@ function PillGroup<T extends string>({ label, value, onChange, options }: {
   </div>;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return <div><span>{label}</span><strong>{value}</strong></div>;
+function Stat({ label, value, tone = '', caption }: { label: string; value: string; tone?: string; caption?: string }) {
+  return <div><span>{label}</span><strong className={tone ? `property-signed ${tone}` : ''}>{value}</strong>{caption ? <small>{caption}</small> : null}</div>;
 }
 
 function Row({ label, value, strong = false, tone = '', swatch = '' }: { label: string; value: string; strong?: boolean; tone?: string; swatch?: string }) {
