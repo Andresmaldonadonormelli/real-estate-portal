@@ -186,7 +186,7 @@ export default function PropertyWorkspacePage(){
         <p>{propertyTypeLabel(property.property_type)} · {units.length} {units.length === 1 ? 'unit' : 'units'}</p>
       </div>
       <div className="property-header-actions">
-        <ButtonLink variant="primary" href={`/properties/${property.id}/edit`}>Edit</ButtonLink>
+        <ButtonLink variant="secondary" className="property-edit-button" href={`/properties/${property.id}/edit`}>Edit</ButtonLink>
       </div>
     </header>
 

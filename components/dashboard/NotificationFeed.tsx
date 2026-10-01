@@ -36,9 +36,9 @@ export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) 
             <li key={item.id} data-unread={item.unread ? 'true' : 'false'}>
               <button type="button" onClick={() => openItem(item)}>
                 <span className="dashboard-drawer-title">
-                  <i className="dashboard-drawer-dot" data-hidden={item.unread ? undefined : 'true'} aria-hidden="true" />
                   <strong>{item.title}</strong>
                   <time dateTime={item.createdAt}>{item.time}</time>
+                  {item.unread ? <i className="dashboard-drawer-dot" aria-hidden="true" /> : null}
                 </span>
                 <span>{item.body}{item.body && item.amountText ? ' · ' : ''}{item.amountText ? <b className={item.amountTone ? `amount-${item.amountTone}` : ''}>{item.amountText}</b> : null}</span>
               </button>

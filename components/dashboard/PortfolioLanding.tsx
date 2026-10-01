@@ -14,7 +14,6 @@ import type { Property } from '@/lib/types';
 const PERIODS: LandingPeriod[] = ['3M', '6M', '1Y', '2Y', '5Y', 'All'];
 const SERIES: { value: LandingSeries; label: string }[] = [
   { value: 'equity', label: 'Equity' },
-  { value: 'value', label: 'Value' },
   { value: 'debt', label: 'Debt' },
 ];
 
@@ -87,38 +86,36 @@ export default function PortfolioLanding({ properties, units, transactions, prof
             <strong className="landing-value">{formatKpiCurrency(headline)}</strong>
             <div className="landing-anchor" data-card="change">
               <p className="landing-delta">
-                {signed(movement)} {scrub ? `to ${scrub.caption}` : model.periodLabel}
+                {signed(movement)} {model.periodLabel}
                 <button type="button" className="landing-info" aria-label="How this change is counted" aria-expanded={open === 'change'} onClick={() => setOpen(open === 'change' ? null : 'change')}><Info size={14} /></button>
               </p>
-              {open === 'change' ? <Breakdown title={scrub ? `To ${scrub.caption}` : `Change ${model.periodLabel}`} body="Loan paydown, estimated value change, and purchases add up to this change." rows={series === 'equity' ? [
+              {open === 'change' ? <Breakdown title={scrub ? `To ${scrub.caption}` : `Change ${model.periodLabel}`} body="Loan paydown and properties bought in this period sit alongside this change." rows={series === 'equity' ? [
                 { label: 'Loan paydown', amount: signed(model.paydown) },
-                { label: 'Value change (estimated)', amount: signed(model.valueChange), prefix: '+' },
                 { label: 'Bought', amount: signed(model.bought), prefix: '+' },
                 { label: 'Change', amount: signed(model.equityDelta), prefix: '=', strong: true },
-              ] : [{ label: series === 'debt' ? 'Debt change' : 'Value change', amount: signed(movement), strong: true }]} footer={scrub ? `The breakdown is for the ${model.periodLabel}. Move off the chart to see it.` : `This follows the ${model.periodLabel} on the chart.`} onClose={() => setOpen(null)} /> : null}
+              ] : [{ label: 'Debt change', amount: signed(movement), strong: true }]} footer={`This follows the ${model.periodLabel} on the chart.`} onClose={() => setOpen(null)} /> : null}
             </div>
             <div className="landing-composition">
-              {scrub ? <p className="landing-growth">The breakdown is for the {model.periodLabel}. Move off the chart to see it.</p> : series === 'equity' ? <>
+              {series === 'equity' ? <>
                 <p className="landing-growth">Includes {formatKpiCurrency(model.putIn)} you put in{model.growth == null ? '.' : `, so ${percentOrDash(model.growth)} growth.`}</p>
                 <div className="landing-parts">
                   <span><i className="is-paydown" />Loan paydown <b>{signed(model.paydown)}</b></span>
-                  <span><i className="is-value" />Value change (estimated) <b>{signed(model.valueChange)}</b></span>
                   <span><i className="is-bought" />Bought <b>{signed(model.bought)}</b></span>
                 </div>
               </> : null}
             </div>
           </div>
-          <div className="property-chart-pills" role="group" aria-label="Chart series">
+          {path === 'to-date' ? <div className="property-chart-pills" role="group" aria-label="Chart series">
             {SERIES.map(option => <button key={option.value} type="button" className={series === option.value ? 'active' : ''} aria-pressed={series === option.value} onClick={() => setSeries(option.value)}>{option.label}</button>)}
-          </div>
+          </div> : null}
         </div>
         <div className="landing-plot">
           {model.points?.length ? <LandingChart points={model.points} label={`${series} ${path}`} onScrub={setScrub} /> : <p className="landing-note">Payoff path needs a balance, rate, and payment.</p>}
         </div>
         <div className="landing-controls">
-          <div className="property-chart-pills" role="group" aria-label="Chart period">
+          {path === 'to-date' ? <div className="property-chart-pills" role="group" aria-label="Chart period">
             {PERIODS.map(option => <button key={option} type="button" className={period === option ? 'active' : ''} aria-pressed={period === option} onClick={() => { setPeriod(option); setScrub(null); }}>{option}</button>)}
-          </div>
+          </div> : <span />}
           <div className="landing-anchor" data-card="estimate">
             {path === 'to-date' ? <p className="landing-note">Values between known dates are estimated <button type="button" className="landing-info" aria-label="Why values are estimated" aria-expanded={open === 'estimate'} onClick={() => setOpen(open === 'estimate' ? null : 'estimate')}><Info size={14} /></button></p> : <span />}
             {open === 'estimate' ? <Breakdown title="Estimated between known dates" body="The line is drawn through purchase, saved value dates, and today. Months between those dates are a straight estimate." rows={[]} footer="Payoff path uses the saved balance, rate, and payment instead." onClose={() => setOpen(null)} /> : null}
@@ -178,7 +175,7 @@ export default function PortfolioLanding({ properties, units, transactions, prof
         <div className="landing-totals">
           <div><span>Income</span><strong>{formatKpiCurrency(flowTotal.income)}</strong></div>
           <div><span>Expenses</span><strong>{signedExpense(flowTotal.expenses)}</strong></div>
-          <div><span>Mortgage</span><strong>{signedExpense(flowTotal.mortgage)}</strong></div>
+          <div className="is-mortgage"><span>Mortgage</span><strong>{signedExpense(flowTotal.mortgage)}</strong></div>
           <div><span>Cash flow</span><strong className={`property-signed ${signedTone(flowTotal.cashFlow)}`}>{signed(flowTotal.cashFlow)}</strong></div>
         </div>
         <p className="landing-note">Where the rent went: expenses, mortgage, and what you kept.</p>

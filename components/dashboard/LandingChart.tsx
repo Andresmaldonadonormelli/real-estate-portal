@@ -12,7 +12,7 @@ export default function LandingChart({ points, label, onScrub }: {
 }) {
   const width = 640;
   const height = 300;
-  const pad = { left: 8, right: 24, top: 18, bottom: 36 };
+  const pad = { left: 8, right: 24, top: 32, bottom: 36 };
   const [active, setActive] = useState<number | null>(null);
   const layout = useMemo(() => layoutChart(points, width, height, pad), [points]);
 
@@ -74,7 +74,8 @@ export default function LandingChart({ points, label, onScrub }: {
         </> : null}
       </svg>
       {layout.labels.map((point, index) => <span key={`${point.label}-${point.x}`} className={`landing-chart-x${index === 0 ? ' is-start' : ''}${index === layout.labels.length - 1 && index !== 0 ? ' is-end' : ''}`} style={{ left: `${(point.x / width) * 100}%` }}>{point.label}</span>)}
-      {end ? <span className="landing-chart-dot" style={{ left: `${(end.x / width) * 100}%`, top: `${(end.y / height) * 100}%` }} /> : null}
+      {scrub ? <span className={`landing-chart-date${scrub.x < 96 ? ' is-start' : ''}${scrub.x > width - 96 ? ' is-end' : ''}`} style={{ left: `${(scrub.x / width) * 100}%` }}>{scrub.caption}</span> : null}
+      {end && !scrub ? <span className="landing-chart-dot" style={{ left: `${(end.x / width) * 100}%`, top: `${(end.y / height) * 100}%` }} /> : null}
       {scrub ? <span className="landing-chart-dot" style={{ left: `${(scrub.x / width) * 100}%`, top: `${(scrub.y / height) * 100}%` }} /> : null}
     </div>
   </div>;
