@@ -9,10 +9,9 @@
 .landing-delta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
 .landing-growth,.landing-note{color:var(--text-secondary)}
 .landing-note{margin:var(--space-2) 0 0;font-size:var(--type-label-size);line-height:var(--type-label-line)}
-.landing-composition{height:72px;overflow:hidden}
+.landing-composition:not(:empty){min-height:96px}
 .landing-pulse-top>div:first-child{min-width:0}
-.landing-parts{display:flex;flex-wrap:nowrap;gap:var(--space-2);margin-top:var(--space-3);overflow-x:auto;scrollbar-width:none}
-.landing-parts::-webkit-scrollbar{display:none}
+.landing-parts{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
 .landing-parts span{display:inline-flex;flex:0 0 auto;align-items:center;gap:var(--space-2);padding:6px var(--space-3);border-radius:var(--radius-pill);background:var(--surface-subtle);color:var(--text-primary);font-size:var(--type-label-size);line-height:var(--type-label-line);white-space:nowrap}
 .landing-parts i{width:8px;height:8px;border-radius:var(--radius-pill);background:var(--text-primary)}
 .landing-parts i.is-paydown{background:var(--positive)}
@@ -96,14 +95,13 @@
 .landing-investors strong{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}
 .landing-empty p{margin:var(--space-2) 0 0;color:var(--text-secondary)}
 @media (max-width:1179px){
-  .landing-pulse.dashboard-module{display:grid;gap:var(--space-4);padding:0;border:0;background:transparent;box-shadow:none}
-  .landing-pulse-main{border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card);box-shadow:var(--shadow-card)}
-  .landing-position{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3);padding:0;background:transparent}
+  .landing-pulse{grid-template-columns:minmax(0,1fr)}
+  .landing-position{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3);align-content:start;background:var(--surface-subtle);border-top:1px solid var(--border-color);border-bottom-left-radius:calc(var(--radius-module) - 1px);border-bottom-right-radius:calc(var(--radius-module) - 1px)}
   .landing-position>.landing-kicker{display:none}
-  .landing-position>.landing-figure{display:grid;flex:none;align-content:start;justify-content:start;gap:var(--space-1);margin:0;padding:var(--space-4);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card);box-shadow:var(--shadow-card)}
+  .landing-position>.landing-figure{display:grid;flex:none;align-content:start;justify-content:start;gap:var(--space-1);margin:0;padding:var(--space-4);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card);box-shadow:none}
 }
 @media (min-width:768px) and (max-width:1179px){
-  .landing-position{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .landing-position{grid-template-columns:repeat(4,minmax(0,1fr));border-bottom-left-radius:calc(var(--radius-card) - 1px);border-bottom-right-radius:calc(var(--radius-card) - 1px)}
 }
 @media (min-width:900px){
   .landing-split{grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr);align-items:start}
@@ -117,7 +115,15 @@
 .landing-anchor,.landing-figure{position:relative}
 .landing-chart{position:absolute;inset:0;display:block;width:100%;height:100%;min-width:0;max-width:100%;touch-action:none}
 .landing-chart-grid line{stroke:var(--chart-grid,var(--border-color))}
-.landing-chart text{fill:var(--chart-axis,var(--text-secondary));font-size:var(--type-label-size)}
+.landing-chart-frame{position:absolute;inset:0;display:grid;grid-template-columns:auto minmax(0,1fr);min-width:0}
+.landing-chart-scale{position:relative}
+.landing-chart-sizer{display:block;visibility:hidden;padding-right:8px;font-size:var(--type-label-size);line-height:var(--type-label-line);white-space:nowrap}
+.landing-chart-stage{position:relative;min-width:0;overflow:hidden}
+.landing-chart-y,.landing-chart-x{position:absolute;z-index:1;color:var(--chart-axis,var(--text-secondary));font-size:var(--type-label-size);line-height:var(--type-label-line);white-space:nowrap;pointer-events:none}
+.landing-chart-y{right:8px;text-align:right;transform:translateY(-50%)}
+.landing-chart-x{bottom:4px;transform:translateX(-50%)}
+.landing-chart-x.is-start{transform:none}
+.landing-chart-x.is-end{transform:translateX(-100%)}
 .landing-chart-area{fill:url(#landing-area);stroke:none}
 .landing-chart-line{fill:none;stroke:var(--positive);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .landing-chart-line.is-faded{opacity:.35}
