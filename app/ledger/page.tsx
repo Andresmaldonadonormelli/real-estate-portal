@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Property } from '@/lib/types';
 import LedgerTab from '@/components/ledger/LedgerTab';
@@ -15,6 +15,7 @@ import PropertyPicker from '@/components/common/PropertyPicker';
 
 type Tab='ledger'|'statements'|'documents';
 export default function LedgerDocsPage(){
+  const router=useRouter();
   const searchParams=useSearchParams();
   const requestedTab=searchParams.get('tab');
   const requestedProperty=searchParams.get('property') || '';
@@ -27,16 +28,26 @@ export default function LedgerDocsPage(){
 
   useEffect(()=>{
     const nextTab=searchParams.get('tab');
-    setTab(nextTab==='documents'||nextTab==='statements'?nextTab:'ledger');
+    const openAdd=searchParams.get('add')==='1';
+    const openUpload=searchParams.get('upload')==='1';
+    setTab(openUpload||nextTab==='documents'?'documents':nextTab==='statements'?'statements':'ledger');
     setSelectedPropertyId(searchParams.get('property') || '');
-  },[searchParams]);
+    if(openAdd) setAddRequest(value=>value+1);
+    if(openUpload) setUploadRequest(value=>value+1);
+    if(!openAdd && !openUpload) return;
+    const params=new URLSearchParams(searchParams.toString());
+    params.delete('add');
+    params.delete('upload');
+    const next=params.toString();
+    router.replace(next?`/ledger?${next}`:'/ledger');
+  },[router,searchParams]);
 
   useEffect(()=>{(async()=>{try{const {data,error}=await withTimeout(cachedSupabaseRequest('shared:properties',async()=>await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at',null).order('address')),8000,'Properties took too long to load.');if(!error)setProperties((data||[]) as Property[]);}finally{setLoading(false);}})();},[]);
   function changeTab(next:Tab){setTab(next);setAddRequest(0);setUploadRequest(0)}
   const fromMore = searchParams.get('from') === 'more';
   function headerAction(){
-    if(tab==='statements') return <span className="ledger-v230-action-placeholder" aria-hidden="true"/>;
-    return <PageAction onClick={()=>tab==='ledger'?setAddRequest(value=>value+1):setUploadRequest(value=>value+1)}>{tab==='ledger'?'Add transaction':'Upload document'}</PageAction>;
+    if(tab!=='documents') return <span className="ledger-v230-action-placeholder" aria-hidden="true"/>;
+    return <PageAction onClick={()=>setUploadRequest(value=>value+1)}>Upload document</PageAction>;
   }
   return <div className={`ledger-page ledger-v230-page${fromMore ? ' ledger-from-more' : ''}`}>
     <MoreBackHeader title="Transactions" action={headerAction()}/>

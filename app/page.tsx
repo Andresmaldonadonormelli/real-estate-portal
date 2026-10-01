@@ -9,15 +9,14 @@ import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculati
 import { formatCurrency, propertyChipName, shortPropertyName } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
-import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, Plus, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
-import NotificationBell from '@/components/dashboard/NotificationBell';
 import PortfolioLanding from '@/components/dashboard/PortfolioLanding';
-import { ProductSelect } from '@/components/common/ProductControls';
+import { usePortfolioScope } from '@/components/layout/PortfolioScope';
 import { parseProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, historyStart, invalidateSupabaseCache, PROPERTY_FIELDS, TRANSACTION_FIELDS, UNIT_FIELDS } from '@/lib/supabaseData';
@@ -33,7 +32,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
-  const [cashPropertyId, setCashPropertyId] = useState('');
+  const { propertyId: cashPropertyId, setPropertyId: setCashPropertyId } = usePortfolioScope();
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,8 +45,6 @@ export default function Dashboard() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [activeTransaction,setActiveTransaction]=useState<Transaction|null>(null);
   const [detailEditing,setDetailEditing]=useState(false);
-  const [addMenuOpen,setAddMenuOpen]=useState(false);
-  const addMenuRef=useRef<HTMLDivElement|null>(null);
   const [toast,setToast]=useState('');
   const [dismissedInsightIds,setDismissedInsightIds]=useState<string[]>([]);
   const [briefItems,setBriefItems]=useState<DailyInsight[]>([]);
@@ -139,7 +136,6 @@ export default function Dashboard() {
   },[ensureRecurring,initializeDashboardVisit]);
 
   useEffect(()=>{load();},[load]);
-  useEffect(()=>{if(!addMenuOpen)return;const close=(event:MouseEvent)=>{if(!addMenuRef.current?.contains(event.target as Node))setAddMenuOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setAddMenuOpen(false)};document.addEventListener('mousedown',close);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('mousedown',close);document.removeEventListener('keydown',escape)};},[addMenuOpen]);
 
   async function generateTestRentChecks(){
     setError('');
@@ -321,14 +317,6 @@ export default function Dashboard() {
     <header className="dashboard-operating-header">
       <strong className="dashboard-mobile-brand">Overview</strong>
       <div className="dashboard-heading"><h1>Overview</h1></div>
-      <div className="dashboard-operating-controls">
-        <div className="dashboard-filter-row">
-          {!loading&&<ProductSelect aria-label="Property" value={cashPropertyId} onChange={e=>setCashPropertyId(e.target.value)}><option value="">All properties</option>{properties.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}</ProductSelect>}
-          <span className="dashboard-month-chip">{monthLabel} {overviewYear}</span>
-        </div>
-        <NotificationBell />
-        {!loading&&properties.length>0&&<div className="pulse-add-menu" ref={addMenuRef}><button type="button" className="pulse-add-button" aria-expanded={addMenuOpen} aria-haspopup="menu" onClick={()=>setAddMenuOpen(open=>!open)}><Plus size={18}/><span>Add</span><ChevronDown size={16} aria-hidden="true"/></button>{addMenuOpen&&<div className="pulse-add-options" role="menu"><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Banknote size={17}/>Record rent</button><button type="button" onClick={()=>{setShowQuickAdd(true);setAddMenuOpen(false)}}><Receipt size={17}/>Add transaction</button><button type="button" onClick={()=>router.push('/properties?add=1')}><Building2 size={17}/>Add property</button><button type="button" onClick={()=>router.push('/ledger?tab=documents&upload=1')}><FileText size={17}/>Upload document</button></div>}</div>}
-      </div>
     </header>
     {!loading&&<div className="dashboard-mobile-context">
       <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>

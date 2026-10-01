@@ -1,5 +1,5 @@
 /* Property directory */
-.properties-page{width:min(1240px,100%);margin:0 auto;padding:var(--space-8)!important}
+.properties-page{width:auto;max-width:none;margin:0;padding:var(--space-5) var(--space-6) var(--space-6)!important}
 .properties-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-8)}
 .properties-page-head h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold);letter-spacing:-.035em}
 .properties-page-head p{margin-top:var(--space-1);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
@@ -7,7 +7,7 @@
 .properties-empty-state h2{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--weight-semibold)}
 .properties-empty-state p{max-width:560px;margin:var(--space-2) 0 var(--space-5);color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 /* Individual property */
-.property-workspace{width:min(1240px,100%);padding:var(--space-8)!important}
+.property-workspace{width:auto;max-width:none;margin:0;padding:var(--space-5) var(--space-6) var(--space-6)!important}
 .property-workspace-header{margin-bottom:var(--space-6)}
 .property-workspace-image{width:112px;height:88px;border-radius:var(--radius-control)}
 .property-title-copy h1{font-size:var(--type-page-title-size);line-height:var(--type-page-title-line);font-weight:var(--weight-semibold)}
@@ -107,11 +107,15 @@
 @media(max-width:767px){.property-overview-pulse{gap:var(--space-5)}.property-overview-chart-head{align-items:flex-end}.property-chart-modes,.property-chart-periods{gap:var(--space-4)}.property-overview-value-row{flex-wrap:wrap;gap:var(--space-2)}.property-collapsible-toggle{min-height:var(--control-height-mobile)}}
 
 .property-workspace-header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4)}
-.property-workspace .property-title-copy h1{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
+.property-workspace .property-title-copy h1{margin:0;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold)}
 .property-title-copy p{margin:var(--space-1) 0 0;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .property-header-actions{margin-top:0}
 .property-header-actions a,.property-header-actions .property-text-action{min-height:44px;color:var(--text-secondary);font:var(--font-button);text-decoration:none}
 .property-header-actions a.ui-button--primary,.property-header-actions a.ui-button--primary:hover{color:var(--color-text-inverse);opacity:1}
+.property-header-actions a.property-edit-button{border:1px solid var(--border-color);background:transparent;color:var(--text-primary);opacity:1}
+@media (hover:hover) and (pointer:fine){
+  .property-header-actions a.property-edit-button:hover{border-color:var(--border-color);background:var(--surface-subtle);color:var(--text-primary);opacity:1}
+}
 .property-menu{margin-bottom:var(--space-6);overflow-x:auto;align-items:stretch}
 .property-menu.ui-tabs--underline button,.property-menu.ui-tabs--underline button:hover,.property-menu.ui-tabs--underline button:active,.property-menu.ui-tabs--underline button.active,.property-menu.ui-tabs--underline button.active:hover,.property-menu.ui-tabs--underline button:not(.active):hover{display:inline-flex;align-items:center;height:36px;min-height:36px;margin:0;padding:0;border:0;font-family:var(--font-family-primary);font-size:var(--type-small-size);font-weight:var(--weight-medium);line-height:var(--type-small-line);transform:none}
 .property-menu.ui-tabs--underline button.active::after,.property-menu.ui-tabs--underline button.active:hover::after{background:var(--text-primary)}
@@ -166,9 +170,6 @@
   .property-status-board>div+div::before{content:"";position:absolute;left:0;top:var(--space-4);bottom:var(--space-4);width:1px;background:var(--border-color)}
 }
 @media (min-width:900px){
-  .property-position-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(210px,.68fr);align-items:stretch}
-  .property-position-side{grid-column:2;grid-row:1 / span 2;align-self:stretch;height:auto;border-left:0}
-  .property-investor{grid-column:1;align-self:end}
   .property-quad{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 .property-position{padding:0;overflow:hidden}
@@ -222,6 +223,20 @@
 .property-position-metrics{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
 .property-position-metrics>div{display:flex;flex:1 1 0;flex-direction:column;justify-content:center;gap:var(--space-1);padding:var(--space-4) 0;border-top:1px solid var(--border-color)}
 .property-position-metrics small{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+@media (max-width:1179px){
+  .property-position-side{display:block;height:auto;background:var(--surface-subtle)}
+  .property-position-side>.property-kicker{display:none}
+  .property-position-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+  .property-position-metrics>div{flex:none;justify-content:start;margin:0;padding:var(--space-4);border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}
+}
+@media (min-width:768px) and (max-width:1179px){
+  .property-position-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (min-width:1180px){
+  .property-position-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(210px,.68fr);align-items:stretch}
+  .property-position-side{grid-column:2;grid-row:1 / span 2;align-self:stretch;height:auto;border-left:0}
+  .property-investor{grid-column:1;align-self:end}
+}
 .property-glance,.property-loan-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-4)}
 .property-glance>div,.property-loan-stats>div,.property-loan-breakdown div{display:grid;gap:var(--space-1)}
 .property-glance span,.property-loan-stats span,.property-loan-breakdown span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}

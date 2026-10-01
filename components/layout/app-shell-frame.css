@@ -80,7 +80,7 @@ body {
     gap: 2px;
     flex: 1 1 auto;
     min-height: 0;
-    padding: 0;
+    padding: var(--space-8) 0 0;
     overflow: auto;
   }
   .app-shell button.nav-link {
@@ -107,6 +107,7 @@ body {
     border-top: 0;
   }
   .app-shell .nav-link {
+    position: relative;
     min-height: var(--control-height-desktop);
     margin: 0;
     padding: 0 var(--space-3) !important;
@@ -121,6 +122,45 @@ body {
     color: var(--text-primary) !important;
     font-weight: var(--weight-medium) !important;
   }
+  .app-shell .nav-link.active::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 6px;
+    width: 2px;
+    border-radius: var(--radius-pill);
+    background: var(--text-primary);
+  }
+  .app-shell .nav-directory {
+    margin-top: var(--space-5);
+  }
+  .app-shell .side-nav.is-collapsed {
+    flex-basis: 72px;
+    width: 72px;
+  }
+  .app-shell .side-nav.is-collapsed .side-nav-brand strong,
+  .app-shell .side-nav.is-collapsed .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .app-shell .side-nav.is-collapsed .nav-subheader,
+  .app-shell .side-nav.is-collapsed .nav-property {
+    display: none;
+  }
+  .app-shell .side-nav.is-collapsed .nav-link {
+    position: relative;
+    justify-content: center;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
   .app-shell .nav-link svg {
     flex: 0 0 auto;
   }
@@ -129,6 +169,20 @@ body {
   }
 }
 
+.portfolio-identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.portfolio-identity-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.portfolio-identity-tools .product-select { width: 200px; min-width: 0; }
 .portfolio-identity strong {
   display: block;
   color: var(--text-primary);
@@ -145,6 +199,10 @@ body {
 }
 @media (max-width: 767px) {
   .portfolio-identity { padding: var(--space-4) var(--space-4) var(--space-3); }
+  .portfolio-identity-tools .product-select { min-width: 0; max-width: 132px; }
+  .portfolio-identity-tools .pulse-add-button { width: 44px; min-width: 44px; padding: 0; }
+  .portfolio-identity-tools .pulse-add-button span,
+  .portfolio-identity-tools .pulse-add-button svg:last-child { display: none; }
   .app-frame {
     min-height: 100vh;
     padding: 0;

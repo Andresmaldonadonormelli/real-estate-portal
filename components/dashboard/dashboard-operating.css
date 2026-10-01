@@ -11,8 +11,8 @@
   gap: var(--space-4);
 }
 .dashboard-operating-header h1 {
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line);
+  font-size: var(--type-card-title-size);
+  line-height: var(--type-card-title-line);
   font-weight: var(--weight-semibold);
   letter-spacing: 0;
 }
@@ -782,7 +782,7 @@
   gap: 2px;
   width: 100%;
   min-height: 44px;
-  padding: 10px var(--space-5);
+  padding: var(--space-4) var(--space-5);
   border: 0;
   background: transparent;
   color: inherit;
@@ -808,10 +808,7 @@
   width: 7px;
   height: 7px;
   border-radius: var(--radius-pill);
-  background: var(--color-unread);
-}
-.dashboard-drawer-dot[data-hidden='true'] {
-  visibility: hidden;
+  background: var(--color-brand);
 }
 .dashboard-drawer .dashboard-drawer-list {
   flex: 1 1 auto;
@@ -868,8 +865,8 @@
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
-    font-size: var(--type-small-size);
-    line-height: var(--type-small-line);
+    font-size: var(--type-card-title-size);
+    line-height: var(--type-card-title-line);
     font-weight: var(--weight-semibold);
     letter-spacing: 0;
   }
@@ -1152,10 +1149,20 @@
     color: var(--text-primary);
   }
 }
-.notifications-page .dashboard-drawer-list {
-  margin-right: 0;
-  margin-left: 0;
+.notifications-page {
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
+.notifications-board .dashboard-drawer-list {
+  grid-auto-rows: auto;
+  margin-right: calc(var(--space-5) * -1);
+  margin-left: calc(var(--space-5) * -1);
+}
+.notifications-board .dashboard-drawer-list li,
+.notifications-board .dashboard-drawer-list button {
+  height: auto;
+  max-height: none;
+}
+.notifications-tabs { margin-bottom: var(--space-2); }
 .notifications-page-bar {
   display: flex;
   align-items: center;
@@ -1178,17 +1185,13 @@
 }
 .notifications-page-bar h1 {
   margin: 0;
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line);
+  font-size: var(--type-card-title-size);
+  line-height: var(--type-card-title-line);
   font-weight: var(--weight-semibold);
   letter-spacing: 0;
 }
 .notifications-page .dashboard-drawer-tabs {
   margin-top: 0;
-}
-.notifications-page .dashboard-drawer-list button {
-  padding-right: 0;
-  padding-left: 0;
 }
 @media (min-width: 768px) {
   .notifications-back { display: none; }
@@ -1212,10 +1215,6 @@
     height: 44px;
     min-height: 44px;
     white-space: nowrap;
-  }
-  .notifications-page .dashboard-drawer-list button {
-    padding-right: 0;
-    padding-left: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {

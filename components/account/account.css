@@ -1,5 +1,5 @@
 /* Actions and account are compact white feeds. */
-.actions-page{width:min(960px,100%);padding:var(--space-8)!important}.account-page{width:min(1240px,100%);padding:var(--space-8)!important}
+.actions-page{width:min(960px,100%);padding:var(--space-8)!important}.account-page{width:auto;max-width:none;margin:0;padding:var(--space-5) var(--space-6) var(--space-6)!important}
 .actions-back-link{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .actions-page-list,.account-settings-list{border-top:1px solid var(--border-color)}
 .account-settings-row{display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);min-height:88px;padding:var(--space-4) 0;border-bottom:1px solid var(--border-color)}
@@ -46,7 +46,7 @@
 .more-back-header{display:none}
 .more-back-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);min-height:44px}
 .more-back-button{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--text-primary);cursor:pointer}
-.more-back-header h1{margin:var(--space-1) 0 var(--space-6);text-align:center;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);letter-spacing:0}
+.more-back-header h1{margin:var(--space-1) 0 var(--space-6);text-align:center;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line);font-weight:var(--weight-semibold);letter-spacing:0}
 .more-detail{display:grid;gap:var(--space-1);padding:var(--space-4)}
 .more-detail strong{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
 .more-detail span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}

@@ -9,7 +9,7 @@
 .landing-delta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1)}
 .landing-growth,.landing-note{color:var(--text-secondary)}
 .landing-note{margin:var(--space-2) 0 0;font-size:var(--type-label-size);line-height:var(--type-label-line)}
-.landing-composition:not(:empty){min-height:96px}
+.landing-composition:not(:empty){min-height:0}
 .landing-pulse-top>div:first-child{min-width:0}
 .landing-parts{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
 .landing-parts span{display:inline-flex;flex:0 0 auto;align-items:center;gap:var(--space-2);padding:6px var(--space-3);border-radius:var(--radius-pill);background:var(--surface-subtle);color:var(--text-primary);font-size:var(--type-label-size);line-height:var(--type-label-line);white-space:nowrap}
@@ -52,10 +52,10 @@
 .landing-flow-scale span{position:absolute;right:0;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);transform:translateY(50%)}
 .landing-flow-plot{min-width:0}
 .landing-zero{position:absolute;left:0;right:0;z-index:1;height:0;border-top:1px solid var(--border-color);pointer-events:none}
-.landing-bars{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--space-1);height:100%}
-.landing-bar{display:block;height:100%;padding:0;border:0;background:transparent;cursor:pointer}
+.landing-bars{position:absolute;inset:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--space-1)}
+.landing-bar{position:relative;display:block;height:100%;min-height:0;padding:0;border:0;background:transparent;cursor:pointer}
 .landing-bar.is-active .landing-bar-plot{background:var(--surface-subtle)}
-.landing-bar-plot{position:relative;width:100%;height:100%}
+.landing-bar-plot{position:absolute;inset:0;display:block}
 .landing-bar i{position:absolute;left:18%;right:18%;display:block;border-radius:4px 4px 0 0;background:var(--positive)}
 .landing-bar i.is-down{border-radius:0 0 4px 4px;background:var(--negative)}
 .landing-bar i.is-estimated{background:color-mix(in srgb,var(--positive) 35%,var(--surface-subtle))}
@@ -74,9 +74,10 @@
 .landing-totals>div{display:grid;align-content:start;justify-items:start;gap:var(--space-1);min-width:0}
 .landing-totals span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .landing-totals strong{display:block;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}
+.landing-totals .is-mortgage strong{color:var(--color-category-mortgage)}
 .landing-rent-bar{display:flex;height:8px;margin-top:var(--space-2);overflow:hidden;border-radius:var(--radius-pill);background:var(--surface-subtle)}
 .landing-rent-bar i:nth-child(1){background:var(--chart-expense)}
-.landing-rent-bar i:nth-child(2){background:var(--chart-series-management)}
+.landing-rent-bar i:nth-child(2){background:var(--color-category-mortgage)}
 .landing-rent-bar i:nth-child(3){background:var(--positive)}
 .landing-disclosure{width:100%;min-height:44px;margin-top:var(--space-3);padding:0;border:0;background:transparent;color:var(--text-secondary);font:var(--font-button);text-align:left;cursor:pointer}
 .landing-disclosure em{font-style:normal}
@@ -129,6 +130,9 @@
 .landing-chart-line.is-faded{opacity:.35}
 .landing-chart-guide{stroke:var(--text-secondary)}
 .landing-chart-dot{position:absolute;z-index:2;width:10px;height:10px;margin:-5px 0 0 -5px;border:2px solid var(--theme-card);border-radius:50%;background:var(--positive);pointer-events:none}
+.landing-chart-date{position:absolute;top:2px;z-index:3;color:var(--text-primary);font-size:var(--type-label-size);line-height:var(--type-label-line);white-space:nowrap;pointer-events:none;transform:translateX(-50%)}
+.landing-chart-date.is-start{transform:none}
+.landing-chart-date.is-end{transform:translateX(-100%)}
 .landing-info,.landing-pop-close{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--text-secondary);cursor:pointer}
 .landing-pop{position:absolute;z-index:6;top:calc(100% + var(--space-2));left:0;width:min(360px,80vw);padding:var(--space-4);border-radius:var(--radius-card);background:var(--surface-elevated,var(--theme-card));box-shadow:var(--shadow-card-hover);color:var(--text-primary)}
 .landing-position .landing-pop,.landing-figure[data-card='paydown'] .landing-pop{right:0;left:auto}
