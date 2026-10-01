@@ -67,6 +67,7 @@ export type FeedNotification = {
   type: NotificationType;
   title: string;
   body: string;
+  amount: number | null;
   amountText: string;
   amountTone: '' | 'positive' | 'negative';
   time: string;
@@ -119,6 +120,7 @@ export function presentNotification(row: Notification, now = new Date()): FeedNo
     type: row.type,
     title: row.title,
     body: row.body || '',
+    amount: amount ? Number(row.amount) : null,
     amountText: amount?.text || '',
     amountTone: amount?.tone || '',
     time: relativeNotificationTime(row.created_at, now),

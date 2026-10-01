@@ -76,9 +76,11 @@
 .landing-totals strong{display:block;font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}
 .landing-totals .is-mortgage strong{color:var(--color-category-mortgage)}
 .landing-rent-bar{display:flex;height:8px;margin-top:var(--space-2);overflow:hidden;border-radius:var(--radius-pill);background:var(--surface-subtle)}
-.landing-rent-bar i:nth-child(1){background:var(--chart-expense)}
-.landing-rent-bar i:nth-child(2){background:var(--color-category-mortgage)}
-.landing-rent-bar i:nth-child(3){background:var(--positive)}
+.landing-rent-bar i{display:block;flex:0 1 auto;height:100%;min-width:0}
+.landing-rent-bar i.is-expense{background:var(--chart-muted)}
+.landing-rent-bar i.is-mortgage{background:var(--color-category-mortgage)}
+.landing-rent-bar i.is-up{background:var(--positive)}
+.landing-rent-bar i.is-down{background:var(--negative)}
 .landing-disclosure{width:100%;min-height:44px;margin-top:var(--space-3);padding:0;border:0;background:transparent;color:var(--text-secondary);font:var(--font-button);text-align:left;cursor:pointer}
 .landing-disclosure em{font-style:normal}
 .landing-disclosure[aria-expanded='true'] svg{transform:rotate(180deg)}

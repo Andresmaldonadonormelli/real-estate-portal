@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import FinancialHistoryChart from '@/components/charts/FinancialHistoryChart';
+import CashFlowBars, { type CashFlowBarMonth } from '@/components/dashboard/CashFlowBars';
 import PositionChart from '@/components/property/PositionChart';
-import { buildMonthlyFinancialHistory, type HistoryPeriod, type HistoryTransaction } from '@/lib/financialHistory';
+import { type HistoryPeriod, type HistoryTransaction } from '@/lib/financialHistory';
 import { formatKpiCurrency } from '@/lib/propertyFinancials';
 import { occupancyCounts } from '@/lib/portfolioAttention';
 import { cashInDeal, currentEquity, emptyProfile, loanPaidDown, valueChange, type PropertyProfile } from '@/lib/propertyProfile';
@@ -64,7 +64,7 @@ export default function PropertyOverview({ property, units, transactions, profil
   const yearFlow = useMemo(() => cashFlowThisYear(transactions, property.id), [transactions, property.id]);
   const latestMonth = useMemo(() => latestYearCashFlow(transactions, property.id), [transactions, property.id]);
   const comingUp = useMemo(() => upcomingLeases(leaseUnits), [leaseUnits]);
-  const history = useMemo(() => buildMonthlyFinancialHistory(transactions, flowPeriod, property.id), [transactions, flowPeriod, property.id]);
+  const flowMonths = useMemo(() => propertyCashMonths(transactions, property.id, flowPeriod), [transactions, property.id, flowPeriod]);
   const lastMonthDate = useMemo(() => {
     const date = new Date();
     date.setDate(1);
@@ -182,7 +182,7 @@ export default function PropertyOverview({ property, units, transactions, profil
           <h2>Monthly cash flow</h2>
           <PillGroup label="Cash flow period" value={flowPeriod} onChange={setFlowPeriod} options={PERIODS} />
         </div>
-        <FinancialHistoryChart rows={history} label="Monthly cash flow" />
+        <CashFlowBars months={flowMonths} />
       </section>
       <EquityComposition property={property} profile={profile} equity={equity} open={showKnown} onToggle={() => setShowKnown(open => !open)} />
     </div>
@@ -228,6 +228,30 @@ function shortDate(value: string) {
   const date = new Date(`${value.slice(0, 10)}T12:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+const FLOW_COUNT: Record<HistoryPeriod, number> = { '3M': 3, '6M': 6, '9M': 9, '1Y': 12 };
+
+function propertyCashMonths(transactions: HistoryTransaction[], propertyId: string, period: HistoryPeriod): CashFlowBarMonth[] {
+  const count = FLOW_COUNT[period];
+  const now = new Date();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (count - 1 - index), 1);
+    const activity = monthActivity(transactions, propertyId, date);
+    const income = activity.cashFlow + activity.expenses + activity.mortgage;
+    const posted = income !== 0 || activity.expenses !== 0 || activity.mortgage !== 0;
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      shortLabel: date.toLocaleDateString('en-US', { month: 'short' }),
+      income,
+      expenses: activity.expenses,
+      mortgage: activity.mortgage,
+      cashFlow: activity.cashFlow,
+      status: posted ? 'entered' : 'estimated',
+      enteredLabel: posted ? 'Entered' : 'No activity',
+    };
+  });
 }
 
 function EmptyPlot() {

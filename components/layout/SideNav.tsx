@@ -65,6 +65,7 @@ export default function SideNav() {
       <Link href="/notifications" className={`nav-link ${alertsActive ? 'active' : ''}`} aria-label={unreadCount ? `Alerts, ${unreadCount} unread` : 'Alerts'}>
         <span className="nav-alert-icon"><Bell size={iconSize.nav} strokeWidth={1.75} fill={alertsActive ? 'currentColor' : 'none'} />{unreadCount > 0 && <span className="dashboard-bell-count">{unreadCount}</span>}</span>
         <span className="nav-label">Alerts</span>
+        {unreadCount > 0 && <span className="nav-alert-count">{unreadCount}</span>}
       </Link>
       <Link href="/properties" className={`nav-link nav-directory ${pathname === '/properties' ? 'active' : ''}`}><PropertiesIcon active={pathname === '/properties'} size={iconSize.nav} /><span className="nav-label">Properties</span></Link>
       {properties.length > 0 && <p className="nav-subheader">Properties</p>}
