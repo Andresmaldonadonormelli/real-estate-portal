@@ -30,7 +30,7 @@ const categories = [...ACCOUNTING_CATEGORIES];
 const emptyTx = { property_id:'', unit_id:'', transaction_date:new Date().toISOString().slice(0,10), type:'expense' as TxType, category:'Needs Review', description:'', payee_source:'', amount:'', notes:'', needs_review:true };
 
 export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange, addRequest=0, onActionHandled }:{ selectedPropertyId:string; onSelectedPropertyChange:(value:string)=>void; addRequest?:number; onActionHandled?:()=>void }) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const searchParams=useSearchParams();
   const reviewOnly=searchParams.get('review')==='1';
   const [reviewFilter,setReviewFilter]=useState(reviewOnly);
@@ -73,8 +73,8 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     return()=>{media.removeEventListener('change',sync);if(locked)document.body.style.overflow='';};
   },[showFilters]);
 
-  async function loadData() {
-    setLoading(true); setError('');
+  async function loadData(quiet=false) {
+    if(!quiet)setLoading(true); setError('');
     try {
       const [t,p,u] = await withTimeout(Promise.all([
         supabase.from('transactions').select(TRANSACTION_FIELDS).is('archived_at',null).order('transaction_date',{ascending:false}).limit(500),
@@ -90,7 +90,22 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
       setError(e instanceof Error ? e.message : 'Could not load ledger data.');
     } finally { setLoading(false); }
   }
-  useEffect(()=>{loadData();},[]);
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      await loadData();
+      if(cancelled)return;
+      try{
+        const sync=async(token:string)=>fetch('/api/plaid/sync',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({refresh:false,resync:true})});
+        let response=await sync(session.access_token);
+        if(response.status===401){const refreshed=await supabase.auth.refreshSession();const token=refreshed.data.session?.access_token;if(token)response=await sync(token);}
+        if(!response.ok||cancelled)return;
+        invalidateSupabaseCache();
+        await loadData(true);
+      }catch{/* The ledger still shows transactions already saved. */}
+    })();
+    return()=>{cancelled=true;};
+  },[session.access_token]);
   useEffect(()=>{setReviewFilter(reviewOnly)},[reviewOnly]);
   useEffect(()=>{if(addRequest>0){openAdd();onActionHandled?.()}},[addRequest]);
 

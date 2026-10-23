@@ -1,5 +1,5 @@
 import { apiError, adminDb, authenticatedUser } from '@/lib/plaid/server';
-import { backfillPlaidAccount } from '@/lib/plaid/sync';
+import { syncPlaidItem } from '@/lib/plaid/sync';
 export const runtime='nodejs';
 
 export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){
@@ -21,7 +21,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
     if(assigningProperty&&account?.import_enabled&&account.property_id){
       const {data:item,error:itemError}=await db.from('plaid_items').select('id,user_id,access_token_encrypted,cursor,institution_name').eq('id',account.item_id).eq('user_id',user.id).is('disconnected_at',null).single();
       if(itemError)throw itemError;
-      await backfillPlaidAccount(db,item,account.id);
+      await syncPlaidItem(db,item,{resync:true});
     }
     return Response.json({ok:true});
   }catch(error){return apiError(error)}

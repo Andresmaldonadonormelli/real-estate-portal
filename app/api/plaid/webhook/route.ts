@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { decodeProtectedHeader, importJWK, jwtVerify } from 'jose';
 import { adminDb, apiError, plaidClient } from '@/lib/plaid/server';
 import { syncPlaidItem } from '@/lib/plaid/sync';
+
+const TRANSACTION_SYNC_CODES=new Set(['SYNC_UPDATES_AVAILABLE','INITIAL_UPDATE','HISTORICAL_UPDATE','DEFAULT_UPDATE','TRANSACTIONS_REMOVED']);
 export const runtime='nodejs';
 
 async function verifiedBody(request:Request){
@@ -23,10 +25,10 @@ export async function POST(request:Request){
     const body=await verifiedBody(request);
     const db=adminDb();
 
-    if(body.webhook_type==='TRANSACTIONS'&&body.webhook_code==='SYNC_UPDATES_AVAILABLE'){
-      const {data:item,error}=await db.from('plaid_items').select('*').eq('plaid_item_id',body.item_id).is('disconnected_at',null).single();
+    if(body.webhook_type==='TRANSACTIONS'&&TRANSACTION_SYNC_CODES.has(body.webhook_code)){
+      const {data:item,error}=await db.from('plaid_items').select('*').eq('plaid_item_id',body.item_id).is('disconnected_at',null).maybeSingle();
       if(error)throw error;
-      await syncPlaidItem(db,item);
+      if(item)await syncPlaidItem(db,item,{resync:true});
       return Response.json({ok:true});
     }
 
