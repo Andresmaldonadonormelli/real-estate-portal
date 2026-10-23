@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptToken, plaidClient } from './server';
-import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, plaidAmount, shouldReplaceLedgerDetails, type PlaidTransactionLike } from './mapTransaction';
+import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, plaidAmount, sameAccountMovement, shouldReplaceLedgerDetails, supersededLedgerIds, type MovementRow, type PlaidTransactionLike } from './mapTransaction';
 
 type PlaidItem = { id: string; user_id: string; access_token_encrypted: string; cursor: string | null; institution_name: string };
 type LinkedAccount = { id: string; plaid_account_id: string; property_id: string | null; mask: string | null; type: string | null; subtype: string | null; import_enabled: boolean; alias_ids?: string[] };
@@ -56,6 +56,7 @@ export async function syncPlaidItem(db: SupabaseClient, item: PlaidItem, options
   }
 
   for (const account of accounts) created += await healAccount(db, item, account);
+  for (const account of accounts) await collapseAccountDuplicates(db, item.user_id, account);
 
   await updateBalances(db, item.id, accessToken, pulled.accounts || []);
   const cursorSaved = await db.from('plaid_items').update({
@@ -167,6 +168,23 @@ async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransa
     }
   }
 
+  if (!ledger && account.mask && draft.transaction_date && draft.status === 'posted') {
+    const predecessor = await findAccountMovement(db, item.user_id, account.mask, draft, ['pending', 'declined']);
+    if (predecessor) {
+      ledger = predecessor;
+      adoptedId = predecessor.id;
+    }
+  }
+
+  if (!ledger && account.mask && draft.transaction_date && draft.status === 'pending') {
+    const postedSibling = await findAccountMovement(db, item.user_id, account.mask, draft, ['posted']);
+    if (postedSibling) {
+      const hidden = await db.from('plaid_transactions').update({ removed: true, ledger_transaction_id: null }).eq('plaid_transaction_id', row.transaction_id);
+      if (hidden.error) throw new Error(hidden.error.message);
+      return { created: 0, adoptedId: null };
+    }
+  }
+
   if (ledger?.archived_at) {
     await linkLedger(db, row.transaction_id, ledger.id);
     return { created: 0, adoptedId: null };
@@ -199,8 +217,8 @@ async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransa
   }
 
   await linkLedger(db, String(row.transaction_id), ledger.id);
-  if (adoptedId && row.pending_transaction_id) {
-    const cleared = await db.from('plaid_transactions').update({ ledger_transaction_id: null }).eq('plaid_transaction_id', row.pending_transaction_id).eq('ledger_transaction_id', adoptedId);
+  if (adoptedId) {
+    const cleared = await db.from('plaid_transactions').update({ ledger_transaction_id: null }).eq('ledger_transaction_id', adoptedId).neq('plaid_transaction_id', String(row.transaction_id));
     if (cleared.error) throw new Error(cleared.error.message);
   }
   return { created, adoptedId };
@@ -261,14 +279,18 @@ async function healAccount(db: SupabaseClient, item: PlaidItem, account: LinkedA
     const rows = page.data || [];
     if (!rows.length) break;
     const ledgerIds = rows.map(row => row.ledger_transaction_id).filter(Boolean);
-    const ledgers = ledgerIds.length ? await db.from('transactions').select('id,status,needs_review,category,type').in('id', ledgerIds) : { data: [], error: null };
+    const ledgers = ledgerIds.length ? await db.from('transactions').select('id,status,needs_review,category,type,amount').in('id', ledgerIds) : { data: [], error: null };
     if (ledgers.error) throw new Error(ledgers.error.message);
     const byId = new Map((ledgers.data || []).map(row => [row.id, row]));
     for (const row of rows) {
       if (!row.raw_data) continue;
+      const raw = row.raw_data as PlaidTransactionLike;
       const ledger = row.ledger_transaction_id ? byId.get(row.ledger_transaction_id) : null;
-      const misfiled = ledger?.needs_review && ledger.type === 'transfer' && plaidAmount(row.raw_data) < 0 && !String(row.raw_data.personal_finance_category?.primary || '').startsWith('TRANSFER_');
-      if (!ledger || ledger.status === 'declined' || misfiled) created += (await materialize(db, item, row.raw_data, account)).created;
+      const draft = ledgerDraftFromPlaid(raw);
+      const stored = Number(ledger?.amount);
+      const signWrong = Boolean(ledger?.needs_review) && Number.isFinite(stored) && Math.abs(stored - draft.amount) > 0.009;
+      const misfiled = signWrong || Boolean(ledger?.needs_review && ledger.type === 'transfer' && plaidAmount(raw.amount) < 0 && !String(raw.personal_finance_category?.primary || '').startsWith('TRANSFER_'));
+      if (!ledger || ledger.status === 'declined' || misfiled) created += (await materialize(db, item, raw, account)).created;
     }
     if (rows.length < 500) break;
     from += 500;
@@ -305,6 +327,69 @@ async function updateBalances(db: SupabaseClient, itemId: string, accessToken: s
   } catch {
     // Chase often rejects a live balance refresh. Transactions still import.
   }
+}
+
+async function findAccountMovement(db: SupabaseClient, userId: string, mask: string, draft: { amount: number; transaction_date: string | null; description: string; status: string }, statuses: string[]) {
+  if (!draft.transaction_date) return null;
+  const start = shiftIsoDate(draft.transaction_date, -4);
+  const end = shiftIsoDate(draft.transaction_date, 4);
+  const result = await db.from('transactions').select('id,status,needs_review,category,archived_at,amount,transaction_date,description,source_account_mask').eq('user_id', userId).eq('source', 'plaid').eq('source_account_mask', mask).in('status', statuses).is('archived_at', null).gte('transaction_date', start).lte('transaction_date', end);
+  if (result.error) throw new Error(result.error.message);
+  const incoming: MovementRow = { id: 'incoming', mask, amount: draft.amount, date: draft.transaction_date, description: draft.description, status: draft.status };
+  const matches = (result.data || []).filter(row => sameAccountMovement(incoming, {
+    id: row.id,
+    mask: row.source_account_mask,
+    amount: Number(row.amount),
+    date: String(row.transaction_date || ''),
+    description: row.description || '',
+    status: row.status || 'posted',
+  }));
+  matches.sort((left, right) => movementRank(left.status || '') - movementRank(right.status || '') || String(left.id).localeCompare(String(right.id)));
+  return (matches[0] as LedgerRow | undefined) || null;
+}
+
+async function collapseAccountDuplicates(db: SupabaseClient, userId: string, account: LinkedAccount) {
+  if (!account.mask || !account.property_id || account.import_enabled === false) return;
+  const rows: MovementRow[] = [];
+  let from = 0;
+  for (;;) {
+    const page = await db.from('transactions').select('id,amount,transaction_date,description,status,source_account_mask').eq('user_id', userId).eq('source', 'plaid').eq('source_account_mask', account.mask).is('archived_at', null).order('id').range(from, from + 499);
+    if (page.error) throw new Error(page.error.message);
+    const batch = page.data || [];
+    for (const row of batch) {
+      rows.push({
+        id: row.id,
+        mask: row.source_account_mask,
+        amount: Number(row.amount),
+        date: String(row.transaction_date || ''),
+        description: row.description || '',
+        status: row.status || 'posted',
+      });
+    }
+    if (batch.length < 500) break;
+    from += 500;
+  }
+  const linked = await db.from('plaid_transactions').select('ledger_transaction_id,pending,removed').eq('account_id', account.id).eq('removed', false).eq('pending', false);
+  if (linked.error) throw new Error(linked.error.message);
+  const livePosted = (linked.data || []).map(row => row.ledger_transaction_id).filter(Boolean);
+  for (const ids of chunks(supersededLedgerIds(rows, livePosted), 100)) {
+    const archived = await db.from('transactions').update({ archived_at: new Date().toISOString(), status: 'declined' }).in('id', ids).eq('user_id', userId).eq('source', 'plaid');
+    if (archived.error) throw new Error(archived.error.message);
+  }
+}
+
+function movementRank(status: string) {
+  if (status === 'pending') return 0;
+  if (status === 'declined') return 1;
+  return 2;
+}
+
+function shiftIsoDate(iso: string, days: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!match) return iso;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function plaidRow(item: PlaidItem, account: LinkedAccount | null, row: PlaidTransactionLike) {

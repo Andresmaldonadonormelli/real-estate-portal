@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, shouldReplaceLedgerDetails } from './mapTransaction.ts';
+import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, shouldReplaceLedgerDetails, supersededLedgerIds } from './mapTransaction.ts';
 
 test('Chase deposits become income instead of transfers', () => {
   const rent = ledgerDraftFromPlaid({ transaction_id: 'rent', amount: -1850, date: '2026-10-14', name: 'ACH CREDIT RENT', personal_finance_category: { primary: 'INCOME', detailed: 'INCOME_OTHER' } });
@@ -46,6 +46,91 @@ test('reviewed categories are kept and unreviewed imports can be corrected', () 
   assert.equal(shouldReplaceLedgerDetails({ needs_review: false, status: 'posted', category: 'Rent' }), false);
   assert.equal(shouldReplaceLedgerDetails({ needs_review: false, status: 'declined', category: 'Uncategorized Inflow' }), true);
   assert.equal(shouldReplaceLedgerDetails({ needs_review: false, status: 'declined', category: 'Rent' }), false);
+});
+
+test('Plaid calendar dates stay on the posted day', () => {
+  for (const day of ['2026-10-16', '2026-10-15', '2026-10-14', '2026-10-13']) {
+    const draft = ledgerDraftFromPlaid({
+      transaction_id: day,
+      amount: 12,
+      date: day,
+      authorized_date: '2026-10-12',
+      name: 'HOME DEPOT',
+    });
+    assert.equal(draft.transaction_date, day);
+  }
+});
+
+test('an outgoing Zelle payment stays a negative expense', () => {
+  const fromChaseSign = ledgerDraftFromPlaid({
+    transaction_id: 'zelle-karen',
+    amount: -2000,
+    date: '2026-10-16',
+    authorized_date: '2026-10-15',
+    name: 'Zelle payment to Karen',
+    personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER' },
+  });
+  assert.equal(fromChaseSign.type, 'expense');
+  assert.equal(fromChaseSign.category, 'Needs Review');
+  assert.equal(fromChaseSign.amount, -2000);
+  assert.equal(fromChaseSign.transaction_date, '2026-10-16');
+
+  const standardPlaidSign = ledgerDraftFromPlaid({
+    transaction_id: 'zelle-standard',
+    amount: 2000,
+    date: '2026-10-16',
+    name: 'Zelle payment to Karen',
+    personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_OTHER_TRANSFER_OUT' },
+  });
+  assert.equal(standardPlaidSign.type, 'expense');
+  assert.equal(standardPlaidSign.amount, -2000);
+});
+
+test('a transfer from 3199 to 6822 keeps each account direction and drops the pending copy', () => {
+  const source = ledgerDraftFromPlaid({
+    transaction_id: 'to-6822',
+    amount: -2622,
+    date: '2026-10-16',
+    name: 'Online Transfer to CHK ...6822',
+    personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER' },
+  });
+  assert.equal(source.type, 'transfer');
+  assert.equal(source.category, 'Transfer');
+  assert.equal(source.amount, -2622);
+  assert.equal(source.transaction_date, '2026-10-16');
+
+  const sourceOutflow = ledgerDraftFromPlaid({
+    transaction_id: 'to-6822-posted',
+    amount: 2622,
+    date: '2026-10-16',
+    name: 'Online Transfer to CHK ...6822',
+    personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER' },
+  });
+  assert.equal(sourceOutflow.amount, -2622);
+
+  const destination = ledgerDraftFromPlaid({
+    transaction_id: 'from-3199',
+    amount: -2622,
+    date: '2026-10-16',
+    name: 'Online Transfer from CHK ...3199',
+    personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+  });
+  assert.equal(destination.type, 'transfer');
+  assert.equal(destination.amount, 2622);
+
+  const pending = { id: 'pending-3199', mask: '3199', amount: 2622, date: '2026-10-15', description: 'Online Transfer to CHK ...6822', status: 'pending' };
+  const posted = { id: 'posted-3199', mask: '3199', amount: -2622, date: '2026-10-16', description: 'Online Transfer to CHK ...6822', status: 'posted' };
+  const otherAccount = { id: 'posted-6822', mask: '6822', amount: 2622, date: '2026-10-16', description: 'Online Transfer from CHK ...3199', status: 'posted' };
+  assert.deepEqual(supersededLedgerIds([pending, posted, otherAccount]), ['pending-3199']);
+  assert.deepEqual(supersededLedgerIds([
+    { id: 'a-stale-3199', mask: '3199', amount: 2622, date: '2026-10-16', description: 'Online Transfer to CHK ...6822', status: 'posted' },
+    { id: 'm-live-3199', mask: '3199', amount: -2622, date: '2026-10-16', description: 'Online Transfer to CHK ...6822', status: 'posted' },
+    otherAccount,
+  ], ['m-live-3199']), ['a-stale-3199']);
+  assert.deepEqual(supersededLedgerIds([
+    { id: 'earlier', mask: '3199', amount: -2622, date: '2026-10-10', description: 'Online Transfer to CHK ...6822', status: 'posted' },
+    { id: 'later', mask: '3199', amount: -2622, date: '2026-10-16', description: 'Online Transfer to CHK ...6822', status: 'posted' },
+  ]), []);
 });
 
 test('Chase account ids that change still match the linked mask', () => {

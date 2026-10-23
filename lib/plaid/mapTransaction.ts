@@ -39,15 +39,25 @@ export function plaidAmount(value: number | string | null | undefined) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+export type MovementRow = {
+  id: string;
+  mask: string | null;
+  amount: number;
+  date: string;
+  description: string;
+  status: string;
+};
+
 export function ledgerDraftFromPlaid(row: PlaidTransactionLike): LedgerDraft {
-  const primary = String(row.personal_finance_category?.primary || '');
   const detailed = String(row.personal_finance_category?.detailed || '');
   const raw = plaidAmount(row.amount);
-  const moneyIn = raw < 0;
-  const absolute = Math.abs(raw);
+  const memo = `${row.name || ''} ${row.merchant_name || ''}`.toLowerCase();
+  const hinted = memoDirection(memo);
+  const outgoing = hinted ? hinted === 'out' : raw > 0;
+  const amount = hinted ? (outgoing ? -Math.abs(raw) : Math.abs(raw)) : -raw;
   const creditCardPayment = detailed.includes('CREDIT_CARD_PAYMENT');
   const mortgagePayment = detailed.includes('MORTGAGE');
-  const transfer = primary.startsWith('TRANSFER_') || creditCardPayment;
+  const internal = !/\bzelle\b/.test(memo) && (creditCardPayment || detailed.includes('ACCOUNT_TRANSFER') || /\bonline transfer\b|\b(to|from) (chk|sav|checking|savings)\b/.test(memo));
   let type: LedgerType;
   let category: string;
   if (creditCardPayment) {
@@ -56,17 +66,16 @@ export function ledgerDraftFromPlaid(row: PlaidTransactionLike): LedgerDraft {
   } else if (mortgagePayment) {
     type = 'expense';
     category = 'Mortgage Payment';
-  } else if (transfer) {
+  } else if (internal) {
     type = 'transfer';
     category = 'Transfer';
-  } else if (moneyIn || primary === 'INCOME' || primary.startsWith('INCOME_')) {
+  } else if (!outgoing) {
     type = 'income';
     category = 'Uncategorized Inflow';
   } else {
     type = 'expense';
     category = 'Needs Review';
   }
-  const amount = type === 'income' || (type === 'transfer' && moneyIn) ? absolute : -absolute;
   const status = row.pending ? 'pending' : 'posted';
   const transaction_date = isoDate(row.date) || isoDate(row.authorized_date);
   const description = (row.merchant_name || row.name || 'Bank transaction').trim() || 'Bank transaction';
@@ -81,6 +90,29 @@ export function ledgerDraftFromPlaid(row: PlaidTransactionLike): LedgerDraft {
     import_key: `plaid:${row.transaction_id || ''}`,
     needs_review: true,
   };
+}
+
+export function sameAccountMovement(left: MovementRow, right: MovementRow) {
+  if (!left.mask || left.mask !== right.mask) return false;
+  if (Math.abs(Math.abs(left.amount) - Math.abs(right.amount)) > 0.009) return false;
+  if (daysApart(left.date, right.date) > 4) return false;
+  return descriptionsMatch(left.description, right.description);
+}
+
+export function supersededLedgerIds(rows: MovementRow[], protectedIds: string[] = []) {
+  const protect = new Set(protectedIds.filter(Boolean));
+  const drop = new Set<string>();
+  rows.forEach((row, index) => {
+    rows.slice(index + 1).forEach(other => {
+      if (drop.has(row.id) && drop.has(other.id)) return;
+      if (!sameAccountMovement(row, other)) return;
+      const preferred = keeper(row, other);
+      const loser = preferred === row ? other : row;
+      if (protect.has(loser.id) && !protect.has(preferred.id)) drop.add(preferred.id);
+      else if (!protect.has(loser.id)) drop.add(loser.id);
+    });
+  });
+  return [...drop];
 }
 
 export function shouldReplaceLedgerDetails(existing: { needs_review?: boolean | null; status?: string | null; category?: string | null }) {
@@ -98,6 +130,42 @@ export function matchLinkedAccount<T extends MatchableAccount>(accounts: T[], pl
   if (!remote?.mask) return null;
   const matches = accounts.filter(account => account.mask === remote.mask && (!remote.type || !account.type || account.type === remote.type) && (!remote.subtype || !account.subtype || account.subtype === remote.subtype));
   return matches.length === 1 ? matches[0] : null;
+}
+
+function memoDirection(memo: string): 'out' | 'in' | null {
+  const incoming = /\b(transfer|payment) from\b/.test(memo) || /\bfrom (chk|sav|checking|savings)\b/.test(memo) || (/\bzelle\b/.test(memo) && /\bfrom\b/.test(memo));
+  const outgoing = /\b(transfer|payment) to\b/.test(memo) || /\bto (chk|sav|checking|savings)\b/.test(memo) || (/\bzelle\b/.test(memo) && /\bto\b/.test(memo));
+  if (incoming && outgoing) {
+    const fromAt = memo.search(/\bfrom\b/);
+    const toAt = memo.search(/\bto\b/);
+    return fromAt >= 0 && (toAt < 0 || fromAt < toAt) ? 'in' : 'out';
+  }
+  if (incoming) return 'in';
+  if (outgoing) return 'out';
+  return null;
+}
+
+function descriptionsMatch(left: string, right: string) {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const a = normalize(left);
+  const b = normalize(right);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  return shorter.length >= 12 && longer.includes(shorter);
+}
+
+function daysApart(left: string, right: string) {
+  const a = Date.parse(`${left.slice(0, 10)}T00:00:00Z`);
+  const b = Date.parse(`${right.slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 99;
+  return Math.abs(a - b) / 86400000;
+}
+
+function keeper(left: MovementRow, right: MovementRow) {
+  const rank = (row: MovementRow) => row.status === 'posted' ? 2 : row.status === 'pending' ? 1 : 0;
+  if (rank(left) !== rank(right)) return rank(left) > rank(right) ? left : right;
+  return left.id < right.id ? left : right;
 }
 
 function isoDate(value?: string | null) {

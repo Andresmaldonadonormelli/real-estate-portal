@@ -45,12 +45,18 @@ export const calculatePortfolioStats = (
   };
 };
 
+export function transactionMonthKey(transactionDate: string) {
+  const match = /^(\d{4})-(\d{2})-\d{2}/.exec(transactionDate || '');
+  if (match) return `${match[1]}-${match[2]}`;
+  const date = new Date(transactionDate);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export const groupTransactionsByMonth = (transactions: Transaction[]) => {
   const grouped: Record<string, Transaction[]> = {};
 
   transactions.forEach((t) => {
-    const date = new Date(t.transaction_date);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const key = transactionMonthKey(t.transaction_date);
     if (!grouped[key]) {
       grouped[key] = [];
     }
