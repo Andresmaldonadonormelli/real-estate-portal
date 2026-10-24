@@ -19,9 +19,10 @@ const STORED_FIELDS = 'id,item_id,plaid_account_id,mask,type,subtype,property_id
 const ITEM_FIELDS = 'id,user_id,institution_id,institution_name,access_token_encrypted,disconnected_at,created_at';
 
 /** Attach the accounts Plaid returned for a new connection to the user's existing rows for the same real accounts. */
-export async function attachAccounts(db: SupabaseClient, item: ItemRow, incoming: IncomingAccount[]) {
+export async function attachAccounts(db: SupabaseClient, item: ItemRow, incoming: IncomingAccount[], options: { restoreArchived?: boolean } = {}) {
   const siblings = await institutionItems(db, item);
-  const stored = await storedAccounts(db, siblings.map(row => row.id));
+  const restoreArchived = options.restoreArchived ?? true;
+  const stored = (await storedAccounts(db, siblings.map(row => row.id))).filter(row => restoreArchived || !row.archived_at);
   await addPersistentIds(stored, siblings.filter(row => row.id !== item.id));
   let restored = 0;
   const merged: StoredAccount[] = [];
@@ -47,15 +48,17 @@ export async function attachAccounts(db: SupabaseClient, item: ItemRow, incoming
 
 /** Repairs connections created before reconnects were reconciled. Cheap no-op when nothing is duplicated. */
 export async function reconcileDuplicateConnections(db: SupabaseClient, userId: string) {
-  const { data, error } = await db.from('plaid_items').select(ITEM_FIELDS).eq('user_id', userId).is('disconnected_at', null).order('created_at');
+  const { data, error } = await db.from('plaid_items').select(`${ITEM_FIELDS},status,error_code`).eq('user_id', userId).is('disconnected_at', null).order('created_at');
   if (error) throw new Error(error.message);
-  const items = (data || []) as ItemRow[];
-  const byInstitution = new Map<string, ItemRow[]>();
+  const items = (data || []) as (ItemRow & { status: string | null; error_code: string | null })[];
+  const byInstitution = new Map<string, typeof items>();
   items.forEach(item => byInstitution.set(institutionKey(item), [...(byInstitution.get(institutionKey(item)) || []), item]));
   let changed = false;
   for (const group of byInstitution.values()) {
     if (group.length < 2) continue;
     const newest = group[group.length - 1];
+    // Never move accounts onto a connection the bank is rejecting; wait until it syncs cleanly.
+    if (newest.status !== 'connected' || newest.error_code) continue;
     const accounts = await storedAccounts(db, group.map(item => item.id));
     const emptyOld = group.slice(0, -1).some(item => !accounts.some(account => account.item_id === item.id && !account.archived_at));
     if (!duplicateAccountGroups(accounts).length && !emptyOld) continue;
@@ -72,7 +75,7 @@ export async function reconcileDuplicateConnections(db: SupabaseClient, userId: 
     }));
     const persistent = await persistentIdsFor(newest);
     incoming.forEach(row => Object.assign(row, { persistent_account_id: persistent.get(row.account_id) || null }));
-    await attachAccounts(db, newest, incoming);
+    await attachAccounts(db, newest, incoming, { restoreArchived: false });
     changed = true;
   }
   return changed;
