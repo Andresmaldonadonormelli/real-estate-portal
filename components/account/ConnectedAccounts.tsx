@@ -7,8 +7,9 @@ import { ProductSelect } from '@/components/common/ProductControls';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/formatters';
+import { accountStatus } from '@/lib/plaid/accountStatus';
 
-type Item={id:string;institution_id:string|null;institution_name:string;status:string;error_message:string|null;last_synced_at:string|null};
+type Item={id:string;institution_id:string|null;institution_name:string;status:string;error_code:string|null;error_message:string|null;last_synced_at:string|null};
 type Account={id:string;item_id:string;name:string;official_name:string|null;mask:string|null;type:string;subtype:string|null;current_balance:number|null;property_id:string|null;import_enabled:boolean};
 type Property={id:string;address:string};
 type Bank={key:string;name:string;items:Item[];accounts:Account[];lastSynced:string|null;error:string|null};
@@ -27,22 +28,22 @@ function groupBanks(items:Item[],accounts:Account[]):Bank[]{
     bank.items.push(item);
     bank.name=item.institution_name;
     if(item.last_synced_at&&(!bank.lastSynced||item.last_synced_at>bank.lastSynced))bank.lastSynced=item.last_synced_at;
-    if(item.error_message)bank.error=item.error_message;
     banks.set(key,bank);
   }
   const bankByItem=new Map<string,Bank>();
   banks.forEach(bank=>bank.items.forEach(item=>bankByItem.set(item.id,bank)));
   for(const account of accounts)bankByItem.get(account.item_id)?.accounts.push(account);
+  banks.forEach(bank=>{bank.error=bank.items.find(item=>item.error_message&&bank.accounts.some(account=>account.item_id===item.id))?.error_message||null});
   return [...banks.values()];
 }
 
-type RowProps={account:Account;properties:Property[];saving:boolean;menu:'closed'|'open'|'confirm';onAssign:(id:string,propertyId:string)=>void;onMenu:(key:string|null,confirm?:boolean)=>void;onDisconnect:(id:string)=>void};
+type RowProps={account:Account;properties:Property[];saving:boolean;syncing:boolean;connectionStatus:string|null;connectionErrorCode:string|null;menu:'closed'|'open'|'confirm';onAssign:(id:string,propertyId:string)=>void;onMenu:(key:string|null,confirm?:boolean)=>void;onDisconnect:(id:string)=>void};
 
-const AccountRow=memo(function AccountRow({account,properties,saving,menu,onAssign,onMenu,onDisconnect}:RowProps){
-  const importing=account.import_enabled&&Boolean(account.property_id);
+const AccountRow=memo(function AccountRow({account,properties,saving,syncing,connectionStatus,connectionErrorCode,menu,onAssign,onMenu,onDisconnect}:RowProps){
+  const status=accountStatus({propertyId:account.property_id,importEnabled:account.import_enabled,saving,syncing,connectionStatus,connectionErrorCode});
   const menuKey=`account:${account.id}`;
   return <div className="connected-bank-account">
-    <div className="connected-account-copy"><strong>{accountLabel(account)}</strong><span>{account.subtype||account.type} · {formatCurrency(account.current_balance||0)}</span><em className={saving?'pending':importing?'active':'inactive'}>{saving?'Saving…':importing?'Importing':'Needs property'}</em></div>
+    <div className="connected-account-copy"><strong>{accountLabel(account)}</strong><span>{account.subtype||account.type} · {formatCurrency(account.current_balance||0)}</span><em className={status.tone}>{status.label}</em></div>
     <div className="connected-account-controls">
       <ProductSelect label="Assigned property" aria-label={`Property for ${accountLabel(account)}`} aria-busy={saving} value={account.property_id||''} onChange={event=>onAssign(account.id,event.target.value)}><option value="">Not assigned</option>{properties.map(property=><option value={property.id} key={property.id}>{property.address}</option>)}</ProductSelect>
       <div className="connected-bank-menu">
@@ -72,7 +73,13 @@ export default function ConnectedAccounts(){
   const versions=useRef(new Map<string,number>());
 
   const headers=useMemo(()=>({Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'}),[session.access_token]);
-  const request=useCallback(async(path:string,init:RequestInit={},retry=true):Promise<any>=>{const response=await fetch(path,{...init,headers:{...headers,...init.headers}});if(response.status===401&&retry){const refreshed=await supabase.auth.refreshSession();const token=refreshed.data.session?.access_token;if(token)return request(path,{...init,headers:{...init.headers,Authorization:`Bearer ${token}`}},false)}const json=await response.json().catch(()=>({}));if(!response.ok)throw new Error(json.error||'Request failed.');return json},[headers]);
+  const request=useCallback(async(path:string,init:RequestInit={},retry=true):Promise<any>=>{
+    const response=await fetch(path,{...init,headers:{...headers,...init.headers}});
+    if(response.status===401&&retry){const refreshed=await supabase.auth.refreshSession();const token=refreshed.data.session?.access_token;if(token)return request(path,{...init,headers:{...init.headers,Authorization:`Bearer ${token}`}},false)}
+    const json=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(json.error||(response.status===504?'The bank took too long to respond. Imported transactions are safe; try Sync again.':`Request failed (${response.status}${response.statusText?` ${response.statusText}`:''}).`));
+    return json;
+  },[headers]);
   const load=useCallback(async()=>{
     const [connected,propertyRows]=await Promise.all([request('/api/plaid/accounts'),supabase.from('properties').select('id,address').is('archived_at',null).order('address')]);
     startTransition(()=>{
@@ -147,13 +154,27 @@ export default function ConnectedAccounts(){
   },[request,refresh]);
 
   const sync=useCallback((bank:Bank)=>{
-    if(syncing[bank.key])return;
+    const itemIds=bank.items.filter(item=>bank.accounts.some(account=>account.item_id===item.id)).map(item=>item.id);
+    if(!itemIds.length||itemIds.some(id=>syncing[id]))return;
     setError('');setNotice('');
-    setSyncing(state=>({...state,[bank.key]:true}));
-    request('/api/plaid/sync',{method:'POST',body:JSON.stringify({itemIds:bank.items.map(item=>item.id)})})
-      .then(result=>{const rows=result.results||[];const created=rows.reduce((sum:number,row:any)=>sum+(row.created||0),0);const refreshing=rows.some((row:any)=>row.refreshRequested);setNotice(created?`${created} ${bank.name} transaction${created===1?'':'s'} added to your ledger.`:refreshing?`Checking ${bank.name} for new transactions. They will show up in your ledger shortly.`:`${bank.name} is up to date.`);return load()})
-      .catch(e=>setError(message(e,`Could not sync ${bank.name}.`)))
-      .finally(()=>setSyncing(state=>{const next={...state};delete next[bank.key];return next}));
+    setSyncing(state=>({...state,...Object.fromEntries(itemIds.map(id=>[id,true]))}));
+    const controller=new AbortController();
+    const timer=window.setTimeout(()=>controller.abort(),75_000);
+    request('/api/plaid/sync',{method:'POST',body:JSON.stringify({itemIds}),signal:controller.signal})
+      .then(result=>{
+        const rows:any[]=result.results||[];
+        const failed=rows.filter(row=>!row.ok);
+        if(failed.length){
+          setItems(current=>current.map(item=>{const failure=failed.find(row=>row.itemId===item.id);return failure?{...item,error_code:failure.code||'SYNC_FAILED',error_message:failure.error}:item}));
+          setError(failed.map(row=>{const masks=bank.accounts.filter(account=>account.item_id===row.itemId&&account.mask).map(account=>`••••${account.mask}`);return `${bank.name}${masks.length?` ${masks.join(', ')}`:''}: ${row.error}`}).join(' '));
+        }
+        const created=rows.reduce((sum,row)=>sum+(row.created||0),0);
+        const refreshing=rows.some(row=>row.refreshRequested);
+        if(failed.length<rows.length)setNotice(created?`${created} ${bank.name} transaction${created===1?'':'s'} added to your ledger.`:refreshing?`Checking ${bank.name} for new transactions. They will show up in your ledger shortly.`:`${bank.name} is up to date.`);
+        return load();
+      })
+      .catch(e=>setError(controller.signal.aborted?`${bank.name} is taking too long to respond. Imported transactions are safe; try Sync again.`:message(e,`Could not sync ${bank.name}.`)))
+      .finally(()=>{window.clearTimeout(timer);setSyncing(state=>{const next={...state};itemIds.forEach(id=>delete next[id]);return next})});
   },[request,load,syncing]);
 
   const createTest=async()=>{if(!testProperty){setError('Choose a property for the Sandbox test.');return}setBusy(true);setError('');setNotice('');try{const result=await request('/api/plaid/sandbox-transaction',{method:'POST',body:JSON.stringify({propertyId:testProperty})});setNotice(result.message||'Sandbox test is ready.');await load()}catch(e){setError(message(e,'Could not create the Sandbox test.'))}finally{setBusy(false)}};
@@ -165,7 +186,7 @@ export default function ConnectedAccounts(){
     <div className="connected-accounts-head"><div><strong>Bank accounts</strong><span>Assign each account to a property before activity enters your ledger.</span></div><Button variant="secondary" onClick={createLink} disabled={busy}>{busy?'Please wait…':'Link bank'}</Button></div>
     {error&&<p className="connected-accounts-error" role="alert">{error}</p>}{notice&&<p className="connected-accounts-notice" role="status">{notice}</p>}
     <div className="connected-bank-list">{banks.map(bank=>{
-      const bankMenu=`bank:${bank.key}`;const isSyncing=Boolean(syncing[bank.key]);
+      const bankMenu=`bank:${bank.key}`;const isSyncing=bank.items.some(item=>syncing[item.id]);const connections=new Map(bank.items.map(item=>[item.id,item]));
       return <section className="connected-bank" key={bank.key}>
         <header className="connected-bank-title">
           <div className="connected-bank-identity"><Landmark size={20}/><div><span className="connected-bank-heading"><strong>{bank.name}</strong>{bank.name==='Sandbox Test Bank'&&<em className="sandbox-badge">Sandbox</em>}</span><span aria-live="polite">{isSyncing?'Syncing…':bank.lastSynced?`Synced ${new Date(bank.lastSynced).toLocaleString()}`:'Connected'}{bank.error&&!isSyncing?` · ${bank.error}`:''}</span></div></div>
@@ -178,7 +199,7 @@ export default function ConnectedAccounts(){
             </div>
           </div>
         </header>
-        <div className="connected-bank-accounts">{bank.accounts.map(account=>{const key=`account:${account.id}`;return <AccountRow key={account.id} account={account} properties={properties} saving={Boolean(saving[account.id])} menu={menu?.key===key?(menu.confirm?'confirm':'open'):'closed'} onAssign={assign} onMenu={onMenu} onDisconnect={disconnectAccount}/>})}</div>
+        <div className="connected-bank-accounts">{bank.accounts.map(account=>{const key=`account:${account.id}`;return <AccountRow key={account.id} account={account} properties={properties} saving={Boolean(saving[account.id])} syncing={Boolean(syncing[account.item_id])} connectionStatus={connections.get(account.item_id)?.status||null} connectionErrorCode={connections.get(account.item_id)?.error_code||null} menu={menu?.key===key?(menu.confirm?'confirm':'open'):'closed'} onAssign={assign} onMenu={onMenu} onDisconnect={disconnectAccount}/>})}</div>
       </section>;
     })}</div>
     {!banks.length&&!error&&<p className="connected-accounts-empty">No banks linked yet.</p>}
