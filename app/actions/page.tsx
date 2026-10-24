@@ -9,6 +9,7 @@ import type { Property, PropertyDocument, Transaction } from '@/lib/types';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { cachedSupabaseRequest, DOCUMENT_FIELDS, PROPERTY_FIELDS, TRANSACTION_FIELDS } from '@/lib/supabaseData';
 import { formatCurrency } from '@/lib/formatters';
+import { isUncategorized } from '@/lib/accounting';
 
 type ActionItem = {
   id: string;
@@ -65,7 +66,7 @@ export default function ActionsPage() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const posted=txs.filter(t=>(t.status||'posted')==='posted');const newImports=posted.filter(t=>t.source==='plaid'&&t.is_new_import);const needsReview=posted.filter(t=>!(t.source==='plaid'&&t.is_new_import)&&((t as Transaction & {needs_review?:boolean}).needs_review||t.category==='Needs Review'));
+    const posted=txs.filter(t=>(t.status||'posted')==='posted');const newImports=posted.filter(t=>t.source==='plaid'&&t.is_new_import);const needsReview=posted.filter(t=>!(t.source==='plaid'&&t.is_new_import)&&isUncategorized(t.category));
     if(newImports.length){a.push({id:'new-imports',kind:'review',title:`${newImports.length} new bank transaction${newImports.length===1?'':'s'}`,detail:'Review newly imported activity',href:'/ledger?imports=1',days:-501});}
     if(needsReview.length){a.push({id:'needs-review',kind:'review',title:`${needsReview.length} transaction${needsReview.length===1?' needs':'s need'} a category`,detail:'Categorize before your accountant export',href:'/ledger?review=1',days:-500});}
 

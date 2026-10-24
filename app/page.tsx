@@ -13,7 +13,8 @@ import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Buildi
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
-import { categoryKey } from '@/lib/accounting';
+import { categoryKey, isTransferTransaction, isUncategorized } from '@/lib/accounting';
+import { looksLikeBankDescriptor, transactionDisplayName } from '@/lib/transactionLabels';
 import { settleRentCollection } from '@/lib/rentCollection';
 import PortfolioLanding from '@/components/dashboard/PortfolioLanding';
 import { usePortfolioScope } from '@/components/layout/PortfolioScope';
@@ -193,7 +194,7 @@ export default function Dashboard() {
     const items:{id:string;kind:'rent'|'document'|'review';title:string;detail:string;actionLabel?:string;propertyId?:string;days?:number;test?:boolean}[]=[];
     const today=new Date(); today.setHours(0,0,0,0);
     documents.filter(d=>d.expires_at).forEach(doc=>{const due=new Date(`${doc.expires_at}T12:00:00`);const days=Math.ceil((due.getTime()-today.getTime())/86400000);const remind=Number(doc.reminder_days||60);if(days<=remind){const prop=properties.find(p=>p.id===doc.property_id);items.push({id:`doc-${doc.id}`,kind:'document',title:days<0?`${doc.category} expired`:days===0?`${doc.category} due today`:`${doc.category} due in ${days} days`,detail:`${prop?.address||'Property'} · ${doc.title}`,days});}});
-    const posted=transactions.filter(tx=>(tx.status||'posted')==='posted');const newImports=posted.filter(tx=>tx.source==='plaid'&&tx.is_new_import);const needsCategory=posted.filter(tx=>!(tx.source==='plaid'&&tx.is_new_import)&&((tx as Transaction & {needs_review?:boolean}).needs_review||tx.category==='Needs Review'));
+    const posted=transactions.filter(tx=>(tx.status||'posted')==='posted');const newImports=posted.filter(tx=>tx.source==='plaid'&&tx.is_new_import);const needsCategory=posted.filter(tx=>!(tx.source==='plaid'&&tx.is_new_import)&&isUncategorized(tx.category));
     if(newImports.length){items.push({id:'new-bank-imports',kind:'review',title:`${newImports.length} new bank transaction${newImports.length===1?'':'s'}`,detail:'Review newly imported bank activity.',actionLabel:'Review',days:-501});}
     if(needsCategory.length){items.push({id:'needs-category',kind:'review',title:`${needsCategory.length} transaction${needsCategory.length===1?' needs':'s need'} a category`,detail:`Categorize ${needsCategory.length===1?'it':'them'} before reporting.`,actionLabel:'Review',days:-500});}
     if(testActionsActive){
@@ -211,7 +212,7 @@ export default function Dashboard() {
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const rentEarned=expectedMonthlyRent*(now.getDate()/daysInMonth);
   const dailyRent=expectedMonthlyRent/daysInMonth;
-  const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent').reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
+  const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent'&&!isTransferTransaction(tx)).reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
   const overviewYear=now.getFullYear();
 
@@ -240,7 +241,7 @@ export default function Dashboard() {
   const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
   const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
   const rentPicture=useMemo(()=>{
-    const monthExpenses=postedScoped.filter(tx=>tx.type==='expense'&&tx.transaction_date.startsWith(currentMonth));
+    const monthExpenses=postedScoped.filter(tx=>tx.type==='expense'&&!isTransferTransaction(tx)&&tx.transaction_date.startsWith(currentMonth));
     const settleProperty=(propertyId:string,expected:number)=>settleRentCollection({
       expected,
       net:monthRent.filter(tx=>tx.property_id===propertyId).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),
@@ -287,7 +288,7 @@ export default function Dashboard() {
   const expenseBreakdown=useMemo(()=>{
     const current=new Map(DASHBOARD_EXPENSE_ROWS.map(row=>[row.key,0]));
     postedScoped.forEach(tx=>{
-      if(tx.type!=='expense'||!tx.transaction_date.startsWith(expenseMonthKey)) return;
+      if(tx.type!=='expense'||isTransferTransaction(tx)||!tx.transaction_date.startsWith(expenseMonthKey)) return;
       const group=dashboardExpenseGroup(tx.category||'');
       if(!group) return;
       current.set(group,(current.get(group)||0)+Math.abs(Number(tx.amount||0)));
@@ -306,7 +307,7 @@ export default function Dashboard() {
     const vendor=friendlyVendor(tx,category);
     const support=supportingLine(tx,category,vendor);
     const propertyName=property?shortPropertyName(property.address):'Portfolio';
-    return {id:tx.id,title:vendor,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:(tx as Transaction & {needs_review?:boolean}).needs_review?'Category needed':category,vendor,support,property:propertyName,category,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
+    return {id:tx.id,title:vendor,detail:`${property?.address||'Portfolio'}${unit?.unit_number?` · ${unit.unit_number}`:''}`,meta:isUncategorized(tx.category)?'Category needed':category,vendor,support,property:propertyName,category,date:new Date(`${tx.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:tx.amount,type:tx.type,href:cashPropertyId?`/ledger?property=${cashPropertyId}`:'/ledger'};
   });
   const monthNet=currentCashFlow?.cashFlow||0;
   const monthNetTone=monthNet>0?'positive':monthNet<0?'negative':'';
@@ -357,19 +358,10 @@ function rentRowStatus(received:number,expected:number,vacant=false){
   if(expected>0.5&&received<0.5) return 'Outstanding' as const;
   return null;
 }
-function looksLikeBankDescriptor(value:string){
-  const text=value.trim();
-  if(!text) return false;
-  if(/\b(ach|pos|debit|autopay|auto-pay|auto pay|chk|checkcard|sq \*|tst\*|paypal|visa|mastercard|withdrawal|orig co|ppd|web id|trace)\b/i.test(text)) return true;
-  const letters=text.replace(/[^A-Za-z]/g,'');
-  if(letters.length>=10&&letters===letters.toUpperCase()) return true;
-  if(/\d{5,}/.test(text)) return true;
-  return false;
-}
 function friendlyVendor(tx:Transaction,category:string){
   const payee=(tx.payee_source||'').trim();
   const description=(tx.description||'').trim();
-  if(tx.source==='plaid') return payee&&!looksLikeBankDescriptor(payee)?payee:category;
+  if(tx.source==='plaid') return transactionDisplayName(tx)||category;
   if(payee&&!looksLikeBankDescriptor(payee)) return payee;
   if(description&&!looksLikeBankDescriptor(description)) return description;
   return category;

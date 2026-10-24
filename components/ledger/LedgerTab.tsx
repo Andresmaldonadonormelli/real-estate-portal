@@ -13,7 +13,8 @@ import { formatCurrency, formatDateShort, formatMonthYear, shortPropertyName } f
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { Paperclip, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X } from 'lucide-react';
-import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
+import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview, isUncategorized } from '@/lib/accounting';
+import { transactionDisplayName } from '@/lib/transactionLabels';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal, { ChaseMark } from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
@@ -115,7 +116,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
     if(selectedPropertyId && tx.property_id!==selectedPropertyId) return false;
     if(filters.type && tx.type!==filters.type) return false;
     if(filters.category && tx.category!==filters.category) return false;
-    if(reviewFilter && (tx.status!=='posted'||!Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)||Boolean(tx.is_new_import))) return false;
+    if(reviewFilter && (tx.status!=='posted'||!needsCategory(tx)||Boolean(tx.is_new_import))) return false;
     if(newImportFilter && (tx.status!=='posted'||tx.source!=='plaid'||!Boolean(tx.is_new_import))) return false;
     const a=Math.abs(tx.amount);
     if(filters.min && a<Number(filters.min)) return false;
@@ -124,7 +125,7 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   }),[transactions,filters,selectedPropertyId,reviewFilter,newImportFilter]);
 
   const total=useMemo(()=>calculateMonthlyTotals(filtered),[filtered]);
-  const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&!tx.is_new_import&&Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)).length,[transactions,selectedPropertyId]);
+  const reviewCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&!tx.is_new_import&&needsCategory(tx)).length,[transactions,selectedPropertyId]);
   const newImportCount=useMemo(()=>transactions.filter(tx=>(!selectedPropertyId||tx.property_id===selectedPropertyId)&&tx.status==='posted'&&tx.source==='plaid'&&Boolean(tx.is_new_import)).length,[transactions,selectedPropertyId]);
   const activeFilterCount=[filters.type,filters.category,filters.min,filters.max,reviewFilter?'review':''].filter(Boolean).length;
   const groups=useMemo(()=>Object.entries(groupTransactionsByMonth(filtered)).sort(([a],[b])=>b.localeCompare(a)).map(([key,txs])=>({key,year:Number(key.slice(0,4)),month:Number(key.slice(5,7)),transactions:[...txs].sort((a,b)=>b.transaction_date.localeCompare(a.transaction_date))})),[filtered]);
@@ -241,11 +242,8 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   </div>;
 }
 
-function needsCategory(tx:Transaction){return Boolean((tx as Transaction & {needs_review?:boolean}).needs_review)||/needs review|uncategor/i.test(tx.category||'');}
-function looksLikeBankDescriptor(value:string){const text=value.trim();if(!text)return false;if(/\b(ach|pos|debit|autopay|auto-pay|auto pay|chk|checkcard|sq \*|tst\*|paypal|visa|mastercard|withdrawal|orig co|ppd|web id|trace)\b/i.test(text))return true;const letters=text.replace(/[^A-Za-z]/g,'');if(letters.length>=10&&letters===letters.toUpperCase())return true;if(/\d{5,}/.test(text))return true;return false;}
-function trimRailNoise(value:string){return value.replace(/\b(?:ppd|ach|pos|web|id|trace|chk|checkcard|debit|autopay)\b[:#\s-]*/gi,' ').replace(/\b\d{5,}\b/g,' ').replace(/[^A-Za-z0-9&.' -]+/g,' ').replace(/\s+/g,' ').trim();}
-function readableName(value:string){if(value!==value.toUpperCase())return value;return value.toLowerCase().replace(/\b[a-z]/g,letter=>letter.toUpperCase());}
-function merchantLabel(tx:Transaction){const payee=(tx.payee_source||'').trim();const description=(tx.description||'').trim();if(payee&&!looksLikeBankDescriptor(payee))return payee;const trimmed=trimRailNoise(description);if(trimmed&&trimmed.length>2&&!looksLikeBankDescriptor(trimmed))return readableName(trimmed);if(description&&!looksLikeBankDescriptor(description))return description;return needsCategory(tx)?'Transaction':(tx.category||'Transaction');}
+function needsCategory(tx:Transaction){return isUncategorized(tx.category);}
+function merchantLabel(tx:Transaction){return transactionDisplayName(tx)||(needsCategory(tx)?'Transaction':(tx.category||'Transaction'));}
 function isChase(tx:Transaction){return tx.source==='plaid'&&/chase/i.test(tx.source_institution||'');}
 function chaseSource(tx:Transaction){if(!isChase(tx))return '';const mask=(tx.source_account_mask||'').replace(/\D/g,'');return mask?`Chase · ••••${mask}`:'Chase';}
 function LedgerRow({tx,property,kind,unit,attachments,onOpen}:{tx:Transaction;property:string;kind:string;unit:string;attachments:number;onOpen:()=>void}){const needs=needsCategory(tx);const pending=tx.status==='pending';const source=chaseSource(tx);const meta=Boolean(unit||kind||source);const mobileDetail=[source,shortPropertyName(property),needs?'':tx.category].filter(Boolean).join(' · ');return <button type="button" className={`ledger-table-row ${meta?'has-meta':''}`} onClick={onOpen}><span className="ledger-tx"><strong>{merchantLabel(tx)}{pending?<em>Pending</em>:null}{tx.is_new_import?<i className="ledger-new-dot" aria-label="New import"/>:null}{attachments>0?<Paperclip size={12} aria-hidden="true"/>:null}</strong>{source?<span className="ledger-tx-source"><ChaseMark/>{source}</span>:null}{unit?<span className="ledger-tx-meta">{unit}</span>:null}</span><span className="ledger-mobile-sub">{source?<ChaseMark/>:null}{mobileDetail?<span>{mobileDetail}</span>:null}</span><span className="ledger-property"><b>{property}</b>{kind?<small>{kind}</small>:null}</span><span className={needs?'ledger-needs':'ledger-cell'}>{needs?'Needs category':tx.category}</span><span className="ledger-cell ledger-date">{formatDateShort(tx.transaction_date)}</span><strong className={`ledger-amount ${tx.type==='income'?'amount-positive':tx.type==='expense'?'amount-negative':''}`}>{formatCurrency(tx.amount)}</strong></button>;}

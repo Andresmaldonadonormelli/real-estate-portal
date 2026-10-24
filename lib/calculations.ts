@@ -1,4 +1,5 @@
 import type { Property, Unit, Transaction } from './types';
+import { isTransferTransaction } from './accounting.ts';
 
 export const calculatePortfolioStats = (
   properties: Property[],
@@ -20,7 +21,7 @@ export const calculatePortfolioStats = (
 
   const monthlyTransactions = transactions.filter((t) => {
     const txMonth = t.transaction_date.substring(0, 7);
-    return txMonth === currentMonth && (t.status || 'posted') === 'posted';
+    return txMonth === currentMonth && (t.status || 'posted') === 'posted' && !isTransferTransaction(t);
   });
 
   const monthlyRentIncome = monthlyTransactions
@@ -67,7 +68,7 @@ export const groupTransactionsByMonth = (transactions: Transaction[]) => {
 };
 
 export const calculateMonthlyTotals = (transactions: Transaction[]) => {
-  const posted = transactions.filter((t) => (t.status || 'posted') === 'posted');
+  const posted = transactions.filter((t) => (t.status || 'posted') === 'posted' && !isTransferTransaction(t));
   const income = posted
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);

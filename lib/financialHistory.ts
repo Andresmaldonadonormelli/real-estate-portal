@@ -1,4 +1,4 @@
-import { categoryKey } from '@/lib/accounting';
+import { categoryKey, isTransferTransaction } from './accounting.ts';
 
 export type HistoryPeriod='3M'|'6M'|'9M'|'1Y';
 export type HistoryMode='cashFlow'|'noi';
@@ -28,7 +28,7 @@ const OPERATING_EXCLUSIONS=['mortgage-interest','mortgage-principal','mortgage',
 export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],period:HistoryPeriod,propertyId=''):MonthlyFinancialPoint[]{
   const now=new Date();
   const monthCount=PERIOD_MONTHS[period];
-  const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&tx.type!=='transfer'&&(!propertyId||tx.property_id===propertyId));
+  const posted=transactions.filter(tx=>(tx.status||'posted')==='posted'&&!isTransferTransaction(tx)&&(!propertyId||tx.property_id===propertyId));
   return Array.from({length:monthCount},(_,index)=>{
     const date=new Date(now.getFullYear(),now.getMonth()-(monthCount-1-index),1);
     const year=date.getFullYear();
