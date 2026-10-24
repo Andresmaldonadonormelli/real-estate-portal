@@ -88,7 +88,7 @@ export function ledgerDraftFromPlaid(row: PlaidTransactionLike): LedgerDraft {
     description,
     payee_source: row.merchant_name || row.name || null,
     import_key: `plaid:${row.transaction_id || ''}`,
-    needs_review: true,
+    needs_review: category !== 'Transfer',
   };
 }
 

@@ -145,7 +145,7 @@ async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransa
     import_key: draft.import_key,
     status: draft.status,
     confirmed_at: draft.status === 'posted' ? new Date().toISOString() : null,
-    needs_review: true,
+    needs_review: draft.needs_review,
     is_new_import: draft.status === 'posted',
     import_acknowledged_at: null,
   };

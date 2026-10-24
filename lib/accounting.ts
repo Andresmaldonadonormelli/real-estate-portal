@@ -47,6 +47,7 @@ export function categoryKey(category: string) {
 }
 
 export function categoryNeedsReview(category: string) {
+  if (category.trim().toLowerCase() === 'transfer') return false;
   return categoryKey(category) === 'review' || categoryKey(category) === 'non-operating';
 }
 

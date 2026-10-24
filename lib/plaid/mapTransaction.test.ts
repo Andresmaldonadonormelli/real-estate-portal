@@ -74,6 +74,7 @@ test('an outgoing Zelle payment stays a negative expense', () => {
   assert.equal(fromChaseSign.category, 'Needs Review');
   assert.equal(fromChaseSign.amount, -2000);
   assert.equal(fromChaseSign.transaction_date, '2026-10-16');
+  assert.equal(fromChaseSign.needs_review, true);
 
   const standardPlaidSign = ledgerDraftFromPlaid({
     transaction_id: 'zelle-standard',
@@ -117,6 +118,19 @@ test('a transfer from 3199 to 6822 keeps each account direction and drops the pe
   });
   assert.equal(destination.type, 'transfer');
   assert.equal(destination.amount, 2622);
+  assert.equal(source.needs_review, false);
+  assert.equal(destination.needs_review, false);
+
+  const fromSavings = ledgerDraftFromPlaid({
+    transaction_id: 'from-0552',
+    amount: -2000,
+    date: '2026-10-16',
+    name: 'Online Transfer from SAV ...0552',
+    personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+  });
+  assert.equal(fromSavings.category, 'Transfer');
+  assert.equal(fromSavings.amount, 2000);
+  assert.equal(fromSavings.needs_review, false);
 
   const pending = { id: 'pending-3199', mask: '3199', amount: 2622, date: '2026-10-15', description: 'Online Transfer to CHK ...6822', status: 'pending' };
   const posted = { id: 'posted-3199', mask: '3199', amount: -2622, date: '2026-10-16', description: 'Online Transfer to CHK ...6822', status: 'posted' };

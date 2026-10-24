@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isTransferTransaction, isUncategorized } from './accounting.ts';
+import { categoryNeedsReview, isTransferTransaction, isUncategorized } from './accounting.ts';
 import { calculateMonthlyTotals, calculatePortfolioStats } from './calculations.ts';
 import { buildMonthlyFinancialHistory } from './financialHistory.ts';
 import { buildBreakdown, calculateMetrics } from './propertyFinancials.ts';
@@ -60,6 +60,12 @@ test('dashboard cash flow, NOI, and property metrics skip transfers', () => {
   assert.equal(stats.monthlyRentIncome, 1850);
   assert.equal(stats.monthlyExpenses, 400);
   assert.equal(stats.netCashFlow, 1450);
+});
+
+test('choosing Transfer does not leave the row needing review', () => {
+  assert.equal(categoryNeedsReview('Transfer'), false);
+  assert.equal(categoryNeedsReview('Needs Review'), true);
+  assert.equal(categoryNeedsReview('Uncategorized Inflow'), true);
 });
 
 test('only genuinely uncategorized rows need a category', () => {
