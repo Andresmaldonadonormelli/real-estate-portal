@@ -47,5 +47,16 @@ export function categoryKey(category: string) {
 }
 
 export function categoryNeedsReview(category: string) {
+  if (category.trim().toLowerCase() === 'transfer') return false;
   return categoryKey(category) === 'review' || categoryKey(category) === 'non-operating';
+}
+
+/** Cash moved between the owner's own accounts. Never income, expense, cash flow, or NOI. */
+export function isTransferTransaction(tx: { type?: string | null; category?: string | null }) {
+  return tx.type === 'transfer' || (tx.category || '').trim().toLowerCase() === 'transfer';
+}
+
+export function isUncategorized(category?: string | null) {
+  const value = (category || '').trim();
+  return !value || /needs review|uncategor/i.test(value);
 }

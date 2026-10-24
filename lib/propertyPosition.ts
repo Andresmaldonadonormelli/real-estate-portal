@@ -1,4 +1,4 @@
-import { categoryKey } from '@/lib/accounting';
+import { categoryKey, isTransferTransaction } from '@/lib/accounting';
 import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
 import { formatKpiCurrency } from '@/lib/propertyFinancials';
 import type { Property } from '@/lib/types';
@@ -326,7 +326,7 @@ function amortize(balance: number, annualRatePercent: number, payment: number) {
 }
 
 function postedRows(transactions: HistoryTransaction[], propertyId: string) {
-  return transactions.filter(tx => (tx.status || 'posted') === 'posted' && tx.type !== 'transfer' && (!propertyId || tx.property_id === propertyId));
+  return transactions.filter(tx => (tx.status || 'posted') === 'posted' && !isTransferTransaction(tx) && (!propertyId || tx.property_id === propertyId));
 }
 
 function startOfToday() {
