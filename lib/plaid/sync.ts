@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptToken, plaidClient } from './server';
+import { adoptableCopies } from './accountIdentity';
 import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, plaidAmount, sameAccountMovement, shouldReplaceLedgerDetails, supersededLedgerIds, type MovementRow, type PlaidTransactionLike } from './mapTransaction';
 
 type PlaidItem = { id: string; user_id: string; access_token_encrypted: string; cursor: string | null; institution_name: string };
@@ -169,6 +170,14 @@ async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransa
   }
 
   if (!ledger && account.mask && draft.transaction_date && draft.status === 'posted') {
+    const earlier = await findEarlierConnectionCopy(db, item, account.mask, draft);
+    if (earlier) {
+      ledger = earlier;
+      adoptedId = earlier.id;
+    }
+  }
+
+  if (!ledger && account.mask && draft.transaction_date && draft.status === 'posted') {
     const predecessor = await findAccountMovement(db, item.user_id, account.mask, draft, ['pending', 'declined']);
     if (predecessor) {
       ledger = predecessor;
@@ -274,7 +283,7 @@ async function healAccount(db: SupabaseClient, item: PlaidItem, account: LinkedA
   }
   let from = 0;
   for (;;) {
-    const page = await db.from('plaid_transactions').select('raw_data,ledger_transaction_id').eq('account_id', account.id).eq('removed', false).order('transaction_date').range(from, from + 499);
+    const page = await db.from('plaid_transactions').select('raw_data,ledger_transaction_id').eq('account_id', account.id).eq('item_id', item.id).eq('removed', false).order('transaction_date').range(from, from + 499);
     if (page.error) throw new Error(page.error.message);
     const rows = page.data || [];
     if (!rows.length) break;
@@ -346,6 +355,26 @@ async function findAccountMovement(db: SupabaseClient, userId: string, mask: str
   }));
   matches.sort((left, right) => movementRank(left.status || '') - movementRank(right.status || '') || String(left.id).localeCompare(String(right.id)));
   return (matches[0] as LedgerRow | undefined) || null;
+}
+
+async function findEarlierConnectionCopy(db: SupabaseClient, item: PlaidItem, mask: string, draft: { amount: number; transaction_date: string | null; description: string }) {
+  if (!draft.transaction_date) return null;
+  const result = await db.from('transactions').select('id,status,needs_review,category,archived_at,amount,transaction_date,description').eq('user_id', item.user_id).eq('source', 'plaid').eq('source_institution', item.institution_name).eq('source_account_mask', mask).eq('status', 'posted').eq('transaction_date', draft.transaction_date).eq('amount', draft.amount).is('archived_at', null);
+  if (result.error) throw new Error(result.error.message);
+  const rows = result.data || [];
+  if (!rows.length) return null;
+  const links = await db.from('plaid_transactions').select('ledger_transaction_id').eq('item_id', item.id).eq('removed', false).in('ledger_transaction_id', rows.map(row => row.id));
+  if (links.error) throw new Error(links.error.message);
+  const live = new Set((links.data || []).map(link => link.ledger_transaction_id));
+  const [match] = adoptableCopies(rows.map(row => ({
+    id: row.id,
+    date: String(row.transaction_date || ''),
+    amount: Number(row.amount),
+    description: row.description || '',
+    needs_review: Boolean(row.needs_review),
+    live: live.has(row.id),
+  })), { date: draft.transaction_date, amount: draft.amount, description: draft.description });
+  return match ? (rows.find(row => row.id === match.id) as LedgerRow) : null;
 }
 
 async function collapseAccountDuplicates(db: SupabaseClient, userId: string, account: LinkedAccount) {
