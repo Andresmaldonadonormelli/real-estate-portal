@@ -19,7 +19,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
     if(account.property_id){
       after(async()=>{
         try{
-          const {data:item}=await db.from('plaid_items').select('id,user_id,access_token_encrypted,cursor,institution_name').eq('id',account.item_id).eq('user_id',user.id).is('disconnected_at',null).single();
+          const {data:item}=await db.from('plaid_items').select('id,user_id,access_token_encrypted,cursor,institution_name,status,error_code').eq('id',account.item_id).eq('user_id',user.id).is('disconnected_at',null).single();
           if(item)await syncPlaidItem(db,item,{resync:true});
         }catch{/* The next webhook or Sync imports this account. */}
       });

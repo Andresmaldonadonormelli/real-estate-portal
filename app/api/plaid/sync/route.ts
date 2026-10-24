@@ -19,7 +19,11 @@ export async function POST(request:Request){try{
   const refresh=body.refresh!==false;
   const resync=body.resync!==false;
   const results=await Promise.all((items||[]).filter(item=>withAccounts.has(item.id)).map(async item=>{
-    try{return {itemId:item.id,ok:true,...await syncPlaidItem(db,item,{refresh,resync})};}
+    try{
+      const result=await syncPlaidItem(db,item,{refresh,resync});
+      if('reconnectRequired'in result)return {itemId:item.id,ok:false,reconnectRequired:true,error:`Reconnect required. ${item.institution_name} needs you to sign in again before it can sync.`,code:item.error_code||'ITEM_LOGIN_REQUIRED'};
+      return {itemId:item.id,ok:true,...result};
+    }
     catch(failure){return {itemId:item.id,ok:false,error:errorMessage(failure),code:plaidErrorDetails(failure)?.code||null};}
   }));
   return Response.json({ok:results.every(result=>result.ok),results});

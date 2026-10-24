@@ -2,9 +2,10 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptToken, errorMessage, plaidClient, plaidErrorDetails } from './server';
 import { adoptableCopies } from './accountIdentity';
+import { needsReconnect, RECONNECT_CODES } from './accountStatus';
 import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, plaidAmount, sameAccountMovement, shouldReplaceLedgerDetails, supersededLedgerIds, type MovementRow, type PlaidTransactionLike } from './mapTransaction';
 
-type PlaidItem = { id: string; user_id: string; access_token_encrypted: string; cursor: string | null; institution_name: string };
+type PlaidItem = { id: string; user_id: string; access_token_encrypted: string; cursor: string | null; institution_name: string; status?: string | null; error_code?: string | null };
 type LinkedAccount = { id: string; plaid_account_id: string; property_id: string | null; mask: string | null; type: string | null; subtype: string | null; import_enabled: boolean; alias_ids?: string[] };
 type SyncOptions = { refresh?: boolean; resync?: boolean };
 type LedgerRow = { id: string; status?: string | null; needs_review?: boolean | null; category?: string | null; archived_at?: string | null };
@@ -17,10 +18,9 @@ export async function backfillPlaidAccount(db: SupabaseClient, item: PlaidItem, 
   await healAccount(db, item, account as LinkedAccount);
 }
 
-/** Plaid codes that cannot clear until the bank connection is signed in again. */
-const REAUTH_CODES = new Set(['ITEM_LOGIN_REQUIRED', 'INVALID_ACCESS_TOKEN', 'ITEM_NOT_FOUND', 'ACCESS_NOT_GRANTED', 'USER_PERMISSION_REVOKED', 'NO_ACCOUNTS', 'INVALID_CREDENTIALS', 'ITEM_LOCKED']);
-
+/** While the bank requires a new login, every automatic or manual sync would fail the same way, so none is attempted. */
 export async function syncPlaidItem(db: SupabaseClient, item: PlaidItem, options: SyncOptions = {}) {
+  if (needsReconnect(item)) return { added: 0, modified: 0, removed: 0, created: 0, refreshRequested: false, reconnectRequired: true };
   try {
     return await runSync(db, item, options);
   } catch (error) {
@@ -34,13 +34,14 @@ async function recordSyncFailure(db: SupabaseClient, item: PlaidItem, error: unk
   const plaid = plaidErrorDetails(error);
   console.error('[plaid sync]', { itemId: item.id, institution: item.institution_name, code: plaid?.code || null, requestId: plaid?.requestId || null, message: errorMessage(error) });
   const update: Record<string, string | null> = { error_code: plaid?.code || 'SYNC_FAILED', error_message: errorMessage(error) };
-  if (plaid && REAUTH_CODES.has(plaid.code)) update.status = 'needs_reauth';
+  if (plaid && RECONNECT_CODES.has(plaid.code)) update.status = 'needs_reauth';
   const saved = await db.from('plaid_items').update(update).eq('id', item.id);
   if (saved.error) console.error('[plaid sync] could not record failure', { itemId: item.id, message: saved.error.message });
 }
 
 /** Records what Plaid currently reports for a connection without importing anything. */
-export async function checkConnectionHealth(db: SupabaseClient, item: PlaidItem & { status?: string | null; error_code?: string | null }) {
+export async function checkConnectionHealth(db: SupabaseClient, item: PlaidItem) {
+  if (needsReconnect(item)) return;
   try {
     const response = await plaidClient().itemGet({ access_token: decryptToken(item.access_token_encrypted) });
     const problem = response.data.item.error;
@@ -48,13 +49,11 @@ export async function checkConnectionHealth(db: SupabaseClient, item: PlaidItem 
       await db.from('plaid_items').update({
         error_code: problem.error_code,
         error_message: `${problem.display_message || problem.error_message} (${problem.error_code})`,
-        ...(REAUTH_CODES.has(problem.error_code) ? { status: 'needs_reauth' } : {}),
+        ...(RECONNECT_CODES.has(problem.error_code) ? { status: 'needs_reauth' } : {}),
       }).eq('id', item.id);
       return;
     }
-    if (item.error_code || item.status === 'needs_reauth') {
-      await db.from('plaid_items').update({ error_code: null, error_message: null, ...(item.status === 'needs_reauth' ? { status: 'connected' } : {}) }).eq('id', item.id);
-    }
+    if (item.error_code) await db.from('plaid_items').update({ error_code: null, error_message: null }).eq('id', item.id);
   } catch (error) {
     await recordSyncFailure(db, item, error);
   }

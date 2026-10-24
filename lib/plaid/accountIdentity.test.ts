@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { adoptableCopies, canonicalAccount, connectionDuplicatePairs, copiesOfAccount, duplicateAccountGroups, isSupersededAccount, supersededPlaidId, type LedgerCopy, type StoredAccount } from './accountIdentity.ts';
+import { adoptableCopies, canonicalAccount, connectionDuplicatePairs, copiesOfAccount, duplicateAccountGroups, isSupersededAccount, mostCommonProperty, restorableAccounts, supersededPlaidId, type LedgerCopy, type StoredAccount } from './accountIdentity.ts';
 
 const account = (overrides: Partial<StoredAccount> & Pick<StoredAccount, 'id' | 'item_id' | 'plaid_account_id'>): StoredAccount => ({
   mask: '3199', type: 'depository', subtype: 'checking', property_id: null, import_enabled: false, archived_at: null, created_at: '2026-09-01T00:00:00Z', ...overrides,
@@ -45,6 +45,22 @@ test('the same 3199 and 6822 under two Chase connections are reported as duplica
   const relinkedSavings = account({ id: 'b-new', item_id: 'item-2', plaid_account_id: 'new-6822', mask: '6822' });
   const groups = duplicateAccountGroups([original, savings, relinked, relinkedSavings]).map(group => group.map(row => row.id).sort());
   assert.deepEqual(groups, [['a-new', 'a-orig'], ['b-new', 'b-orig']]);
+});
+
+test('a disconnected 3199 is offered for restore once, keeping its property, and not when it is already active', () => {
+  const bankOf = (itemId: string) => (itemId === 'item-1' || itemId === 'item-2' ? 'ins_56' : undefined);
+  const disconnected = { ...original, archived_at: '2026-10-24T16:00:00Z', import_enabled: false };
+  const olderUnlink = account({ id: 'a-old-unlink', item_id: 'item-1', plaid_account_id: 'older-3199', archived_at: '2026-09-01T00:00:00Z', created_at: '2026-08-01T00:00:00Z' });
+  const restorable = restorableAccounts([disconnected, olderUnlink, savings], bankOf);
+  assert.deepEqual(restorable.map(row => [row.id, row.property_id]), [['a-orig', 'prop-1']]);
+  assert.deepEqual(restorableAccounts([disconnected, relinked], bankOf), []);
+  assert.deepEqual(restorableAccounts([{ ...disconnected, item_id: 'gone' }], bankOf), []);
+});
+
+test('a cleared property is recovered only from a clear majority of the account history', () => {
+  assert.equal(mostCommonProperty(['w28', 'w28', 'w28', 'other', null]), 'w28');
+  assert.equal(mostCommonProperty(['w28', 'other']), null);
+  assert.equal(mostCommonProperty([]), null);
 });
 
 const copy = (overrides: Partial<LedgerCopy> & Pick<LedgerCopy, 'id'>): LedgerCopy => ({

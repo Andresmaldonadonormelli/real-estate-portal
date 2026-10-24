@@ -77,6 +77,31 @@ export function duplicateAccountGroups<T extends StoredAccount>(rows: T[]) {
   return groups;
 }
 
+/** One restorable row per disconnected real account, unless that account is already active at the same bank. */
+export function restorableAccounts<T extends StoredAccount>(rows: T[], institutionOf: (itemId: string) => string | undefined) {
+  const visible = rows.filter(row => !row.archived_at && !isSupersededAccount(row));
+  const groups: T[][] = [];
+  for (const row of rows) {
+    if (!row.archived_at || isSupersededAccount(row)) continue;
+    const bank = institutionOf(row.item_id);
+    if (!bank) continue;
+    if (visible.some(other => institutionOf(other.item_id) === bank && sameRealAccount(other, row))) continue;
+    const group = groups.find(members => institutionOf(members[0].item_id) === bank && sameRealAccount(members[0], row));
+    if (group) group.push(row);
+    else groups.push([row]);
+  }
+  return groups.map(group => canonicalAccount(group)!);
+}
+
+/** The property a clear majority of rows were filed under, or null when the history is split. */
+export function mostCommonProperty(propertyIds: (string | null)[]) {
+  const counts = new Map<string, number>();
+  const filed = propertyIds.filter((id): id is string => Boolean(id));
+  filed.forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+  const [best] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return best && best[1] * 2 > filed.length ? best[0] : null;
+}
+
 function normalizedDescription(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }

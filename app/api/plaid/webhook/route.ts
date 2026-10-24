@@ -32,11 +32,16 @@ export async function POST(request:Request){
       return Response.json({ok:true});
     }
 
+    if(body.webhook_type==='ITEM'&&body.webhook_code==='LOGIN_REPAIRED'){
+      await db.from('plaid_items').update({status:'connected',error_code:null,error_message:null}).eq('plaid_item_id',body.item_id).is('disconnected_at',null);
+      return Response.json({ok:true});
+    }
+
     if(body.webhook_type==='ITEM'){
       const errorCode=body.error?.error_code||body.webhook_code||null;
       const errorMessage=body.error?.error_message||(
-        body.webhook_code==='PENDING_EXPIRATION'?'Bank connection expires soon. Re-link to keep importing.':
-        body.webhook_code==='USER_PERMISSION_REVOKED'?'Bank access was revoked. Re-link to resume importing.':
+        body.webhook_code==='PENDING_EXPIRATION'?'Bank connection expires soon. Reconnect to keep importing.':
+        body.webhook_code==='USER_PERMISSION_REVOKED'?'Bank access was revoked. Reconnect to resume importing.':
         body.webhook_code==='WEBHOOK_UPDATE_ACKNOWLEDGED'?null:
         'Bank connection needs attention.'
       );
