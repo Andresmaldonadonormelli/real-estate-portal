@@ -65,7 +65,7 @@ test('daily brief uses posted activity and does not invent a plan', () => {
   assert.equal(brief.updates.find((update) => update.id === 'money-in')?.title, '+$2,850 received');
   assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett · Nov 10');
   assert.equal(brief.updates.some((update) => /fee|net cash|mortgage|\$18/i.test(`${update.title} ${update.context}`)), false);
-  assert.ok(brief.updates.length <= 4);
+  assert.ok(brief.updates.length <= 6);
   assert.equal(brief.updates.find((update) => update.id === 'attention')?.context, '134 W · 1 vacant unit');
   assert.equal(brief.more, true);
   assert.equal(brief.properties.find((row) => row.id === 'p1')?.status, 'On track');
@@ -102,7 +102,7 @@ test('daily brief stays a short catch-up when many transactions post', () => {
     since: '2026-11-01T00:00:00.000Z',
     now,
   });
-  assert.ok(brief.updates.length <= 4);
+  assert.ok(brief.updates.length <= 6);
   assert.equal(brief.updates.filter((update) => update.id === 'money-in').length, 1);
   assert.equal(brief.updates.some((update) => /mortgage/i.test(update.title)), false);
   assert.equal(brief.more, true);

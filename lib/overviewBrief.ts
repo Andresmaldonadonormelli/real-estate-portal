@@ -261,8 +261,7 @@ export function buildOverviewBrief(input: {
   }
 
   const ranked = candidates.sort((a, b) => a.priority - b.priority);
-  const updates = ranked.slice(0, 3);
-  if (ranked[3]?.important) updates.push(ranked[3]);
+  const updates = ranked.slice(0, 6);
   const routineLeft = fresh.some((tx) => !isMoneyIn(tx) && categoryKey(tx.category || '') !== 'extra-principal' && !needsReview(tx));
   const more = ranked.length > updates.length || routineLeft || money.length > 1;
   if (!updates.length) {
