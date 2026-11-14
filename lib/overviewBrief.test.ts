@@ -66,8 +66,8 @@ test('daily brief uses posted activity and does not invent a plan', () => {
   assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett · Nov 10');
   assert.equal(brief.updates.some((update) => /fee|net cash|mortgage|\$18/i.test(`${update.title} ${update.context}`)), false);
   assert.ok(brief.updates.length <= 6);
-  assert.equal(brief.updates.find((update) => update.id === 'attention')?.context, '134 W · 1 vacant unit');
-  assert.equal(brief.more, true);
+  assert.equal(brief.updates.some((update) => /outstanding|attention|review|lease|vacant/i.test(`${update.title} ${update.context}`)), false);
+  assert.equal(brief.more, false);
   assert.equal(brief.properties.find((row) => row.id === 'p1')?.status, 'On track');
   assert.match(brief.properties.find((row) => row.id === 'p1')?.detail || '', /\+\$2,850 received/);
   assert.equal(brief.properties.find((row) => row.id === 'p2')?.status, 'Needs attention');
@@ -153,6 +153,39 @@ test('a unit lease and its lease document are one reminder', () => {
   assert.equal(reminders[1]?.detail, '15334 Triskett · Unit #1 · Kenyetta Frazier');
 });
 
+test('insights are financial observations, not tasks', () => {
+  const brief = buildOverviewBrief({
+    properties: [property, { id: 'p2', address: '3765 W 134th St' }, { id: 'p3', address: '4365 W 28th St' }],
+    units: [unit],
+    transactions: [
+      { id: 'oct-util', property_id: 'p2', transaction_date: '2026-10-08', type: 'expense', category: 'Utilities', amount: -200, status: 'posted', payee_source: 'Building services' },
+      { id: 'nov-util', property_id: 'p2', transaction_date: '2026-11-08', type: 'expense', category: 'Utilities', amount: -164, status: 'posted', payee_source: 'Building services' },
+      { id: 'oct-gas', property_id: 'p1', transaction_date: '2026-10-09', type: 'expense', category: 'Utilities', amount: -52, status: 'posted', payee_source: 'Enbridge' },
+      { id: 'nov-gas', property_id: 'p1', transaction_date: '2026-11-09', type: 'expense', category: 'Utilities', amount: -83, status: 'posted', payee_source: 'Enbridge' },
+      { id: 'oct-rent', property_id: 'p1', transaction_date: '2026-10-05', type: 'income', category: 'Rent', amount: 2000, status: 'posted' },
+      { id: 'oct-repair', property_id: 'p1', transaction_date: '2026-10-06', type: 'expense', category: 'Repairs & Maintenance', amount: -800, status: 'posted' },
+      { id: 'nov-rent', property_id: 'p1', transaction_date: '2026-11-05', type: 'income', category: 'Rent', amount: 2000, status: 'posted', created_at: '2026-11-05T15:00:00.000Z' },
+      { id: 'nov-repair', property_id: 'p1', transaction_date: '2026-11-06', type: 'expense', category: 'Repairs & Maintenance', amount: -380, status: 'posted' },
+      { id: 'principal', property_id: 'p1', transaction_date: '2026-11-11', type: 'transfer', category: 'Extra Principal Payment', amount: -312, status: 'posted' },
+      { id: 'tiny-prior', property_id: 'p3', transaction_date: '2026-10-02', type: 'expense', category: 'Utilities', amount: -20, status: 'posted', payee_source: 'Building services' },
+      { id: 'tiny', property_id: 'p3', transaction_date: '2026-11-02', type: 'expense', category: 'Utilities', amount: -18, status: 'posted', payee_source: 'Building services' },
+      { id: 'review', property_id: 'p1', transaction_date: '2026-11-03', type: 'expense', category: 'Uncategorized', amount: -90, status: 'needs_review' },
+    ],
+    since: '2026-11-01T00:00:00.000Z',
+    now,
+  });
+  const text = brief.updates.map((update) => `${update.title} ${update.context}`).join('\n');
+  assert.equal(brief.updates.some((update) => /outstanding|attention|review|uncategor|lease|vacant/i.test(`${update.title} ${update.context}`)), false);
+  assert.match(text, /Utilities down 18%/);
+  assert.match(text, /W134 · \$164 vs \$200 last month/);
+  assert.match(text, /Gas cost increased 60%/);
+  assert.match(text, /Enbridge · \$83 vs \$52 last month/);
+  assert.match(text, /Triskett cash flow improved/);
+  assert.match(text, /Mortgage principal reduced/);
+  assert.match(text, /\$312 this month/);
+  assert.doesNotMatch(text, /W28/);
+});
+
 test('rent is not called missing before the 10th', () => {
   const brief = buildOverviewBrief({
     properties: [property],
@@ -163,7 +196,7 @@ test('rent is not called missing before the 10th', () => {
   });
   assert.equal(brief.kicker, 'This month');
   assert.equal(brief.updates.some((update) => update.id === 'rent-missing'), false);
-  assert.equal(brief.updates[0]?.id, 'quiet');
+  assert.equal(brief.updates.length, 0);
   assert.equal(brief.properties[0]?.status, 'Watch');
   assert.equal(brief.properties[0]?.detail, 'Waiting on rent');
   assert.equal(brief.more, false);
