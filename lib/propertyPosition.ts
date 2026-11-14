@@ -88,6 +88,7 @@ export function monthActivity(transactions: HistoryTransaction[], propertyId: st
       if (categoryKey(tx.category || '') === 'rent') rent += amount;
     }
     if (tx.type === 'expense') {
+      if (categoryKey(tx.category || '') === 'extra-principal') return;
       cashFlow -= amount;
       if (MORTGAGE.has(categoryKey(tx.category || ''))) mortgage += amount;
       else expenses += amount;
@@ -128,7 +129,9 @@ export function cashFlowYear(transactions: HistoryTransaction[], propertyId: str
       const amount = Math.abs(Number(tx.amount || 0));
       if (tx.type === 'income') income += amount;
       if (tx.type === 'expense') {
-        if (MORTGAGE.has(categoryKey(tx.category || ''))) mortgage += amount;
+        const key = categoryKey(tx.category || '');
+        if (key === 'extra-principal') return;
+        if (MORTGAGE.has(key)) mortgage += amount;
         else expenses += amount;
       }
     });
@@ -143,6 +146,7 @@ export function latestYearCashFlow(transactions: HistoryTransaction[], propertyI
     if (!tx.transaction_date.startsWith(year)) return;
     const key = tx.transaction_date.slice(0, 7);
     const amount = Math.abs(Number(tx.amount || 0));
+    if (categoryKey(tx.category || '') === 'extra-principal') return;
     const signed = tx.type === 'income' ? amount : tx.type === 'expense' ? -amount : 0;
     months.set(key, (months.get(key) || 0) + signed);
   });

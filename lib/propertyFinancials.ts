@@ -19,7 +19,7 @@ export type PropertyTransaction = {
   receipt_path?: string | null;
 };
 
-const OPERATING_EXCLUSIONS = ['mortgage-interest', 'mortgage-principal', 'mortgage', 'capex', 'distribution'];
+const OPERATING_EXCLUSIONS = ['mortgage-interest', 'mortgage-principal', 'mortgage', 'extra-principal', 'capex', 'distribution'];
 
 export function isOperatingExpenseCategory(category: string) {
   const key = categoryKey(category || '');
@@ -38,8 +38,9 @@ export function calculateMetrics(rows: PropertyTransaction[]) {
     const amount = Math.abs(Number(transaction.amount || 0));
     if (transaction.type === 'income') income += amount;
     if (transaction.type === 'expense') {
-      cashExpenses += amount;
-      if (!OPERATING_EXCLUSIONS.includes(categoryKey(transaction.category || ''))) operatingExpenses += amount;
+      const key = categoryKey(transaction.category || '');
+      if (key !== 'extra-principal') cashExpenses += amount;
+      if (!OPERATING_EXCLUSIONS.includes(key)) operatingExpenses += amount;
     }
   }
   return { income, operatingExpenses, noi: income - operatingExpenses, cashFlow: income - cashExpenses, cashExpenses };

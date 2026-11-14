@@ -1,3 +1,5 @@
+import { extraPrincipalCash } from '@/lib/extraPrincipal';
+import { categoryKey } from '@/lib/accounting';
 import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
 import { cashInDeal, currentEquity, emptyProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { monthActivity, nextPaymentParts, payoffModel } from '@/lib/propertyPosition';
@@ -19,6 +21,14 @@ const PERIOD_LABEL: Record<LandingPeriod, string> = {
   'All': 'since the start',
 };
 
+export type LandingDocument = {
+  id: string;
+  property_id: string;
+  category?: string | null;
+  title?: string | null;
+  expires_at?: string | null;
+};
+
 export type LandingUnit = {
   property_id: string;
   unit_number?: string | null;
@@ -37,7 +47,7 @@ export function buildPortfolioLanding(
   units: LandingUnit[],
   transactions: HistoryTransaction[],
   profiles: Record<string, PropertyProfile>,
-  options: { series: LandingSeries; path: LandingPath; period: LandingPeriod; now?: Date },
+  options: { series: LandingSeries; path: LandingPath; period: LandingPeriod; now?: Date; documents?: LandingDocument[] },
 ) {
   const now = options.now || new Date();
   const tracks = properties.map(property => ({ property, profile: profiles[property.id], track: propertyTrack(property, profiles[property.id], now) }));
@@ -56,7 +66,7 @@ export function buildPortfolioLanding(
   const shownPaydown = Math.round(paydown);
   const shownBought = Math.round(bought);
   const shownValue = shownEquity - shownPaydown - shownBought;
-  const putIn = boughtProperties.reduce((sum, item) => sum + invested(item.profile, item.property, windowDate), 0)
+  const putIn = boughtProperties.reduce((sum, item) => sum + invested(item.profile, item.property, windowDate, transactions), 0)
     + tracks.filter(item => (item.track[0]?.time || 0) <= windowDate.getTime()).reduce((sum, item) => sum + capexSince(item.profile, windowDate), 0);
   const growthBase = then.equity > 0 ? then.equity : putIn;
   const growth = growthBase > 0 ? (equityDelta - putIn) / growthBase : null;
@@ -71,7 +81,7 @@ export function buildPortfolioLanding(
   const propertyMonths = completedMonths.reduce((sum, month) => sum + month.owned, 0);
   const year = yearCash(properties, units, transactions, now);
   const rows = propertyRows(tracks, units, transactions, current.equity, now);
-  const coming = comingUp(properties, units, now);
+  const coming = comingUp(properties, units, options.documents || [], now);
   const averages = monthlyAverages(tracks, units, transactions, now);
   const investor = investorSummary(properties, transactions, current.equity, averages.cashInDeal);
   return {
@@ -95,7 +105,7 @@ export function buildPortfolioLanding(
     lines: {
       value: tracks.map(item => ({ label: shortName(item.property.address), amount: item.track.at(-1)?.value || 0 })),
       debt: tracks.map(item => ({ label: shortName(item.property.address), amount: Number(item.property.mortgage_balance || 0) })),
-      deal: tracks.map(item => ({ label: shortName(item.property.address), amount: invested(item.profile, item.property, new Date(0)) })),
+      deal: tracks.map(item => ({ label: shortName(item.property.address), amount: invested(item.profile, item.property, new Date(0), transactions) })),
     },
     rows,
     coming,
@@ -342,23 +352,67 @@ function propertyRows(tracks: { property: Property; profile?: PropertyProfile; t
   });
 }
 
-function comingUp(properties: Property[], units: LandingUnit[], now: Date) {
+function comingUp(properties: Property[], units: LandingUnit[], documents: LandingDocument[], now: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return units.flatMap(unit => {
-    if (!unit.occupied || !unit.lease_end_date) return [];
-    const end = parseDay(unit.lease_end_date);
-    if (!end || end < today) return [];
-    const property = properties.find(item => item.id === unit.property_id);
-    const days = Math.ceil((end.getTime() - today.getTime()) / 86400000);
-    if (days > 180) return [];
-    return [{
-      id: `${unit.property_id}-${unit.unit_number}-${unit.lease_end_date}`,
-      propertyId: unit.property_id,
-      title: `${property ? shortName(property.address) : 'Property'} · ${unit.unit_number || 'Unit'}`,
-      detail: unit.tenant_name ? `${unit.tenant_name} · lease ends ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : `Lease ends ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-      days,
-    }];
-  }).sort((a, b) => a.days - b.days).slice(0, 4);
+  const names = new Map(properties.map(property => [property.id, shortName(property.address)]));
+  const events = [
+    ...units.flatMap(unit => {
+      if (!unit.lease_end_date || !names.has(unit.property_id)) return [];
+      const end = parseDay(unit.lease_end_date);
+      if (!end) return [];
+      const days = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+      if (days < -14 || days > 365) return [];
+      const unitName = (unit.unit_number || 'Unit').replace(/^unit\s+/i, '');
+      return [{
+        id: `lease-${unit.property_id}-${unit.unit_number}-${unit.lease_end_date}`,
+        propertyId: unit.property_id,
+        title: 'Lease ending',
+        detail: `${names.get(unit.property_id)} · Unit ${unitName}`,
+        when: relativeWhen(days),
+        month: end.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+        day: String(end.getDate()),
+        days,
+        tab: '?tab=units',
+      }];
+    }),
+    ...documents.flatMap(document => {
+      if (!document.expires_at || !names.has(document.property_id)) return [];
+      const due = parseDay(document.expires_at);
+      if (!due) return [];
+      const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+      if (days < -14 || days > 365) return [];
+      return [{
+        id: `doc-${document.id}`,
+        propertyId: document.property_id,
+        title: datedTitle(document.category || ''),
+        detail: `${names.get(document.property_id)}${document.title ? ` · ${document.title}` : ''}`,
+        when: relativeWhen(days),
+        month: due.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+        day: String(due.getDate()),
+        days,
+        tab: '?tab=documents',
+      }];
+    }),
+  ];
+  return events.sort((a, b) => a.days - b.days).slice(0, 5);
+}
+
+function relativeWhen(days: number) {
+  if (days < 0) return days === -1 ? '1 day ago' : `${Math.abs(days)} days ago`;
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days < 45) return `In ${days} days`;
+  const months = Math.max(1, Math.round(days / 30));
+  return months === 1 ? 'In about 1 month' : `In about ${months} months`;
+}
+
+function datedTitle(category: string) {
+  const key = categoryKey(category);
+  if (key === 'insurance') return 'Insurance renewal';
+  if (key === 'taxes') return 'Property tax due';
+  if (/inspect/i.test(category)) return 'Inspection';
+  if (/lease/i.test(category)) return 'Lease ending';
+  return category.trim() || 'Reminder';
 }
 
 function monthlyAverages(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], units: LandingUnit[], transactions: HistoryTransaction[], now: Date) {
@@ -378,7 +432,7 @@ function monthlyAverages(tracks: { property: Property; profile?: PropertyProfile
   });
   const cashFlow = details.reduce((sum, item) => sum + item.cashFlow, 0);
   const paydown = tracks.reduce((sum, item) => sum + nextPaymentParts(item.property).principal, 0);
-  const cashIn = tracks.reduce((sum, item) => sum + invested(item.profile, item.property, new Date(0)), 0);
+  const cashIn = tracks.reduce((sum, item) => sum + invested(item.profile, item.property, new Date(0), transactions), 0);
   return { cashFlow, paydown, total: cashFlow + paydown, cashInDeal: cashIn, details };
 }
 
@@ -391,11 +445,23 @@ function investorSummary(properties: Property[], transactions: HistoryTransactio
   };
 }
 
-function invested(profile: PropertyProfile | undefined, property: Property, since: Date) {
+function invested(profile: PropertyProfile | undefined, property: Property, since: Date, transactions: HistoryTransaction[]) {
   const saved = profile || emptyProfile();
   const purchased = parseDay(property.purchase_date) || parseDay(property.created_at);
   const base = purchased && purchased >= since ? cashInDeal(saved) : 0;
-  return base + capexSince(saved, since);
+  const allTime = since.getTime() <= 0;
+  const manual = (saved.extra_principal || []).filter(row => {
+    const date = parseDay(row.date);
+    if (!date) return allTime;
+    return date >= since;
+  });
+  const ledger = transactions.filter(tx => {
+    if (tx.property_id !== property.id) return false;
+    const date = parseDay(tx.transaction_date);
+    if (!date) return allTime;
+    return date >= since;
+  });
+  return base + capexSince(saved, since) + extraPrincipalCash(manual, ledger, property.id);
 }
 
 function capexSince(profile: PropertyProfile | undefined, since: Date) {

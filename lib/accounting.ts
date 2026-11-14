@@ -11,6 +11,7 @@ export const ACCOUNTING_CATEGORIES = [
   'Insurance',
   'Property Taxes',
   'Mortgage Payment',
+  'Extra Principal Payment',
   'Capital Improvements / CapEx',
   'Legal & Professional',
   'Owner Distribution',
@@ -26,6 +27,7 @@ export const ACCOUNTING_CATEGORIES = [
 export function categoryKey(category: string) {
   const c = category.toLowerCase();
   if (c === 'rent' || c.includes('rental')) return 'rent';
+  if (c.includes('extra principal')) return 'extra-principal';
   if (c.includes('mortgage interest')) return 'mortgage-interest';
   if (c.includes('mortgage principal')) return 'mortgage-principal';
   if (c.includes('mortgage')) return 'mortgage';
@@ -48,4 +50,15 @@ export function categoryKey(category: string) {
 
 export function categoryNeedsReview(category: string) {
   return categoryKey(category) === 'review' || categoryKey(category) === 'non-operating';
+}
+
+export type LedgerFlow = 'income' | 'expense' | 'transfer';
+
+/** Financing and capital movements stay transfers so they never enter operating expenses. */
+export function transactionTypeForCategory(category: string, fallback: LedgerFlow = 'expense'): LedgerFlow {
+  const key = categoryKey(category);
+  if (key === 'rent' || key === 'other-income' || key === 'refund') return 'income';
+  if (key === 'contribution' || key === 'distribution' || key === 'non-operating' || key === 'extra-principal') return 'transfer';
+  if (category === 'Needs Review') return fallback;
+  return 'expense';
 }
