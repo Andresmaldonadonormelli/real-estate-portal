@@ -156,24 +156,26 @@
 .landing-month-table th,.landing-month-table td{padding:var(--space-2);border-bottom:1px solid var(--border-color);text-align:right;font-size:var(--type-compact-size);line-height:var(--type-compact-line);font-variant-numeric:tabular-nums}
 .landing-month-table th:first-child,.landing-month-table td:first-child{text-align:left}
 .landing-month-table th{color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-medium)}
-.overview-brief-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.overview-brief.dashboard-module{padding:var(--space-3) var(--space-5);box-shadow:none}
+.overview-brief-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
 .overview-brief-head h2{margin:0;white-space:nowrap}
 .overview-brief-head span,.overview-brief-head a{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
-.overview-brief-lines,.overview-brief-activity,.property-pulse ul,.upcoming-dates{margin:var(--space-3) 0 0;padding:0;list-style:none}
-.overview-brief-lines{display:grid;gap:var(--space-2)}
-.overview-brief-lines li{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);min-height:28px;font-size:var(--type-body-size);line-height:var(--type-body-line)}
-.overview-brief-activity{display:grid;margin-top:var(--space-3);border-top:1px solid var(--border-color)}
-.overview-brief-activity button{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);width:100%;min-height:44px;padding:var(--space-3) 0;border:0;border-bottom:1px solid var(--border-color);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.overview-brief-activity button span,.property-pulse a>span,.upcoming-dates a>span:nth-child(2){display:grid;gap:2px;min-width:0}
-.overview-brief-activity small,.property-pulse small,.upcoming-dates small{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-regular)}
-.overview-brief-activity button span:last-child,.property-pulse a>span:last-child{justify-items:end;text-align:right}
-.property-pulse ul{display:grid}
-.property-pulse a{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);min-height:44px;padding:var(--space-3) 0;border-bottom:1px solid var(--border-color);color:inherit;text-decoration:none}
-.property-pulse b[data-status='On track']{color:var(--positive)}
-.property-pulse b[data-status='Behind']{color:var(--negative)}
-.property-pulse b[data-status='Stable']{color:var(--text-secondary)}
-.property-pulse small.amount-positive{color:var(--positive)}
-.property-pulse small.amount-negative{color:var(--negative)}
+.overview-brief-updates{display:grid;gap:var(--space-2);margin:var(--space-2) 0 0;padding:0;list-style:none}
+.overview-brief-updates li{display:grid}
+.overview-brief-updates strong{font-size:var(--type-body-size);line-height:1.3;font-weight:var(--weight-semibold)}
+.overview-brief-updates small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:1.3;font-weight:var(--weight-regular)}
+.property-health small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-regular)}
+.overview-brief-more{display:inline-flex;align-items:center;min-height:44px;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
+.overview-brief-more::after{content:" →"}
+.property-health{min-width:0}
+.property-health ul{margin:0;padding:0;list-style:none}
+.property-health li+li{border-top:1px solid var(--border-color)}
+.property-health a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px var(--space-3);align-items:center;min-height:44px;padding:var(--space-3) 0;color:inherit;text-decoration:none}
+.property-health strong{grid-column:1 / -1;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--weight-semibold)}
+.property-health b{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);white-space:nowrap}
+.property-health b[data-status='On track']{color:var(--positive)}
+.property-health b[data-status='Watch']{color:var(--warning)}
+.property-health b[data-status='Needs attention']{color:var(--negative)}
 .landing-coming .upcoming-dates{display:grid;gap:0}
 .landing-coming .upcoming-dates a{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:44px;padding:var(--space-2) 0;border-bottom:1px solid var(--border-color)}
 .upcoming-date{display:grid;width:44px;height:44px;align-content:center;justify-items:center;border-radius:var(--radius-control);background:var(--surface-subtle)}

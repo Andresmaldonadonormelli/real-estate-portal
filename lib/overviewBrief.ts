@@ -4,7 +4,7 @@ import { settleRentCollection, type RentLedgerRow } from './rentCollection';
 import { shortPropertyName } from './formatters';
 
 export type BriefTone = 'positive' | 'negative' | 'neutral';
-export type PulseStatus = 'On track' | 'Behind' | 'Stable';
+export type PulseStatus = 'On track' | 'Watch' | 'Needs attention';
 
 export type BriefTransaction = RentLedgerRow & {
   id: string;
@@ -17,6 +17,7 @@ export type BriefTransaction = RentLedgerRow & {
   confirmed_at?: string | null;
   is_new_import?: boolean | null;
   source?: string | null;
+  needs_review?: boolean | null;
 };
 
 export type BriefProperty = {
@@ -42,27 +43,19 @@ export type BriefDocument = {
   expires_at?: string | null;
 };
 
-export type BriefLine = {
-  id: string;
-  label: string;
-  amount: number | null;
-  tone: BriefTone;
-};
-
-export type BriefActivity = {
+export type BriefUpdate = {
   id: string;
   title: string;
-  amount: number;
-  tone: 'positive' | 'negative';
-  property: string;
-  date: string;
+  context: string;
+  tone: BriefTone;
+  priority: number;
+  important: boolean;
 };
 
 export type PropertyPulseRow = {
   id: string;
   name: string;
-  status: PulseStatus;
-  amount: number | null;
+  status: PulseStatus | null;
   detail: string;
 };
 
@@ -79,21 +72,14 @@ export type UpcomingDate = {
 
 export type OverviewBrief = {
   kicker: string;
-  lines: BriefLine[];
-  activity: BriefActivity[];
+  updates: BriefUpdate[];
+  more: boolean;
   properties: PropertyPulseRow[];
   upcoming: UpcomingDate[];
 };
 
 const LARGE_EXPENSE = 250;
-const ACTIVITY_RANK: Record<string, number> = {
-  rent: 0,
-  mortgage: 1,
-  'mortgage-interest': 1,
-  'mortgage-principal': 1,
-  management: 2,
-  'extra-principal': 3,
-};
+const LEASE_WATCH_DAYS = 45;
 
 function dateKey(value?: string | null) {
   const key = (value || '').slice(0, 10);
@@ -135,29 +121,25 @@ function signed(tx: BriefTransaction) {
   return Number(tx.amount || 0);
 }
 
-function activityRank(tx: BriefTransaction) {
-  const key = categoryKey(tx.category || '');
-  if (key in ACTIVITY_RANK) return ACTIVITY_RANK[key];
-  if (tx.type === 'expense' && Math.abs(signed(tx)) >= LARGE_EXPENSE) return 4;
-  if (tx.type === 'income' && key !== 'review') return 5;
-  return 9;
+function shortDate(key: string) {
+  return new Date(`${key}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function activityTitle(tx: BriefTransaction) {
-  const key = categoryKey(tx.category || '');
-  if (key === 'rent' && tx.type === 'income') return 'Rent received';
-  if (key === 'management') return 'Management fee';
-  if (key === 'mortgage' || key === 'mortgage-interest' || key === 'mortgage-principal') return 'Mortgage payment';
-  if (key === 'extra-principal') return 'Extra principal';
-  const category = (tx.category || '').trim();
-  if (!category || /needs review|uncategor/i.test(category)) return tx.type === 'income' ? 'Money in' : 'Expense';
-  return category;
+function nameList(names: string[]) {
+  const unique = [...new Set(names.filter(Boolean))];
+  if (unique.length <= 2) return unique.join(' · ');
+  return `${unique.slice(0, 2).join(' · ')} · +${unique.length - 2}`;
 }
 
-function countsAsCash(tx: BriefTransaction) {
+function needsReview(tx: BriefTransaction) {
+  return Boolean(tx.needs_review) || categoryKey(tx.category || '') === 'review' || /needs review|uncategor/i.test(tx.category || '');
+}
+
+function isMoneyIn(tx: BriefTransaction) {
+  if (tx.type !== 'income' || needsReview(tx)) return false;
   const key = categoryKey(tx.category || '');
-  if (key === 'extra-principal' || key === 'contribution' || key === 'distribution' || key === 'non-operating') return false;
-  return tx.type === 'income' || tx.type === 'expense';
+  if (key === 'rent') return true;
+  return (key === 'other-income' || key === 'refund') && Math.abs(signed(tx)) >= LARGE_EXPENSE;
 }
 
 function relativeWhen(days: number) {
@@ -195,7 +177,6 @@ export function buildOverviewBrief(input: {
   now?: Date;
 }): OverviewBrief {
   const now = input.now || new Date();
-  const month = monthKey(now);
   const day = now.getDate();
   const propertyId = input.propertyId || '';
   const properties = propertyId ? input.properties.filter((property) => property.id === propertyId) : input.properties;
@@ -208,151 +189,177 @@ export function buildOverviewBrief(input: {
   const fresh = postedRows.filter((tx) => stamp(tx) > since);
   const names = new Map(properties.map((property) => [property.id, shortPropertyName(property.address)]));
 
-  const rentIn = fresh.filter((tx) => tx.type === 'income' && categoryKey(tx.category || '') === 'rent').reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-  const management = fresh.filter((tx) => categoryKey(tx.category || '') === 'management').reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-  const mortgage = fresh.filter((tx) => ['mortgage', 'mortgage-interest', 'mortgage-principal'].includes(categoryKey(tx.category || ''))).reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-  const largestExpense = fresh
-    .filter((tx) => tx.type === 'expense' && !['management', 'mortgage', 'mortgage-interest', 'mortgage-principal', 'extra-principal'].includes(categoryKey(tx.category || '')))
-    .sort((a, b) => Math.abs(signed(b)) - Math.abs(signed(a)))[0];
-  const imports = fresh.filter((tx) => tx.is_new_import && tx.source === 'plaid');
-  const net = fresh.filter(countsAsCash).reduce((sum, tx) => sum + signed(tx), 0);
-  const moneyEvents = (rentIn > 0.5 ? 1 : 0) + (management > 0.5 ? 1 : 0) + (mortgage > 0.5 ? 1 : 0) + (largestExpense && Math.abs(signed(largestExpense)) >= LARGE_EXPENSE ? 1 : 0);
-
-  const lines: BriefLine[] = [];
-  if (rentIn > 0.5) lines.push({ id: 'rent-in', label: 'Rent received', amount: rentIn, tone: 'positive' });
-  if (management > 0.5) lines.push({ id: 'management', label: 'Management fee', amount: -management, tone: 'negative' });
-  if (mortgage > 0.5) lines.push({ id: 'mortgage', label: 'Mortgage payment', amount: -mortgage, tone: 'negative' });
-  if (largestExpense && Math.abs(signed(largestExpense)) >= LARGE_EXPENSE) {
-    lines.push({ id: `expense-${largestExpense.id}`, label: activityTitle(largestExpense), amount: -Math.abs(signed(largestExpense)), tone: 'negative' });
+  const money = fresh.filter(isMoneyIn);
+  const moneyIn = money.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
+  const candidates: BriefUpdate[] = [];
+  if (moneyIn > 0.5) {
+    const dates = money.map((tx) => dateKey(tx.transaction_date)).filter(Boolean).sort();
+    const dateLabel = dates.length && dates[0] === dates[dates.length - 1] ? shortDate(dates[0]) : dates.length ? `${shortDate(dates[0])}–${shortDate(dates[dates.length - 1])}` : '';
+    const moneyNames = [...new Set(money.map((tx) => names.get(tx.property_id || '') || ''))];
+    const context = moneyNames.length === 1 ? [moneyNames[0], dateLabel].filter(Boolean).join(' · ') : moneyNames.length === 2 ? moneyNames.join(' · ') : [moneyNames.length ? `${moneyNames.length} properties` : '', dateLabel].filter(Boolean).join(' · ');
+    candidates.push({ id: 'money-in', title: `${formatBriefAmount(moneyIn)} came in`, context, tone: 'positive', priority: 0, important: false });
   }
-  if (moneyEvents > 1 && Math.abs(net) > 0.5) {
-    lines.push({ id: 'net', label: hasPriorVisit ? 'Net cash since you last checked' : 'Net cash this month', amount: net, tone: net > 0 ? 'positive' : 'negative' });
-  }
-  if (imports.length) lines.push({ id: 'bank', label: imports.length === 1 ? '1 new bank transaction' : `${imports.length} new bank transactions`, amount: null, tone: 'neutral' });
 
-  let missingPayments = 0;
-  properties.forEach((property) => {
-    const propertyUnits = units.filter((unit) => unit.property_id === property.id && unit.occupied);
-    const expected = propertyUnits.reduce((sum, unit) => sum + Math.max(0, Number(unit.current_rent || 0)), 0);
-    if (expected < 0.5) return;
-    const monthRows = postedRows.filter((tx) => tx.property_id === property.id && tx.transaction_date.startsWith(month));
-    const deposits = monthRows.filter((tx) => tx.type === 'income' && categoryKey(tx.category || '') === 'rent');
-    const settled = settleRentCollection({
-      expected,
-      net: deposits.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0),
-      expenses: monthRows.filter((tx) => tx.type === 'expense'),
-      deposits,
-      feePercent: property.management_fee_percent,
-    });
-    if (settled.unpaid < 0.5) return;
-    const tagged = deposits.some((tx) => tx.unit_id);
-    const uncovered = propertyUnits.filter((unit) => {
-      const rent = Math.max(0, Number(unit.current_rent || 0));
-      if (rent < 0.5) return false;
-      const received = deposits.filter((tx) => tx.unit_id === unit.id).reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-      return received + 0.5 < rent;
-    });
-    missingPayments += tagged ? (uncovered.length || 1) : 1;
-  });
-
-  if (day >= 10 && missingPayments > 0) {
-    lines.push({
+  const health = properties.map((property) => propertyHealth(property, units, postedRows, now));
+  const gaps = health.filter((row) => row.rentShort && day >= 10);
+  if (gaps.length) {
+    const count = gaps.reduce((sum, row) => sum + row.missing, 0);
+    candidates.push({
       id: 'rent-missing',
-      label: missingPayments === 1 ? '1 expected rent payment still missing' : `${missingPayments} expected rent payments still missing`,
-      amount: null,
+      title: count === 1 ? '1 rent payment still outstanding' : `${count} rent payments still outstanding`,
+      context: nameList(gaps.map((row) => row.name)),
       tone: 'negative',
+      priority: 1,
+      important: true,
     });
-  } else if (missingPayments === 0 && units.some((unit) => unit.occupied && Number(unit.current_rent || 0) > 0.5)) {
-    lines.push({ id: 'rent-complete', label: 'All expected rent received', amount: null, tone: 'positive' });
-  } else if (day < 10 && missingPayments > 0) {
-    lines.push({ id: 'rent-waiting', label: 'Rent is still coming in', amount: null, tone: 'neutral' });
   }
 
-  if (!lines.length) {
-    lines.push({ id: 'quiet', label: hasPriorVisit ? 'Nothing new since you last checked' : 'Nothing new to catch up on', amount: null, tone: 'neutral' });
+  const attention = health.filter((row) => row.vacant > 0 || row.unusual);
+  if (attention.length) {
+    const lead = attention[0];
+    const reason = lead.vacant ? (lead.vacant === 1 ? '1 vacant unit' : `${lead.vacant} vacant units`) : 'Large expense';
+    candidates.push({
+      id: 'attention',
+      title: attention.length === 1 ? '1 property needs attention' : `${attention.length} properties need attention`,
+      context: attention.length === 1 ? `${lead.name} · ${reason}` : nameList(attention.map((row) => row.name)),
+      tone: 'negative',
+      priority: 2,
+      important: true,
+    });
   }
-  const standing = lines.filter((line) => line.id === 'rent-missing' || line.id === 'rent-complete' || line.id === 'rent-waiting' || line.id === 'quiet');
-  const headline = lines.filter((line) => !standing.includes(line));
-  const visible = [...headline.slice(0, standing.length ? 3 : 4), ...standing].slice(0, 4);
 
-  const activity = postedRows
-    .filter((tx) => tx.transaction_date.startsWith(month) && activityRank(tx) < 9)
-    .sort((a, b) => dateKey(b.transaction_date).localeCompare(dateKey(a.transaction_date)) || activityRank(a) - activityRank(b))
-    .slice(0, 4)
-    .map((tx) => ({
-      id: tx.id,
-      title: activityTitle(tx),
-      amount: signed(tx),
-      tone: signed(tx) < 0 ? 'negative' as const : 'positive' as const,
-      property: names.get(tx.property_id || '') || 'Portfolio',
-      date: new Date(`${dateKey(tx.transaction_date)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    }));
+  const review = fresh.filter(needsReview);
+  if (review.length) {
+    candidates.push({
+      id: 'review',
+      title: review.length === 1 ? '1 bank transaction needs review' : `${review.length} bank transactions need review`,
+      context: nameList(review.map((tx) => names.get(tx.property_id || '') || '')),
+      tone: 'negative',
+      priority: 3,
+      important: true,
+    });
+  }
 
-  const pulses = properties.map((property) => propertyPulse(property, units, postedRows, now));
-  const upcoming = buildUpcoming(properties, units, input.documents || [], now).slice(0, 5);
+  const principal = fresh.filter((tx) => categoryKey(tx.category || '') === 'extra-principal' && Math.abs(signed(tx)) >= LARGE_EXPENSE);
+  const principalTotal = principal.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
+  if (principalTotal > 0.5) {
+    const latest = [...principal].sort((a, b) => dateKey(b.transaction_date).localeCompare(dateKey(a.transaction_date)))[0];
+    candidates.push({
+      id: 'principal',
+      title: `${formatBriefAmount(principalTotal)} extra principal`,
+      context: [names.get(latest.property_id || '') || '', shortDate(dateKey(latest.transaction_date))].filter(Boolean).join(' · '),
+      tone: 'neutral',
+      priority: 4,
+      important: principalTotal >= 1000,
+    });
+  }
+
+  const soon = units.flatMap((unit) => {
+    if (!unit.occupied) return [];
+    const end = dateKey(unit.lease_end_date);
+    if (!end) return [];
+    const days = Math.round((dayNumber(end) - dayNumber(todayKey(now))) / 86400000);
+    if (days < 0 || days > 30) return [];
+    return [{ unit, days, end }];
+  }).sort((a, b) => a.days - b.days);
+  if (soon.length) {
+    const lead = soon[0];
+    const unitName = (lead.unit.unit_number || '').trim().replace(/^unit\s+/i, '');
+    candidates.push({
+      id: 'lease',
+      title: soon.length === 1 ? 'Lease ending soon' : `${soon.length} leases ending soon`,
+      context: [names.get(lead.unit.property_id) || '', unitName ? `Unit ${unitName}` : '', shortDate(lead.end)].filter(Boolean).join(' · '),
+      tone: 'neutral',
+      priority: 5,
+      important: lead.days <= 14,
+    });
+  }
+
+  const ranked = candidates.sort((a, b) => a.priority - b.priority);
+  const updates = ranked.slice(0, 3);
+  if (ranked[3]?.important) updates.push(ranked[3]);
+  const routineLeft = fresh.some((tx) => !isMoneyIn(tx) && categoryKey(tx.category || '') !== 'extra-principal' && !needsReview(tx));
+  const more = ranked.length > updates.length || routineLeft || money.length > 1;
+  if (!updates.length) {
+    updates.push({
+      id: 'quiet',
+      title: hasPriorVisit ? 'Nothing new since your last visit' : 'Nothing new this month',
+      context: '',
+      tone: 'neutral',
+      priority: 9,
+      important: false,
+    });
+  }
 
   return {
-    kicker: hasPriorVisit ? 'Since you last checked' : 'This month',
-    lines: visible,
-    activity,
-    properties: pulses,
-    upcoming,
+    kicker: hasPriorVisit ? 'Since your last visit' : 'This month',
+    updates,
+    more: updates[0]?.id === 'quiet' ? false : more,
+    properties: health,
+    upcoming: buildUpcoming(properties, units, input.documents || [], now).slice(0, 5),
   };
 }
 
-function propertyPulse(property: BriefProperty, units: BriefUnit[], transactions: BriefTransaction[], now: Date): PropertyPulseRow {
+function propertyHealth(property: BriefProperty, units: BriefUnit[], transactions: BriefTransaction[], now: Date) {
   const month = monthKey(now);
+  const today = todayKey(now);
   const propertyUnits = units.filter((unit) => unit.property_id === property.id);
   const occupied = propertyUnits.filter((unit) => unit.occupied);
-  const vacant = propertyUnits.filter((unit) => !unit.occupied);
+  const vacantUnits = propertyUnits.filter((unit) => unit.occupied === false);
   const expected = occupied.reduce((sum, unit) => sum + Math.max(0, Number(unit.current_rent || 0)), 0);
   const monthRows = transactions.filter((tx) => tx.property_id === property.id && tx.transaction_date.startsWith(month));
   const deposits = monthRows.filter((tx) => tx.type === 'income' && categoryKey(tx.category || '') === 'rent');
+  const received = deposits.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
   const settled = expected > 0.5
     ? settleRentCollection({
       expected,
-      net: deposits.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0),
+      net: received,
       expenses: monthRows.filter((tx) => tx.type === 'expense'),
       deposits,
       feePercent: property.management_fee_percent,
     })
     : null;
-  const income = monthRows.filter((tx) => tx.type === 'income').reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-  const operating = monthRows.filter((tx) => tx.type === 'expense' && isOperatingExpenseCategory(tx.category || '')).reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
-  const hasOperatingActivity = income > 0.5 || operating > 0.5;
-  const cash = hasOperatingActivity ? income - operating : null;
   const unusual = unusualExpense(property.id, transactions, now);
   const rentShort = Boolean(settled && settled.unpaid > 0.5);
   const rentComplete = Boolean(settled && settled.unpaid < 0.5 && expected > 0.5);
+  const tagged = deposits.some((tx) => tx.unit_id);
+  const uncovered = occupied.filter((unit) => {
+    const rent = Math.max(0, Number(unit.current_rent || 0));
+    if (rent < 0.5) return false;
+    const got = deposits.filter((tx) => tx.unit_id === unit.id).reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
+    return got + 0.5 < rent;
+  });
+  const missing = rentShort ? (tagged ? (uncovered.length || 1) : 1) : 0;
+  const lease = occupied
+    .map((unit) => dateKey(unit.lease_end_date))
+    .filter(Boolean)
+    .map((end) => ({ end, days: Math.round((dayNumber(end) - dayNumber(today)) / 86400000) }))
+    .filter((item) => item.days >= 0 && item.days <= LEASE_WATCH_DAYS)
+    .sort((a, b) => a.days - b.days)[0];
 
-  let status: PulseStatus = 'Stable';
-  let detail = 'Not enough activity to judge';
-  if (vacant.length && propertyUnits.length) {
-    status = 'Behind';
-    detail = vacant.length === 1 ? '1 vacant unit' : `${vacant.length} vacant units`;
-  } else if (now.getDate() >= 10 && rentShort) {
-    status = 'Behind';
-    detail = 'Rent still outstanding';
-  } else if (unusual) {
-    status = 'Behind';
-    detail = 'Large expense this month';
-  } else if (rentComplete) {
-    status = 'On track';
-    detail = 'Rent fully collected';
-  } else if (now.getDate() < 10 && rentShort) {
-    status = 'Stable';
-    detail = 'Waiting on this month\'s rent';
-  } else if (propertyUnits.length && !unusual) {
-    status = 'Stable';
-    detail = 'No unusual expenses';
-  }
+  const parts: string[] = [];
+  if (received > 0.5) parts.push(`${formatBriefAmount(received)} received`);
+  if (vacantUnits.length) parts.push(vacantUnits.length === 1 ? '1 vacant unit' : `${vacantUnits.length} vacant units`);
+  if (now.getDate() >= 10 && rentShort) parts.push('Rent outstanding');
+  if (unusual) parts.push('Large expense');
+  if (lease) parts.push(`Lease ends ${shortDate(lease.end)}`);
+  if (!parts.length && now.getDate() < 10 && rentShort) parts.push('Waiting on rent');
+  if (!parts.length && rentComplete) parts.push('Rent fully collected');
+
+  let status: PulseStatus | null = null;
+  if (vacantUnits.length || (now.getDate() >= 10 && rentShort) || unusual) status = 'Needs attention';
+  else if ((now.getDate() < 10 && rentShort) || lease) status = 'Watch';
+  else if (rentComplete || received > 0.5) status = 'On track';
 
   return {
     id: property.id,
     name: shortPropertyName(property.address),
     status,
-    amount: cash,
-    detail,
+    detail: parts.join(' · '),
+    vacant: vacantUnits.length,
+    unusual,
+    rentShort,
+    missing,
   };
 }
 

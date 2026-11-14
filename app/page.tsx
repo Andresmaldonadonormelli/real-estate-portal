@@ -338,7 +338,7 @@ export default function Dashboard() {
     </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<div className="landing-stack">
-      <DailyBrief brief={overviewBrief} onOpenTransaction={id=>{const tx=transactions.find(row=>row.id===id);if(!tx)return;setActiveTransaction(tx);setDetailEditing(false);}} />
+      <DailyBrief brief={overviewBrief} />
       <PropertyPulse rows={overviewBrief.properties} />
       <PortfolioLanding properties={scopedProperties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} documents={scopedDocuments} />
     </div>}

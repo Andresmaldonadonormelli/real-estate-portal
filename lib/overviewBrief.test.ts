@@ -60,18 +60,55 @@ test('daily brief uses posted activity and does not invent a plan', () => {
     now,
   });
 
-  assert.equal(brief.kicker, 'Since you last checked');
-  assert.equal(brief.lines.find((line) => line.id === 'rent-in')?.amount, 2850);
-  assert.equal(brief.lines.find((line) => line.id === 'management')?.amount, -228);
-  assert.equal(brief.lines.find((line) => line.id === 'net')?.amount, 2622);
-  assert.equal(brief.lines.find((line) => line.id === 'rent-complete')?.label, 'All expected rent received');
-  assert.equal(brief.lines.some((line) => line.label.includes('18')), false);
-  assert.equal(brief.activity.some((item) => item.id === 'small'), false);
-  assert.equal(brief.activity[0]?.title, 'Rent received');
+  assert.equal(brief.kicker, 'Since your last visit');
+  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.title, '+$2,850 came in');
+  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett · Nov 10');
+  assert.equal(brief.updates.some((update) => /fee|net cash|mortgage|\$18/i.test(`${update.title} ${update.context}`)), false);
+  assert.ok(brief.updates.length <= 4);
+  assert.equal(brief.updates.find((update) => update.id === 'attention')?.context, '134 W · 1 vacant unit');
+  assert.equal(brief.more, true);
   assert.equal(brief.properties.find((row) => row.id === 'p1')?.status, 'On track');
-  assert.equal(brief.properties.find((row) => row.id === 'p2')?.status, 'Behind');
+  assert.match(brief.properties.find((row) => row.id === 'p1')?.detail || '', /\+\$2,850 received/);
+  assert.equal(brief.properties.find((row) => row.id === 'p2')?.status, 'Needs attention');
   assert.equal(brief.properties.find((row) => row.id === 'p2')?.detail, '1 vacant unit');
   assert.deepEqual(brief.upcoming.map((item) => item.month + item.day), ['MAR1', 'APR1']);
+});
+
+test('daily brief stays a short catch-up when many transactions post', () => {
+  const rents = Array.from({ length: 6 }, (_, index) => ({
+    id: `rent-${index}`,
+    property_id: 'p1',
+    transaction_date: `2026-11-${String(10 + index).padStart(2, '0')}`,
+    type: 'income' as const,
+    category: 'Rent',
+    amount: 500,
+    status: 'posted',
+    created_at: '2026-11-10T15:00:00.000Z',
+  }));
+  const brief = buildOverviewBrief({
+    properties: [property, { id: 'p3', address: '4365 W 28th St' }],
+    units: [
+      unit,
+      { id: 'v1', property_id: 'p3', unit_number: '1', occupied: false, current_rent: 1000 },
+      { id: 'v2', property_id: 'p3', unit_number: '2', occupied: false, current_rent: 1000 },
+      { id: 'o1', property_id: 'p3', unit_number: '3', occupied: true, current_rent: 2659 },
+    ],
+    transactions: [
+      ...rents,
+      { id: 'mortgage', property_id: 'p1', transaction_date: '2026-11-01', type: 'expense', category: 'Mortgage Payment', amount: -1400, status: 'posted', created_at: '2026-11-01T15:00:00.000Z' },
+      { id: 'lump', property_id: 'p3', transaction_date: '2026-11-12', type: 'income', category: 'Rent', amount: 2659, status: 'posted', created_at: '2026-11-12T15:00:00.000Z' },
+    ],
+    since: '2026-11-01T00:00:00.000Z',
+    now,
+  });
+  assert.ok(brief.updates.length <= 4);
+  assert.equal(brief.updates.filter((update) => update.id === 'money-in').length, 1);
+  assert.equal(brief.updates.some((update) => /mortgage/i.test(update.title)), false);
+  assert.equal(brief.more, true);
+  const mixed = brief.properties.find((row) => row.id === 'p3');
+  assert.equal(mixed?.status, 'Needs attention');
+  assert.match(mixed?.detail || '', /\+\$2,659 received/);
+  assert.match(mixed?.detail || '', /2 vacant units/);
 });
 
 test('cash in the deal includes extra principal once, and coming up uses calendar dates', () => {
@@ -104,7 +141,9 @@ test('rent is not called missing before the 10th', () => {
     now: new Date(2026, 10, 4, 12, 0, 0),
   });
   assert.equal(brief.kicker, 'This month');
-  assert.equal(brief.lines.some((line) => line.id === 'rent-missing'), false);
-  assert.equal(brief.lines.some((line) => line.id === 'rent-waiting'), true);
-  assert.equal(brief.properties[0]?.status, 'Stable');
+  assert.equal(brief.updates.some((update) => update.id === 'rent-missing'), false);
+  assert.equal(brief.updates[0]?.id, 'quiet');
+  assert.equal(brief.properties[0]?.status, 'Watch');
+  assert.equal(brief.properties[0]?.detail, 'Waiting on rent');
+  assert.equal(brief.more, false);
 });
