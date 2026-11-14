@@ -6,6 +6,7 @@ import { calculateMetrics } from './propertyFinancials.ts';
 import { extraPrincipalCash, extraPrincipalInvested, mortgageBalanceAfterExtraPrincipal, postedExtraPrincipal } from './extraPrincipal.ts';
 import { buildOverviewBrief } from './overviewBrief.ts';
 import { buildPortfolioLanding } from './portfolioLanding.ts';
+import { buildUpcomingReminders } from './upcomingReminders.ts';
 import { emptyProfile } from './propertyProfile.ts';
 
 const now = new Date(2026, 10, 13, 12, 0, 0);
@@ -61,7 +62,7 @@ test('daily brief uses posted activity and does not invent a plan', () => {
   });
 
   assert.equal(brief.kicker, 'Since your last visit');
-  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.title, '+$2,850 came in');
+  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.title, '+$2,850 received');
   assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett · Nov 10');
   assert.equal(brief.updates.some((update) => /fee|net cash|mortgage|\$18/i.test(`${update.title} ${update.context}`)), false);
   assert.ok(brief.updates.length <= 4);
@@ -130,6 +131,26 @@ test('cash in the deal includes extra principal once, and coming up uses calenda
   assert.equal(model.lines.deal[0]?.amount, 100);
   assert.equal(model.averages.cashInDeal, 100);
   assert.deepEqual(model.coming.map((item) => `${item.month}${item.day} ${item.title}`), ['MAR1 Lease ending', 'APR1 Insurance renewal']);
+});
+
+test('a unit lease and its lease document are one reminder', () => {
+  const reminders = buildUpcomingReminders(
+    [{ id: 'p1', address: '15334 Triskett Rd' }],
+    [
+      { id: 'u2', property_id: 'p1', unit_number: '2', occupied: true, tenant_name: '', lease_end_date: '2027-03-31' },
+      { id: 'u1', property_id: 'p1', unit_number: '1', occupied: true, tenant_name: 'Kenyetta Frazier', lease_end_date: '2027-04-30' },
+    ],
+    [
+      { id: 'lease-doc', property_id: 'p1', unit_id: 'u2', category: 'Lease', title: 'Unit #2 Lease · Janet M Perez', notes: 'Signed lease for Janet M Perez', expires_at: '2027-03-31' },
+      { id: 'lease-doc-2', property_id: 'p1', unit_id: 'u1', category: 'Lease', title: 'Unit #1 Lease · Kenyetta Frazier', expires_at: '2027-04-30' },
+    ],
+    now,
+  );
+  assert.equal(reminders.length, 2);
+  assert.equal(reminders[0]?.title, 'Lease ending');
+  assert.equal(reminders[0]?.detail, '15334 Triskett · Unit #2 · Janet M Perez');
+  assert.equal(reminders[0]?.when, 'In about 5 months');
+  assert.equal(reminders[1]?.detail, '15334 Triskett · Unit #1 · Kenyetta Frazier');
 });
 
 test('rent is not called missing before the 10th', () => {

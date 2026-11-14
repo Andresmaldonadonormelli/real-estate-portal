@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { BriefUpdate, OverviewBrief, PropertyPulseRow, UpcomingDate } from '@/lib/overviewBrief';
+import type { BriefUpdate, OverviewBrief, UpcomingDate } from '@/lib/overviewBrief';
 
 export function DailyBrief({ brief }: { brief: OverviewBrief }) {
   return (
@@ -13,36 +13,17 @@ export function DailyBrief({ brief }: { brief: OverviewBrief }) {
       <ul className="overview-brief-updates">
         {brief.updates.map((update) => <BriefUpdateRow key={update.id} update={update} />)}
       </ul>
-      {brief.more && <Link className="overview-brief-more" href="/ledger">View all activity</Link>}
+      {brief.more && <Link className="overview-brief-more" href="/ledger">View activity</Link>}
     </section>
   );
 }
 
 function BriefUpdateRow({ update }: { update: BriefUpdate }) {
   return (
-    <li>
-      <strong className={update.tone === 'neutral' ? undefined : `amount-${update.tone}`}>{update.title}</strong>
+    <li data-lead={update.lead ? 'true' : undefined}>
+      <strong className={update.tone === 'positive' ? 'amount-positive' : update.tone === 'negative' ? 'amount-negative' : undefined}>{update.title}</strong>
       {update.context ? <small>{update.context}</small> : null}
     </li>
-  );
-}
-
-export function PropertyPulse({ rows }: { rows: PropertyPulseRow[] }) {
-  if (!rows.length) return null;
-  return (
-    <section className="property-health" aria-label="Property health">
-      <ul>
-        {rows.map((row) => (
-          <li key={row.id}>
-            <Link href={`/properties/${row.id}`}>
-              <strong>{row.name}</strong>
-              <small>{row.detail}</small>
-              {row.status ? <b data-status={row.status}>{row.status}</b> : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

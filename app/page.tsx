@@ -16,7 +16,7 @@ import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
 import PortfolioLanding from '@/components/dashboard/PortfolioLanding';
-import { DailyBrief, PropertyPulse } from '@/components/dashboard/OverviewBrief';
+import { DailyBrief } from '@/components/dashboard/OverviewBrief';
 import { buildOverviewBrief } from '@/lib/overviewBrief';
 import { usePortfolioScope } from '@/components/layout/PortfolioScope';
 import { parseProfile, type PropertyProfile } from '@/lib/propertyProfile';
@@ -339,7 +339,6 @@ export default function Dashboard() {
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<div className="landing-stack">
       <DailyBrief brief={overviewBrief} />
-      <PropertyPulse rows={overviewBrief.properties} />
       <PortfolioLanding properties={scopedProperties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} documents={scopedDocuments} />
     </div>}
     {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}

@@ -1,6 +1,7 @@
 import { extraPrincipalCash } from '@/lib/extraPrincipal';
-import { categoryKey } from '@/lib/accounting';
 import { buildMonthlyFinancialHistory, type HistoryTransaction } from '@/lib/financialHistory';
+import { propertyHealth } from '@/lib/overviewBrief';
+import { buildUpcomingReminders } from '@/lib/upcomingReminders';
 import { cashInDeal, currentEquity, emptyProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { monthActivity, nextPaymentParts, payoffModel } from '@/lib/propertyPosition';
 import type { Property } from '@/lib/types';
@@ -24,12 +25,15 @@ const PERIOD_LABEL: Record<LandingPeriod, string> = {
 export type LandingDocument = {
   id: string;
   property_id: string;
+  unit_id?: string | null;
   category?: string | null;
   title?: string | null;
+  notes?: string | null;
   expires_at?: string | null;
 };
 
 export type LandingUnit = {
+  id?: string;
   property_id: string;
   unit_number?: string | null;
   occupied?: boolean | null;
@@ -80,7 +84,9 @@ export function buildPortfolioLanding(
   const entered = completedMonths.reduce((sum, month) => sum + month.postedProperties, 0);
   const propertyMonths = completedMonths.reduce((sum, month) => sum + month.owned, 0);
   const year = yearCash(properties, units, transactions, now);
-  const rows = propertyRows(tracks, units, transactions, current.equity, now);
+  const builtRows = propertyRows(tracks, units, transactions, current.equity, now);
+  const uniformStatus = builtRows.length > 0 && builtRows.every((row) => row.status && row.status === builtRows[0].status);
+  const rows = uniformStatus ? builtRows.map((row) => ({ ...row, status: null })) : builtRows;
   const coming = comingUp(properties, units, options.documents || [], now);
   const averages = monthlyAverages(tracks, units, transactions, now);
   const investor = investorSummary(properties, transactions, current.equity, averages.cashInDeal);
@@ -278,35 +284,47 @@ function ownedDuring(property: Property, monthStart: Date) {
 }
 
 function yearCash(properties: Property[], units: LandingUnit[], transactions: HistoryTransaction[], now: Date) {
-  const finished = now.getMonth();
-  const totals = { income: 0, expenses: 0, mortgage: 0, cashFlow: 0, entered: 0, slots: 0, latest: 0 };
-  for (let month = 0; month < finished; month += 1) {
+  const through = now.getMonth();
+  const totals = { income: 0, expenses: 0, mortgage: 0, cashFlow: 0, entered: 0, slots: 0 };
+  const current = { income: 0, expenses: 0, mortgage: 0, cashFlow: 0, entered: 0, slots: 0 };
+  for (let month = 0; month <= through; month += 1) {
     const date = new Date(now.getFullYear(), month, 1);
     const key = monthKey(date);
-    let monthCash = 0;
+    const bucket = month === through ? current : null;
     properties.forEach(property => {
       if (!ownedDuring(property, date)) return;
       totals.slots += 1;
+      if (bucket) bucket.slots += 1;
       if (postedCount(transactions, property.id, key) > 0) {
         const activity = monthActivity(transactions, property.id, date);
         totals.income += activity.cashFlow + activity.expenses + activity.mortgage;
         totals.expenses += activity.expenses;
         totals.mortgage += activity.mortgage;
         totals.cashFlow += activity.cashFlow;
-        monthCash += activity.cashFlow;
         totals.entered += 1;
+        if (bucket) {
+          bucket.income += activity.cashFlow + activity.expenses + activity.mortgage;
+          bucket.expenses += activity.expenses;
+          bucket.mortgage += activity.mortgage;
+          bucket.cashFlow += activity.cashFlow;
+          bucket.entered += 1;
+        }
       } else {
         const rent = recurringRent(property, units);
         const payment = Number(property.monthly_mortgage_payment || 0);
         totals.income += rent;
         totals.mortgage += payment;
         totals.cashFlow += rent - payment;
-        monthCash += rent - payment;
+        if (bucket) {
+          bucket.income += rent;
+          bucket.mortgage += payment;
+          bucket.cashFlow += rent - payment;
+        }
       }
     });
-    totals.latest = monthCash;
   }
-  const end = finished > 0 ? new Date(now.getFullYear(), finished - 1, 1) : now;
+  const currentDate = new Date(now.getFullYear(), through, 1);
+  const currentEstimated = current.entered > 0 && current.entered < current.slots;
   return {
     cashFlow: totals.cashFlow,
     income: totals.income,
@@ -314,10 +332,16 @@ function yearCash(properties: Property[], units: LandingUnit[], transactions: Hi
     mortgage: totals.mortgage,
     entered: totals.entered,
     slots: totals.slots,
-    range: finished > 0 ? `${new Date(now.getFullYear(), 0, 1).toLocaleDateString('en-US', { month: 'short' })} to ${end.toLocaleDateString('en-US', { month: 'short' })}` : 'No finished month yet',
+    range: `${new Date(now.getFullYear(), 0, 1).toLocaleDateString('en-US', { month: 'short' })} to ${currentDate.toLocaleDateString('en-US', { month: 'short' })}`,
     estimated: totals.slots > totals.entered,
-    latestLabel: finished > 0 ? end.toLocaleDateString('en-US', { month: 'long' }) : '',
-    latestCash: totals.latest,
+    latestLabel: currentDate.toLocaleDateString('en-US', { month: 'long' }),
+    latestCash: current.cashFlow,
+    currentLabel: currentDate.toLocaleDateString('en-US', { month: 'long' }),
+    currentCash: current.cashFlow,
+    currentIncome: current.income,
+    currentExpenses: current.expenses,
+    currentMortgage: current.mortgage,
+    currentEstimated,
   };
 }
 
@@ -336,6 +360,19 @@ function propertyRows(tracks: { property: Property; profile?: PropertyProfile; t
     const average = entered.length ? entered.reduce((sum, month) => sum + month.cashFlow, 0) / entered.length : 0;
     const equity = currentEquity(item.property, item.profile || emptyProfile()) || 0;
     const expected = propertyUnits.filter(unit => unit.occupied).reduce((sum, unit) => sum + Number(unit.current_rent || 0), 0);
+    const health = propertyHealth(
+      { id: item.property.id, address: item.property.address, management_fee_percent: item.property.management_fee_percent },
+      propertyUnits.map((unit) => ({
+        id: unit.id || `${item.property.id}-${unit.unit_number || 'unit'}`,
+        property_id: unit.property_id,
+        unit_number: unit.unit_number,
+        occupied: unit.occupied,
+        current_rent: unit.current_rent,
+        lease_end_date: unit.lease_end_date,
+      })),
+      transactions,
+      now,
+    );
     return {
       id: item.property.id,
       name: shortName(item.property.address),
@@ -348,71 +385,24 @@ function propertyRows(tracks: { property: Property; profile?: PropertyProfile; t
       share: totalEquity > 0 ? Math.max(0, equity) / Math.max(totalEquity, 1) : 0,
       expected: expected > 0.5 && lastMonth.rent + 0.5 >= expected * 0.95,
       color: SERIES_COLORS[index % SERIES_COLORS.length],
+      signal: health.detail,
+      status: health.status,
     };
   });
 }
 
 function comingUp(properties: Property[], units: LandingUnit[], documents: LandingDocument[], now: Date) {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const names = new Map(properties.map(property => [property.id, shortName(property.address)]));
-  const events = [
-    ...units.flatMap(unit => {
-      if (!unit.lease_end_date || !names.has(unit.property_id)) return [];
-      const end = parseDay(unit.lease_end_date);
-      if (!end) return [];
-      const days = Math.ceil((end.getTime() - today.getTime()) / 86400000);
-      if (days < -14 || days > 365) return [];
-      const unitName = (unit.unit_number || 'Unit').replace(/^unit\s+/i, '');
-      return [{
-        id: `lease-${unit.property_id}-${unit.unit_number}-${unit.lease_end_date}`,
-        propertyId: unit.property_id,
-        title: 'Lease ending',
-        detail: `${names.get(unit.property_id)} · Unit ${unitName}`,
-        when: relativeWhen(days),
-        month: end.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-        day: String(end.getDate()),
-        days,
-        tab: '?tab=units',
-      }];
-    }),
-    ...documents.flatMap(document => {
-      if (!document.expires_at || !names.has(document.property_id)) return [];
-      const due = parseDay(document.expires_at);
-      if (!due) return [];
-      const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-      if (days < -14 || days > 365) return [];
-      return [{
-        id: `doc-${document.id}`,
-        propertyId: document.property_id,
-        title: datedTitle(document.category || ''),
-        detail: `${names.get(document.property_id)}${document.title ? ` · ${document.title}` : ''}`,
-        when: relativeWhen(days),
-        month: due.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-        day: String(due.getDate()),
-        days,
-        tab: '?tab=documents',
-      }];
-    }),
-  ];
-  return events.sort((a, b) => a.days - b.days).slice(0, 5);
-}
-
-function relativeWhen(days: number) {
-  if (days < 0) return days === -1 ? '1 day ago' : `${Math.abs(days)} days ago`;
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days < 45) return `In ${days} days`;
-  const months = Math.max(1, Math.round(days / 30));
-  return months === 1 ? 'In about 1 month' : `In about ${months} months`;
-}
-
-function datedTitle(category: string) {
-  const key = categoryKey(category);
-  if (key === 'insurance') return 'Insurance renewal';
-  if (key === 'taxes') return 'Property tax due';
-  if (/inspect/i.test(category)) return 'Inspection';
-  if (/lease/i.test(category)) return 'Lease ending';
-  return category.trim() || 'Reminder';
+  return buildUpcomingReminders(properties, units, documents, now).map((item) => ({
+    id: item.id,
+    propertyId: item.propertyId,
+    title: item.title,
+    detail: item.detail,
+    when: item.when,
+    month: item.month,
+    day: item.day,
+    days: item.days,
+    tab: item.href.includes('tab=documents') ? '?tab=documents' : '?tab=units',
+  }));
 }
 
 function monthlyAverages(tracks: { property: Property; profile?: PropertyProfile; track: TrackPoint[] }[], units: LandingUnit[], transactions: HistoryTransaction[], now: Date) {

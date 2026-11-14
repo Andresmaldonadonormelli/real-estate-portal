@@ -1,7 +1,8 @@
 import { categoryKey } from './accounting';
 import { isOperatingExpenseCategory } from './propertyFinancials';
 import { settleRentCollection, type RentLedgerRow } from './rentCollection';
-import { shortPropertyName } from './formatters';
+import { propertyChipName, shortPropertyName } from './formatters';
+import { buildUpcomingReminders } from './upcomingReminders';
 
 export type BriefTone = 'positive' | 'negative' | 'neutral';
 export type PulseStatus = 'On track' | 'Watch' | 'Needs attention';
@@ -38,8 +39,10 @@ export type BriefUnit = {
 export type BriefDocument = {
   id: string;
   property_id: string;
+  unit_id?: string | null;
   category?: string | null;
   title?: string | null;
+  notes?: string | null;
   expires_at?: string | null;
 };
 
@@ -50,6 +53,7 @@ export type BriefUpdate = {
   tone: BriefTone;
   priority: number;
   important: boolean;
+  lead?: boolean;
 };
 
 export type PropertyPulseRow = {
@@ -117,7 +121,7 @@ function posted(tx: BriefTransaction) {
   return (tx.status || 'posted') === 'posted';
 }
 
-function signed(tx: BriefTransaction) {
+function signed(tx: { amount?: number | null }) {
   return Number(tx.amount || 0);
 }
 
@@ -140,24 +144,6 @@ function isMoneyIn(tx: BriefTransaction) {
   const key = categoryKey(tx.category || '');
   if (key === 'rent') return true;
   return (key === 'other-income' || key === 'refund') && Math.abs(signed(tx)) >= LARGE_EXPENSE;
-}
-
-function relativeWhen(days: number) {
-  if (days < 0) return days === -1 ? '1 day ago' : `${Math.abs(days)} days ago`;
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days < 45) return `In ${days} days`;
-  const months = Math.max(1, Math.round(days / 30));
-  return months === 1 ? 'In about 1 month' : `In about ${months} months`;
-}
-
-function eventTitle(category: string) {
-  const key = categoryKey(category);
-  if (key === 'insurance') return 'Insurance renewal';
-  if (key === 'taxes') return 'Property tax due';
-  if (/inspect/i.test(category)) return 'Inspection';
-  if (/lease/i.test(category)) return 'Lease ending';
-  return category.trim() || 'Reminder';
 }
 
 function median(values: number[]) {
@@ -197,7 +183,7 @@ export function buildOverviewBrief(input: {
     const dateLabel = dates.length && dates[0] === dates[dates.length - 1] ? shortDate(dates[0]) : dates.length ? `${shortDate(dates[0])}–${shortDate(dates[dates.length - 1])}` : '';
     const moneyNames = [...new Set(money.map((tx) => names.get(tx.property_id || '') || ''))];
     const context = moneyNames.length === 1 ? [moneyNames[0], dateLabel].filter(Boolean).join(' · ') : moneyNames.length === 2 ? moneyNames.join(' · ') : [moneyNames.length ? `${moneyNames.length} properties` : '', dateLabel].filter(Boolean).join(' · ');
-    candidates.push({ id: 'money-in', title: `${formatBriefAmount(moneyIn)} came in`, context, tone: 'positive', priority: 0, important: false });
+    candidates.push({ id: 'money-in', title: `${formatBriefAmount(moneyIn)} received`, context, tone: 'positive', priority: 0, important: false, lead: true });
   }
 
   const health = properties.map((property) => propertyHealth(property, units, postedRows, now));
@@ -206,8 +192,8 @@ export function buildOverviewBrief(input: {
     const count = gaps.reduce((sum, row) => sum + row.missing, 0);
     candidates.push({
       id: 'rent-missing',
-      title: count === 1 ? '1 rent payment still outstanding' : `${count} rent payments still outstanding`,
-      context: nameList(gaps.map((row) => row.name)),
+      title: count === 1 ? '1 rent payment outstanding' : `${count} rent payments outstanding`,
+      context: nameList(gaps.map((row) => row.chip)),
       tone: 'negative',
       priority: 1,
       important: true,
@@ -217,12 +203,11 @@ export function buildOverviewBrief(input: {
   const attention = health.filter((row) => row.vacant > 0 || row.unusual);
   if (attention.length) {
     const lead = attention[0];
-    const reason = lead.vacant ? (lead.vacant === 1 ? '1 vacant unit' : `${lead.vacant} vacant units`) : 'Large expense';
     candidates.push({
       id: 'attention',
       title: attention.length === 1 ? '1 property needs attention' : `${attention.length} properties need attention`,
-      context: attention.length === 1 ? `${lead.name} · ${reason}` : nameList(attention.map((row) => row.name)),
-      tone: 'negative',
+      context: attention.length === 1 ? `${lead.name} · ${attentionReason(lead)}` : attention.map((row) => attentionReason(row)).join(' · '),
+      tone: 'neutral',
       priority: 2,
       important: true,
     });
@@ -234,9 +219,9 @@ export function buildOverviewBrief(input: {
       id: 'review',
       title: review.length === 1 ? '1 bank transaction needs review' : `${review.length} bank transactions need review`,
       context: nameList(review.map((tx) => names.get(tx.property_id || '') || '')),
-      tone: 'negative',
+      tone: 'neutral',
       priority: 3,
-      important: true,
+      important: false,
     });
   }
 
@@ -300,22 +285,22 @@ export function buildOverviewBrief(input: {
   };
 }
 
-function propertyHealth(property: BriefProperty, units: BriefUnit[], transactions: BriefTransaction[], now: Date) {
+export function propertyHealth(property: BriefProperty, units: BriefUnit[], transactions: ActivityRow[], now: Date) {
   const month = monthKey(now);
   const today = todayKey(now);
   const propertyUnits = units.filter((unit) => unit.property_id === property.id);
   const occupied = propertyUnits.filter((unit) => unit.occupied);
   const vacantUnits = propertyUnits.filter((unit) => unit.occupied === false);
   const expected = occupied.reduce((sum, unit) => sum + Math.max(0, Number(unit.current_rent || 0)), 0);
-  const monthRows = transactions.filter((tx) => tx.property_id === property.id && tx.transaction_date.startsWith(month));
+  const monthRows = transactions.filter((tx) => tx.property_id === property.id && (tx.transaction_date || '').startsWith(month));
   const deposits = monthRows.filter((tx) => tx.type === 'income' && categoryKey(tx.category || '') === 'rent');
   const received = deposits.reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
   const settled = expected > 0.5
     ? settleRentCollection({
       expected,
       net: received,
-      expenses: monthRows.filter((tx) => tx.type === 'expense'),
-      deposits,
+      expenses: monthRows.filter((tx) => tx.type === 'expense').map((tx) => ({ ...tx, id: tx.id || 'expense' })),
+      deposits: deposits.map((tx) => ({ ...tx, id: tx.id || 'deposit' })),
       feePercent: property.management_fee_percent,
     })
     : null;
@@ -354,6 +339,7 @@ function propertyHealth(property: BriefProperty, units: BriefUnit[], transaction
   return {
     id: property.id,
     name: shortPropertyName(property.address),
+    chip: propertyChipName(property.address),
     status,
     detail: parts.join(' · '),
     vacant: vacantUnits.length,
@@ -363,9 +349,24 @@ function propertyHealth(property: BriefProperty, units: BriefUnit[], transaction
   };
 }
 
-function unusualExpense(propertyId: string, transactions: BriefTransaction[], now: Date) {
+type ActivityRow = {
+  id?: string;
+  property_id?: string | null;
+  unit_id?: string | null;
+  transaction_date?: string | null;
+  type?: string | null;
+  category?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  description?: string | null;
+  payee_source?: string | null;
+  notes?: string | null;
+  source?: string | null;
+};
+
+function unusualExpense(propertyId: string, transactions: ActivityRow[], now: Date) {
   const month = monthKey(now);
-  const current = transactions.filter((tx) => tx.property_id === propertyId && tx.transaction_date.startsWith(month) && tx.type === 'expense' && isOperatingExpenseCategory(tx.category || ''));
+  const current = transactions.filter((tx) => tx.property_id === propertyId && (tx.transaction_date || '').startsWith(month) && tx.type === 'expense' && isOperatingExpenseCategory(tx.category || ''));
   const largest = current.reduce((max, tx) => Math.max(max, Math.abs(signed(tx))), 0);
   if (largest < LARGE_EXPENSE) return false;
   const prior: number[] = [];
@@ -373,7 +374,7 @@ function unusualExpense(propertyId: string, transactions: BriefTransaction[], no
     const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const total = transactions
-      .filter((tx) => tx.property_id === propertyId && tx.transaction_date.startsWith(key) && tx.type === 'expense' && isOperatingExpenseCategory(tx.category || ''))
+      .filter((tx) => tx.property_id === propertyId && (tx.transaction_date || '').startsWith(key) && tx.type === 'expense' && isOperatingExpenseCategory(tx.category || ''))
       .reduce((sum, tx) => sum + Math.abs(signed(tx)), 0);
     if (total > 0.5) prior.push(total);
   }
@@ -381,47 +382,24 @@ function unusualExpense(propertyId: string, transactions: BriefTransaction[], no
   return largest > median(prior) * 1.5;
 }
 
-function buildUpcoming(properties: BriefProperty[], units: BriefUnit[], documents: BriefDocument[], now: Date) {
-  const today = todayKey(now);
-  const names = new Map(properties.map((property) => [property.id, shortPropertyName(property.address)]));
-  const events: UpcomingDate[] = [];
-  units.forEach((unit) => {
-    const end = dateKey(unit.lease_end_date);
-    if (!end || !names.has(unit.property_id)) return;
-    const days = Math.round((dayNumber(end) - dayNumber(today)) / 86400000);
-    if (days < -14 || days > 365) return;
-    const date = new Date(`${end}T12:00:00`);
-    const unitName = (unit.unit_number || '').trim();
-    events.push({
-      id: `lease-${unit.id}`,
-      month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-      day: String(date.getDate()),
-      title: 'Lease ending',
-      detail: `${names.get(unit.property_id)}${unitName ? ` · Unit ${unitName.replace(/^unit\s+/i, '')}` : ''}`,
-      when: relativeWhen(days),
-      href: `/properties/${unit.property_id}?tab=units`,
-      sort: dayNumber(end),
-    });
-  });
-  documents.forEach((document) => {
-    const due = dateKey(document.expires_at);
-    if (!due || !names.has(document.property_id)) return;
-    const days = Math.round((dayNumber(due) - dayNumber(today)) / 86400000);
-    if (days < -14 || days > 365) return;
-    const date = new Date(`${due}T12:00:00`);
-    const category = document.category || '';
-    events.push({
-      id: `doc-${document.id}`,
-      month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-      day: String(date.getDate()),
-      title: eventTitle(category),
-      detail: `${names.get(document.property_id)}${document.title ? ` · ${document.title}` : ''}`,
-      when: relativeWhen(days),
-      href: `/properties/${document.property_id}?tab=documents`,
-      sort: dayNumber(due),
-    });
-  });
-  return events.sort((a, b) => a.sort - b.sort);
+function attentionReason(row: { vacant: number; unusual: boolean }) {
+  const parts: string[] = [];
+  if (row.vacant) parts.push(row.vacant === 1 ? '1 vacant unit' : `${row.vacant} vacant units`);
+  if (row.unusual) parts.push('Large expense');
+  return parts.join(' · ') || 'Needs a look';
+}
+
+function buildUpcoming(properties: BriefProperty[], units: BriefUnit[], documents: BriefDocument[], now: Date): UpcomingDate[] {
+  return buildUpcomingReminders(properties, units, documents, now).map((item) => ({
+    id: item.id,
+    month: item.month,
+    day: item.day,
+    title: item.title,
+    detail: item.detail,
+    when: item.when,
+    href: item.href,
+    sort: item.sort,
+  }));
 }
 
 export function formatBriefAmount(amount: number) {

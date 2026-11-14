@@ -39,6 +39,11 @@
 .landing-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:var(--radius-control);background:color-mix(in srgb,var(--mark) 16%,var(--surface-subtle))}
 .landing-mark i{width:8px;height:8px;border-radius:var(--radius-pill);background:var(--mark)}
 .landing-property-name small,.landing-property small{grid-column:2;display:block}
+.landing-property-signal{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:baseline}
+.landing-property-signal b{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-semibold)}
+.landing-property-signal b[data-status='On track']{color:var(--positive)}
+.landing-property-signal b[data-status='Watch']{color:var(--warning)}
+.landing-property-signal b[data-status='Needs attention']{color:var(--negative)}
 .landing-property em{display:inline-flex;margin-left:var(--space-2);padding:0 var(--space-2);border-radius:var(--radius-pill);background:var(--positive-soft,color-mix(in srgb,var(--positive) 14%,transparent));color:var(--positive);font-style:normal;font-size:var(--type-label-size)}
 .landing-coming{display:flex;flex-direction:column;gap:var(--space-3)}
 .landing-coming ul{display:grid;gap:var(--space-3);margin:0;padding:0;list-style:none}
@@ -163,21 +168,15 @@
 .overview-brief-updates{display:grid;gap:var(--space-2);margin:var(--space-2) 0 0;padding:0;list-style:none}
 .overview-brief-updates li{display:grid}
 .overview-brief-updates strong{font-size:var(--type-body-size);line-height:1.3;font-weight:var(--weight-semibold)}
+.overview-brief-updates li[data-lead='true'] strong{font-size:var(--type-card-title-size);line-height:var(--type-card-title-line)}
 .overview-brief-updates small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:1.3;font-weight:var(--weight-regular)}
-.property-health small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-regular)}
 .overview-brief-more{display:inline-flex;align-items:center;min-height:44px;color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
 .overview-brief-more::after{content:" →"}
-.property-health{min-width:0}
-.property-health ul{margin:0;padding:0;list-style:none}
-.property-health li+li{border-top:1px solid var(--border-color)}
-.property-health a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px var(--space-3);align-items:center;min-height:44px;padding:var(--space-3) 0;color:inherit;text-decoration:none}
-.property-health strong{grid-column:1 / -1;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--weight-semibold)}
-.property-health b{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold);white-space:nowrap}
-.property-health b[data-status='On track']{color:var(--positive)}
-.property-health b[data-status='Watch']{color:var(--warning)}
-.property-health b[data-status='Needs attention']{color:var(--negative)}
 .landing-coming .upcoming-dates{display:grid;gap:0}
+.landing-coming .overview-brief-head a::after{content:" →"}
 .landing-coming .upcoming-dates a{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:44px;padding:var(--space-2) 0;border-bottom:1px solid var(--border-color)}
+.landing-coming .upcoming-dates a>span:nth-child(2){min-width:0}
+.landing-coming .upcoming-dates a>span:nth-child(2) small{display:block}
 .upcoming-date{display:grid;width:44px;height:44px;align-content:center;justify-items:center;border-radius:var(--radius-control);background:var(--surface-subtle)}
 .upcoming-date small{color:var(--negative);font-size:var(--type-label-size);font-weight:var(--weight-semibold);letter-spacing:.04em;line-height:1.1}
 .upcoming-date strong{font-size:var(--type-body-size);line-height:1}

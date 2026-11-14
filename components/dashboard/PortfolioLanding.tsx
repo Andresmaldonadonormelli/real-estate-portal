@@ -123,12 +123,12 @@ export default function PortfolioLanding({ properties, units, transactions, prof
       </div>
       <aside className="landing-position">
         <p className="landing-kicker">Current position</p>
-        <Figure id="cash" open={open} setOpen={setOpen} label="Cash flow this year" amount={signed(model.yearFlow)} tone={signedTone(model.yearFlow)} detail={model.year.slots ? `${model.year.latestLabel} ${signed(model.year.latestCash)}` : 'No finished month yet'} extra={model.year.slots ? `${model.year.range}${model.year.estimated ? ', some months estimated' : ''}` : ''} title="Cash flow this year" body="Rent and other income, minus expenses and mortgage payments, for the months of the year that have finished." rows={[
-          { label: 'Rent and other income', amount: formatKpiCurrency(model.year.income) },
-          { label: 'Expenses', amount: formatKpiCurrency(model.year.expenses), prefix: '+' },
-          { label: 'Mortgage payments', amount: formatKpiCurrency(model.year.mortgage), prefix: '−' },
-          { label: 'Cash flow', amount: signed(model.year.cashFlow), prefix: '=', strong: true },
-        ]} footer={`${model.year.range}. ${model.year.entered} of ${model.year.slots} property-months entered; the rest are estimated from each property’s typical month.`} />
+        <Figure id="cash" open={open} setOpen={setOpen} label={`${model.year.currentLabel} cash flow`} amount={signed(model.year.currentCash)} tone={signedTone(model.year.currentCash)} detail={model.year.slots ? `This year ${signed(model.year.cashFlow)} · ${model.year.range}` : 'No activity yet'} extra={[model.year.currentEstimated ? 'This month is partly entered' : '', model.year.estimated ? 'Some months estimated' : ''].filter(Boolean).join(' · ')} title={`${model.year.currentLabel} cash flow`} body="Rent and other income, minus expenses and mortgage payments, for this month." rows={[
+          { label: 'Rent and other income', amount: formatKpiCurrency(model.year.currentIncome) },
+          { label: 'Expenses', amount: formatKpiCurrency(model.year.currentExpenses), prefix: '+' },
+          { label: 'Mortgage payments', amount: formatKpiCurrency(model.year.currentMortgage), prefix: '−' },
+          { label: 'Cash flow', amount: signed(model.year.currentCash), prefix: '=', strong: true },
+        ]} footer={`This year ${signed(model.year.cashFlow)} · ${model.year.range}. ${model.year.entered} of ${model.year.slots} property-months entered; the rest are estimated from each property’s typical month.`} />
         <Figure id="value" open={open} setOpen={setOpen} label="Portfolio value" amount={formatKpiCurrency(model.current.value)} detail={`${model.propertyCount} ${model.propertyCount === 1 ? 'property' : 'properties'} · ${model.unitCount} ${model.unitCount === 1 ? 'unit' : 'units'}`} title="Portfolio value" body="What you think each property would sell for today, added up." rows={[...model.lines.value.map((line, index) => ({ label: line.label, amount: formatKpiCurrency(line.amount), prefix: index ? '+' : '' })), { label: 'Portfolio value', amount: formatKpiCurrency(model.current.value), prefix: '=', strong: true }]} footer="Each value is your latest estimate; update it on the property page." />
         <Figure id="debt" open={open} setOpen={setOpen} label="Total debt" amount={formatKpiCurrency(model.current.debt)} detail={model.current.value > 0 ? `${percentOrDash(model.current.debt / model.current.value)} loan-to-value` : 'Value not saved'} title="Total debt" body="The loan balance saved on each property, added up." rows={[...model.lines.debt.map((line, index) => ({ label: line.label, amount: formatKpiCurrency(line.amount), prefix: index ? '+' : '' })), { label: 'Total debt', amount: formatKpiCurrency(model.current.debt), prefix: '=', strong: true }]} footer={model.current.value > 0 ? `${percentOrDash(model.current.debt / model.current.value)} loan-to-value.` : 'Save a value to see loan-to-value.'} />
         <Figure id="deal" open={open} setOpen={setOpen} label="Cash in the deal" amount={formatKpiCurrency(model.averages.cashInDeal)} detail="Down payments, closing costs, improvements, and extra principal" title="Cash in the deal" body="Down payments, closing costs, improvements, and extra principal you have put into each property." rows={[...model.lines.deal.map((line, index) => ({ label: line.label, amount: formatKpiCurrency(line.amount), prefix: index ? '+' : '' })), { label: 'Cash in the deal', amount: formatKpiCurrency(model.averages.cashInDeal), prefix: '=', strong: true }]} footer="Cash return is worked out on this amount." />
@@ -143,7 +143,7 @@ export default function PortfolioLanding({ properties, units, transactions, prof
         <div className="landing-table">
           <div className="landing-table-head"><span>Property</span><span>Last month</span><span>12-month avg</span><span>Equity</span></div>
           {model.rows.map(row => <Link key={row.id} href={`/properties/${row.id}`} className="landing-property">
-            <span className="landing-property-name"><span className="landing-mark" style={{ '--mark': row.color } as CSSProperties}><i /></span>{row.name}<small>{row.city} · {row.units} {row.units === 1 ? 'unit' : 'units'}</small></span>
+            <span className="landing-property-name"><span className="landing-mark" style={{ '--mark': row.color } as CSSProperties}><i /></span>{row.name}<small>{row.city} · {row.units} {row.units === 1 ? 'unit' : 'units'}</small>{row.signal ? <small className="landing-property-signal">{row.signal}{row.status ? <b data-status={row.status}>{row.status}</b> : null}</small> : null}</span>
             <span className={`property-signed ${signedTone(row.cashFlow)}`}>{signed(row.cashFlow)}{row.expected ? <em>As expected</em> : null}</span>
             <span>{signed(row.average)}<small>over {row.ownedMonths} months owned</small></span>
             <span>{formatKpiCurrency(row.equity)} <ChevronRight size={14} aria-hidden="true" /></span>
@@ -152,7 +152,7 @@ export default function PortfolioLanding({ properties, units, transactions, prof
       </section>
       <section className="dashboard-module landing-coming" aria-label="Coming up">
         <div className="overview-brief-head"><h2>Coming up</h2><Link href="/properties">All reminders</Link></div>
-        {model.coming.length ? <ul className="upcoming-dates">{model.coming.map(item => <li key={item.id}><Link href={`/properties/${item.propertyId}${item.tab}`}><span className="upcoming-date"><small>{item.month}</small><strong>{item.day}</strong></span><span><strong>{item.title}</strong><small>{item.detail}</small></span><b>{item.when}</b></Link></li>)}</ul> : <div className="landing-empty-copy"><strong>Nothing coming up</strong><span>Lease ends, renewals and due dates will show here.</span></div>}
+        {model.coming.length ? <ul className="upcoming-dates">{model.coming.slice(0, 3).map(item => <li key={item.id}><Link href={`/properties/${item.propertyId}${item.tab}`}><span className="upcoming-date"><small>{item.month}</small><strong>{item.day}</strong></span><span><strong>{item.title}</strong><small>{item.detail}</small></span><b>{item.when}</b></Link></li>)}</ul> : <div className="landing-empty-copy"><strong>Nothing coming up</strong><span>Lease ends, renewals and due dates will show here.</span></div>}
       </section>
     </div>
 
