@@ -39,6 +39,11 @@
 .landing-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:var(--radius-control);background:color-mix(in srgb,var(--mark) 16%,var(--surface-subtle))}
 .landing-mark i{width:8px;height:8px;border-radius:var(--radius-pill);background:var(--mark)}
 .landing-property-name small,.landing-property small{grid-column:2;display:block}
+.landing-property-signal{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:baseline}
+.landing-property-signal b{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-semibold)}
+.landing-property-signal b[data-status='On track']{color:var(--positive)}
+.landing-property-signal b[data-status='Watch']{color:var(--warning)}
+.landing-property-signal b[data-status='Needs attention']{color:var(--negative)}
 .landing-property em{display:inline-flex;margin-left:var(--space-2);padding:0 var(--space-2);border-radius:var(--radius-pill);background:var(--positive-soft,color-mix(in srgb,var(--positive) 14%,transparent));color:var(--positive);font-style:normal;font-size:var(--type-label-size)}
 .landing-coming{display:flex;flex-direction:column;gap:var(--space-3)}
 .landing-coming ul{display:grid;gap:var(--space-3);margin:0;padding:0;list-style:none}
@@ -156,9 +161,39 @@
 .landing-month-table th,.landing-month-table td{padding:var(--space-2);border-bottom:1px solid var(--border-color);text-align:right;font-size:var(--type-compact-size);line-height:var(--type-compact-line);font-variant-numeric:tabular-nums}
 .landing-month-table th:first-child,.landing-month-table td:first-child{text-align:left}
 .landing-month-table th{color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-medium)}
+.overview-brief-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
+.overview-brief-head h2{margin:0;white-space:nowrap}
+.overview-brief-head span,.overview-brief-head a{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
+.insight-strip{min-width:0}
+.insight-strip-row{display:flex;align-items:center;gap:var(--space-1);width:fit-content;max-width:100%}
+.insight-scroller{width:480px;max-width:100%}
+.insight-card{display:flex;box-sizing:border-box;width:100%;height:92px;flex-direction:column;justify-content:center;gap:var(--space-1);padding:16px 18px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--theme-card);box-shadow:none}
+.insight-card[data-hidden='true']{display:none}
+.insight-card strong{display:flex;align-items:center;gap:6px;min-width:0;font-size:var(--type-body-size);line-height:1.3;font-weight:var(--weight-semibold)}
+.insight-card strong svg{flex:0 0 auto}
+.insight-card strong span,.insight-card small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.insight-card small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:1.35;font-weight:var(--weight-regular)}
+.insight-arrow{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--text-secondary)}
+.insight-arrow:disabled{opacity:.35}
+.landing-coming .upcoming-dates{display:grid;gap:0}
+.landing-coming .overview-brief-head a::after{content:" →"}
+.landing-coming .upcoming-dates a{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:44px;padding:var(--space-2) 0;border-bottom:1px solid var(--border-color)}
+.landing-coming .upcoming-dates a>span:nth-child(2){min-width:0}
+.landing-coming .upcoming-dates a>span:nth-child(2) small{display:block}
+.upcoming-date{display:grid;width:44px;height:44px;align-content:center;justify-items:center;border-radius:var(--radius-control);background:var(--surface-subtle)}
+.upcoming-date small{color:var(--negative);font-size:var(--type-label-size);font-weight:var(--weight-semibold);letter-spacing:.04em;line-height:1.1}
+.upcoming-date strong{font-size:var(--type-body-size);line-height:1}
+.upcoming-dates b{color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-regular);white-space:nowrap}
 @media (max-width:767px){
+  .insight-strip-row{display:block;width:auto}
+  .insight-arrow{display:none}
+  .insight-scroller{display:flex;width:300px;max-width:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:var(--space-3)}
+  .insight-scroller::-webkit-scrollbar{display:none}
+  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 300px;width:300px;scroll-snap-align:start}
   .landing-table-head{display:none}
   .landing-property,.landing-totals{grid-template-columns:1fr 1fr}
   .landing-controls{align-items:flex-start}
   .landing-pop,.landing-position .landing-pop,.landing-figure[data-card='paydown'] .landing-pop{right:0;left:0;width:auto}
+  .landing-coming .upcoming-dates a{grid-template-columns:44px minmax(0,1fr)}
+  .landing-coming .upcoming-dates b{grid-column:2}
 }

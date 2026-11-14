@@ -16,6 +16,8 @@ import Toast from '@/components/common/Toast';
 import { categoryKey } from '@/lib/accounting';
 import { settleRentCollection } from '@/lib/rentCollection';
 import PortfolioLanding from '@/components/dashboard/PortfolioLanding';
+import { DailyBrief } from '@/components/dashboard/OverviewBrief';
+import { buildOverviewBrief } from '@/lib/overviewBrief';
 import { usePortfolioScope } from '@/components/layout/PortfolioScope';
 import { parseProfile, type PropertyProfile } from '@/lib/propertyProfile';
 import { buildMonthlyFinancialHistory, type HistoryPeriod } from '@/lib/financialHistory';
@@ -34,6 +36,7 @@ export default function Dashboard() {
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
   const { propertyId: cashPropertyId, setPropertyId: setCashPropertyId } = usePortfolioScope();
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
+  const [catchUpSince, setCatchUpSince] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewPropertyId, setReviewPropertyId] = useState<string | null>(null);
@@ -75,9 +78,14 @@ export default function Dashboard() {
     const sessionKey=`re-portal:dashboard-session:${user.id}`; const activityKey=`re-portal:dashboard-activity:${user.id}`; const snapshotKey=`re-portal:dashboard-brief:${user.id}`;
     const priorActivity=Number(window.localStorage.getItem(activityKey)||0); const newSession=!window.sessionStorage.getItem(sessionKey); const newVisit=newSession||!priorActivity||(now.getTime()-priorActivity)>=30*60*1000;
     window.sessionStorage.setItem(sessionKey,'1'); window.localStorage.setItem(activityKey,String(now.getTime()));
-    if(!newVisit){try{const saved=JSON.parse(window.sessionStorage.getItem(snapshotKey)||'null');if(saved?.items){setBriefItems(saved.items);setBriefUpdatedAt(new Date(saved.updatedAt));return;}}catch{}}
+    if(!newVisit){
+      setCatchUpSince(priorActivity?new Date(priorActivity).toISOString():null);
+      try{const saved=JSON.parse(window.sessionStorage.getItem(snapshotKey)||'null');if(saved?.items){setBriefItems(saved.items);setBriefUpdatedAt(new Date(saved.updatedAt));return;}}catch{}
+      return;
+    }
     let previousVisit:string|null=null; let events:any[]=[];
     try{const visit=await supabase.from('dashboard_visits').select('last_seen_at,current_visit_started_at').eq('user_id',user.id).maybeSingle();previousVisit=(visit.data as any)?.current_visit_started_at||(visit.data as any)?.last_seen_at||null;if(previousVisit){const eventResult=await supabase.from('app_events').select('id,event_type,entity_type,entity_id,property_id,unit_id,occurred_at,metadata').gt('occurred_at',previousVisit).order('occurred_at',{ascending:false}).limit(50);if(!eventResult.error)events=eventResult.data||[];}}catch{}
+    setCatchUpSince(previousVisit);
     const items=buildDailyBrief(props,unitRows,txRows,docRows,events,previousVisit,now); const snapshot={items,updatedAt:nowIso};
     window.sessionStorage.setItem(snapshotKey,JSON.stringify(snapshot)); setBriefItems(items); setBriefUpdatedAt(now);
     try{await supabase.from('dashboard_visits').upsert({user_id:user.id,previous_visit_at:previousVisit,current_visit_started_at:nowIso,last_seen_at:nowIso,brief_items:items,brief_opened_ids:[],brief_resolved_ids:[],updated_at:nowIso},{onConflict:'user_id'});}catch{}
@@ -236,6 +244,9 @@ export default function Dashboard() {
   const currentCashFlow=cashFlow[cashFlow.length-1];
   const scopedTransactions=useMemo(()=>cashPropertyId?transactions.filter(tx=>tx.property_id===cashPropertyId):transactions,[transactions,cashPropertyId]);
   const scopedUnits=useMemo(()=>cashPropertyId?units.filter(unit=>unit.property_id===cashPropertyId):units,[units,cashPropertyId]);
+  const scopedDocuments=useMemo(()=>cashPropertyId?documents.filter(document=>document.property_id===cashPropertyId):documents,[documents,cashPropertyId]);
+  const scopedProperties=useMemo(()=>cashPropertyId?properties.filter(property=>property.id===cashPropertyId):properties,[properties,cashPropertyId]);
+  const overviewBrief=useMemo(()=>buildOverviewBrief({properties:scopedProperties,units:scopedUnits,transactions:scopedTransactions,documents:scopedDocuments,propertyId:cashPropertyId,since:catchUpSince}),[scopedProperties,scopedUnits,scopedTransactions,scopedDocuments,cashPropertyId,catchUpSince]);
   const postedScoped=useMemo(()=>scopedTransactions.filter(tx=>(tx.status||'posted')==='posted'),[scopedTransactions]);
   const monthRent=useMemo(()=>postedScoped.filter(tx=>tx.transaction_date.startsWith(currentMonth)&&tx.type==='income'&&categoryKey(tx.category)==='rent'),[postedScoped,currentMonth]);
   const rentCollected=useMemo(()=>monthRent.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0),[monthRent]);
@@ -326,7 +337,10 @@ export default function Dashboard() {
       </div>
     </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
-    {loading?<PageSkeleton variant="dashboard"/>:<PortfolioLanding properties={cashPropertyId?properties.filter(property=>property.id===cashPropertyId):properties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} />}
+    {loading?<PageSkeleton variant="dashboard"/>:<div className="landing-stack">
+      <DailyBrief brief={overviewBrief} />
+      <PortfolioLanding properties={scopedProperties} units={scopedUnits} transactions={scopedTransactions} profiles={profiles} documents={scopedDocuments} />
+    </div>}
     {activeTransaction&&!detailEditing&&!showQuickAdd&&<TransactionDetailModal transaction={activeTransaction} properties={properties} units={units} transactions={transactions} onClose={()=>{setActiveTransaction(null);setDetailEditing(false)}} onEdit={()=>setDetailEditing(true)} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated')}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {(showQuickAdd||(activeTransaction&&detailEditing))&&<AddTransactionModal userId={user.id} properties={properties} units={units} transaction={detailEditing?activeTransaction:null} onClose={()=>{if(detailEditing){setDetailEditing(false);return;}setShowQuickAdd(false);setActiveTransaction(null)}} onSaved={async message=>{invalidateSupabaseCache();await load();setToast(message||'Transaction updated');setShowQuickAdd(false);setActiveTransaction(null);setDetailEditing(false)}} onArchived={async (message,id,phase)=>{const archivedId=id||activeTransaction?.id;if(phase!=='complete'&&archivedId)setTransactions(rows=>rows.filter(row=>row.id!==archivedId));if(phase==='complete'){invalidateSupabaseCache();setToast(message||'Transaction deleted')}}} onArchiveFailed={(tx,error)=>{setTransactions(rows=>rows.some(row=>row.id===tx.id)?rows:[tx,...rows]);setToast(error);invalidateSupabaseCache()}}/>}
     {toast&&<Toast message={toast} onClose={()=>setToast('')}/>}
@@ -346,7 +360,7 @@ const DASHBOARD_EXPENSE_ROWS=[
 function dashboardExpenseGroup(category:string){
   if(!category||/needs review|uncategor/i.test(category)) return 'uncategorized';
   const key=categoryKey(category);
-  if(['mortgage-interest','mortgage-principal','mortgage','insurance','taxes','capex','distribution'].includes(key)) return '';
+  if(['mortgage-interest','mortgage-principal','mortgage','extra-principal','insurance','taxes','capex','distribution'].includes(key)) return '';
   if(key==='maintenance'||key==='management'||key==='utilities') return key;
   return 'other';
 }
