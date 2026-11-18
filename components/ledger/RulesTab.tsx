@@ -26,13 +26,19 @@ export default function RulesTab({ properties }:{ properties: Property[] }) {
     return (id?: string | null) => (id ? map.get(id) || null : null);
   }, [properties]);
 
+  const [setupNeeded, setSetupNeeded] = useState(false);
+
   async function loadRules() {
     if (!user?.id) return;
     setLoading(true);
     setError('');
+    setSetupNeeded(false);
     const result = await supabase.from('transaction_rules').select(RULE_FIELDS).eq('user_id', user.id).is('archived_at', null).order('created_at', { ascending: false });
-    if (result.error) setError(result.error.message);
-    else setRules((result.data || []) as TransactionRule[]);
+    if (result.error) {
+      if (/transaction_rules|schema cache|does not exist/i.test(result.error.message)) setSetupNeeded(true);
+      else setError(result.error.message);
+      setRules([]);
+    } else setRules((result.data || []) as TransactionRule[]);
     setLoading(false);
   }
 
@@ -72,6 +78,14 @@ export default function RulesTab({ properties }:{ properties: Property[] }) {
   }
 
   if (loading) return <PageSkeleton variant="ledger" />;
+  if (setupNeeded) {
+    return <div className="ledger-v230-tab ledger-rules-tab">
+      <div className="ledger-empty-state">
+        <strong>Database setup needed</strong>
+        <span>Run <code>V247_TRANSACTION_RULES.sql</code> once in the Supabase SQL Editor, then refresh this page.</span>
+      </div>
+    </div>;
+  }
   if (error && !rules.length) return <div className="ledger-open-empty" style={{ color: 'var(--danger)' }}>{error}</div>;
 
   return <div className="ledger-v230-tab ledger-rules-tab">
