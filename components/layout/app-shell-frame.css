@@ -3,6 +3,45 @@ html,
 body {
   background: var(--theme-page);
 }
+
+.brand-logo {
+  display: inline-grid;
+  place-items: center start;
+  line-height: 0;
+}
+.brand-logo img {
+  display: block;
+  grid-area: 1 / 1;
+  width: auto;
+  height: 100%;
+  max-width: none;
+}
+.brand-logo-wordmark {
+  height: 24px;
+}
+.brand-logo-mark {
+  width: 28px;
+  height: 28px;
+}
+.brand-logo-mark img {
+  width: 100%;
+  height: 100%;
+}
+.brand-logo-dark {
+  display: none;
+}
+[data-theme="dark"] .brand-logo-light {
+  display: none;
+}
+[data-theme="dark"] .brand-logo-dark {
+  display: block;
+}
+.auth-brand-logo {
+  display: inline-grid;
+  height: 32px;
+  margin-bottom: 18px;
+}
+
 @media (min-width: 768px) {
   .app-frame {
     min-height: 100vh;
@@ -63,9 +102,8 @@ body {
     padding: var(--space-3) var(--space-2) var(--space-4);
   }
   .app-shell .side-nav-brand-logo {
-    display: block;
-    width: auto;
-    height: 22px;
+    display: inline-grid;
+    height: 24px;
   }
   .app-shell .side-nav-brand-mark {
     display: none;
@@ -190,7 +228,7 @@ body {
     display: none;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand-mark {
-    display: block;
+    display: inline-grid;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand strong,
   .app-shell .side-nav.is-collapsed .nav-label {

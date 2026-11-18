@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PanelLeft, Settings } from 'lucide-react';
+import BrandLogo from '@/components/layout/BrandLogo';
 import OverviewIcon from '@/components/layout/OverviewIcon';
 import PropertiesIcon from '@/components/layout/PropertiesIcon';
 import TransactionsIcon from '@/components/layout/TransactionsIcon';
@@ -52,8 +53,8 @@ export default function SideNav() {
 
   return <nav className={`side-nav${collapsed ? ' is-collapsed' : ''}`} aria-label="Primary">
     <div className="side-nav-brand">
-      <img className="side-nav-brand-mark" src="/brand-mark.png" alt="" width={28} height={28} draggable={false} />
-      <img className="side-nav-brand-logo" src="/brand-logo.png" srcSet="/brand-logo.png 1x, /brand-logo@2x.png 2x" alt="AM Properties" width={104} height={28} draggable={false} />
+      <BrandLogo variant="mark" className="side-nav-brand-mark" height={28} />
+      <BrandLogo variant="wordmark" className="side-nav-brand-logo" height={24} />
     </div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}><OverviewIcon active={pathname === '/'} size={iconSize.nav} /><span className="nav-label">Overview</span></Link>
