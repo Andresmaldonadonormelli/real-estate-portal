@@ -23,7 +23,7 @@ export type MonthlyFinancialPoint={
 };
 
 const PERIOD_MONTHS:Record<HistoryPeriod,number>={'3M':3,'6M':6,'9M':9,'1Y':12};
-const OPERATING_EXCLUSIONS=['mortgage-interest','mortgage-principal','mortgage','capex','distribution'];
+const OPERATING_EXCLUSIONS=['mortgage-interest','mortgage-principal','mortgage','extra-principal','capex','distribution'];
 
 export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],period:HistoryPeriod,propertyId=''):MonthlyFinancialPoint[]{
   const now=new Date();
@@ -37,7 +37,7 @@ export function buildMonthlyFinancialHistory(transactions:HistoryTransaction[],p
     const monthRows=posted.filter(tx=>tx.transaction_date.startsWith(key));
     const income=monthRows.filter(tx=>tx.type==='income').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
     const expenseRows=monthRows.filter(tx=>tx.type==='expense');
-    const cashExpenses=expenseRows.reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
+    const cashExpenses=expenseRows.filter(tx=>categoryKey(tx.category||'')!=='extra-principal').reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
     const operatingExpenses=expenseRows.filter(tx=>!OPERATING_EXCLUSIONS.includes(categoryKey(tx.category||''))).reduce((sum,tx)=>sum+Math.abs(Number(tx.amount||0)),0);
     const isCurrent=year===now.getFullYear()&&month===now.getMonth()+1;
     return {

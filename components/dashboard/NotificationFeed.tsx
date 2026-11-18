@@ -15,7 +15,7 @@ const TABS = [
 type NotificationTab = (typeof TABS)[number]['id'];
 type AlertSort = 'date' | 'amount';
 
-export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) => void }) {
+export function NotificationFeed({ onOpen, embedded = false }: { onOpen: (item: FeedNotification) => void; embedded?: boolean }) {
   const { items, unreadCount, loading, error, markRead, markAllRead } = useNotificationInbox();
   const [tab, setTab] = useState<NotificationTab>('all');
   const [sort, setSort] = useState<AlertSort>('date');
@@ -52,9 +52,9 @@ export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) 
     onOpen(item);
   }
 
-  return <>
+  return <div className={embedded ? 'notifications-embedded' : undefined}>
     <UnderlineTabs primary className="property-menu notifications-tabs" value={tab} onChange={setTab} label="Notification groups" options={TABS.map(choice => ({ value: choice.id, label: choice.label }))} />
-    <section className="dashboard-module notifications-board">
+    <section className={embedded ? 'notifications-board' : 'dashboard-module notifications-board'}>
       <div className="notifications-tools">
         <button type="button" className="dashboard-drawer-mark" disabled={unreadCount === 0} onClick={() => void markAllRead()}>Mark all as read</button>
         <div className="notifications-sort" ref={sortRoot}>
@@ -85,7 +85,7 @@ export function NotificationFeed({ onOpen }: { onOpen: (item: FeedNotification) 
         </ul>
       ) : null}
     </section>
-  </>;
+  </div>;
 }
 
 function compareAlerts(sort: AlertSort) {

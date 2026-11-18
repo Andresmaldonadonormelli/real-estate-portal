@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, FileText, Paperclip, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
-import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview } from '@/lib/accounting';
+import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview, transactionTypeForCategory } from '@/lib/accounting';
+import { mortgageBalanceAfterExtraPrincipal, postedExtraPrincipal, type PrincipalTransaction } from '@/lib/extraPrincipal';
 import { formatCurrency } from '@/lib/formatters';
 import { ProductSelect } from '@/components/common/ProductControls';
 
@@ -63,6 +64,28 @@ export default function AddTransactionModal({ userId, properties, units, transac
   useEffect(()=>{let alive=true;(async()=>{if(!form.property_id){setDocuments([]);return;}const r=await supabase.from('documents').select('id,title,file_name,category').eq('property_id',form.property_id).is('archived_at',null).order('created_at',{ascending:false});if(alive&&!r.error)setDocuments((r.data||[]) as Doc[]);})();return()=>{alive=false};},[form.property_id]);
   useEffect(()=>{let alive=true;(async()=>{if(!transaction?.id){setLinkedDocumentIds([]);return;}const r=await supabase.from('transaction_documents').select('document_id').eq('transaction_id',transaction.id);if(alive&&!r.error)setLinkedDocumentIds((r.data||[]).map((x:any)=>x.document_id));})();return()=>{alive=false};},[transaction?.id]);
 
+  const balanceAdjustments=useMemo(()=>new Map<string, number>(),[]);
+  async function syncPrincipalBalance(next:PrincipalTransaction,previous?:PrincipalTransaction|null){
+    const previousId=previous?.property_id||'';
+    const nextId=next.property_id||previousId;
+    if(previousId&&nextId&&previousId!==nextId){
+      await applyPrincipal(previousId,postedExtraPrincipal(previous),0);
+      await applyPrincipal(nextId,0,postedExtraPrincipal(next));
+      return;
+    }
+    await applyPrincipal(nextId||previousId,postedExtraPrincipal(previous),postedExtraPrincipal(next));
+  }
+  async function applyPrincipal(propertyId:string,previouslyApplied:number,nextApplied:number){
+    if(!propertyId)return;
+    const property=properties.find(item=>item.id===propertyId);
+    if(!property)return;
+    const current=balanceAdjustments.has(propertyId)?balanceAdjustments.get(propertyId)! : Number(property.mortgage_balance||0);
+    const balance=mortgageBalanceAfterExtraPrincipal(current,previouslyApplied,nextApplied);
+    if(Math.abs(balance-current)<0.005)return;
+    const result=await supabase.from('properties').update({mortgage_balance:balance}).eq('id',propertyId);
+    if(result.error)throw result.error;
+    balanceAdjustments.set(propertyId,balance);
+  }
   function toggleDocument(id:string){setLinkedDocumentIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id]);}
   async function syncDocumentLinks(transactionId:string){const del=await supabase.from('transaction_documents').delete().eq('transaction_id',transactionId);if(del.error)throw del.error;if(linkedDocumentIds.length){const ins=await supabase.from('transaction_documents').insert(linkedDocumentIds.map(document_id=>({user_id:userId,transaction_id:transactionId,document_id})));if(ins.error)throw ins.error;}}
 
@@ -73,10 +96,20 @@ export default function AddTransactionModal({ userId, properties, units, transac
       if(receipt){const safe=receipt.name.replace(/[^a-zA-Z0-9._-]/g,'-');receiptPath=`${userId}/${crypto.randomUUID()}-${safe}`;const upload=await supabase.storage.from('transaction-receipts').upload(receiptPath,receipt,{upsert:false});if(upload.error)throw upload.error;}
       const entered=Math.abs(Number(form.amount||0));
       const normalizedEntered=isMortgage&&mortgageSplitComplete?Number(mortgageAllocated.toFixed(2)):entered;
-      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type:form.type,category:isMortgage?'Mortgage Payment':form.category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:form.type==='expense'?-normalizedEntered:normalizedEntered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:isMortgage&&mortgageSplitComplete?false:form.needs_review,receipt_path:receiptPath,mortgage_principal_amount:isMortgage?(Number(mortgageSplit.principal||0)||null):null,mortgage_interest_amount:isMortgage?(Number(mortgageSplit.interest||0)||null):null,mortgage_escrow_amount:isMortgage?(Number(mortgageSplit.escrow||0)||null):null};
+      const category=isMortgage?'Mortgage Payment':form.category;
+      const extra=categoryKey(category)==='extra-principal';
+      const type=extra?'transfer':form.type;
+      const payload={user_id:userId,property_id:form.property_id,unit_id:form.unit_id||null,transaction_date:form.transaction_date,type,category,description:form.description.trim()||form.payee_source.trim()||form.category,payee_source:form.payee_source.trim()||null,amount:extra||type==='expense'?-normalizedEntered:normalizedEntered,notes:null,source:transaction?.source||'manual',import_key:transaction?.import_key||null,status:transaction?.status==='pending'?'pending':'posted',confirmed_at:transaction?.confirmed_at||new Date().toISOString(),needs_review:isMortgage&&mortgageSplitComplete?false:form.needs_review,receipt_path:receiptPath,mortgage_principal_amount:isMortgage?(Number(mortgageSplit.principal||0)||null):null,mortgage_interest_amount:isMortgage?(Number(mortgageSplit.interest||0)||null):null,mortgage_escrow_amount:isMortgage?(Number(mortgageSplit.escrow||0)||null):null};
+      await syncPrincipalBalance(payload,editing?transaction:null);
       let transactionId=transaction?.id||'';
-      if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
-      else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
+      try{
+        if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
+        else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
+      }catch(saveError){
+        const undone=editing?transaction!:{...payload,archived_at:new Date().toISOString()};
+        await syncPrincipalBalance(undone,payload);
+        throw saveError;
+      }
       await syncDocumentLinks(transactionId); await onSaved(editing?'Transaction updated':'Transaction added'); onClose();
     }catch(err){setError(err instanceof Error?err.message:'Could not save transaction.');}finally{setSaving(false);}
   }
@@ -86,10 +119,13 @@ export default function AddTransactionModal({ userId, properties, units, transac
     setSaving(true);setError('');
     const archivedId=transaction.id;
     const snapshot=transaction;
+    const archived={...transaction,archived_at:new Date().toISOString()};
+    await syncPrincipalBalance(archived,transaction);
     await onArchived?.('Transaction deleted',archivedId,'optimistic');
     onClose();
-    const r=await supabase.from('transactions').update({archived_at:new Date().toISOString()}).eq('id',archivedId);
+    const r=await supabase.from('transactions').update({archived_at:archived.archived_at}).eq('id',archivedId);
     if(r.error){
+      await syncPrincipalBalance(transaction,archived);
       await onArchiveFailed?.(snapshot,r.error.message||'Could not delete transaction.');
       setSaving(false);
       return;
@@ -100,11 +136,13 @@ export default function AddTransactionModal({ userId, properties, units, transac
 
   async function resolveCategory(category:string){
     if(!transaction)return;
-    const key=categoryKey(category);
-    const type:TxType=['rent','other-income','refund'].includes(key)?'income':['contribution','distribution','non-operating'].includes(key)?'transfer':'expense';
+    const type=transactionTypeForCategory(category,form.type);
     setSaving(true);setError('');
     const needsReview=categoryNeedsReview(category);
+    const next={...transaction,category,type};
+    try{await syncPrincipalBalance(next,transaction);}catch(err){setError(err instanceof Error?err.message:'Could not update the loan balance.');setSaving(false);return;}
     const r=await supabase.from('transactions').update({category,type,needs_review:needsReview}).eq('id',transaction.id);
+    if(r.error){await syncPrincipalBalance(transaction,next);}
     if(r.error){setError(r.error.message);}
     else {
       setForm(current=>({...current,category,type,needs_review:needsReview}));
@@ -123,7 +161,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
         <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label>
         <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
-        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const key=categoryKey(category);const type:TxType=['rent','other-income','refund'].includes(key)?'income':['contribution','distribution','non-operating'].includes(key)?'transfer':category==='Needs Review'?form.type:'expense';setForm({...form,category,type,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const type=transactionTypeForCategory(category,form.type);setForm({...form,category,type,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
         {editing&&<div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>}
         {isMortgage&&<div className="mortgage-split-box">
           <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{formatCurrency(mortgageAllocated)} / {formatCurrency(mortgageAmount)}</span></div></div>
