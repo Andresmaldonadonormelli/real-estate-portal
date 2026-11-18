@@ -3,6 +3,34 @@ html,
 body {
   background: var(--theme-page);
 }
+
+.brand-logo {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  line-height: 0;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.brand-logo > .brand-logo-asset {
+  display: block;
+  object-fit: contain;
+  max-width: none;
+}
+/* Theme swap — these selectors must stay more specific than .brand-logo > .brand-logo-asset. */
+.brand-logo > .brand-logo-dark {
+  display: none;
+}
+html[data-theme="dark"] .brand-logo > .brand-logo-light {
+  display: none;
+}
+html[data-theme="dark"] .brand-logo > .brand-logo-dark {
+  display: block;
+}
+.auth-brand-logo {
+  margin-bottom: 18px;
+}
+
 @media (min-width: 768px) {
   .app-frame {
     min-height: 100vh;
@@ -62,12 +90,12 @@ body {
     min-height: 56px;
     padding: var(--space-3) var(--space-2) var(--space-4);
   }
-  .app-shell .side-nav-brand strong {
-    color: var(--text-primary);
-    font-size: var(--type-card-title-size);
-    line-height: var(--type-card-title-line);
-    font-weight: var(--weight-semibold);
-    letter-spacing: -0.02em;
+  .app-shell .side-nav-brand-logo {
+    display: inline-block;
+    max-width: 168px;
+  }
+  .app-shell .side-nav-brand-mark {
+    display: none;
   }
   .side-nav-mascot,
   .side-nav-mascot img {
@@ -182,6 +210,12 @@ body {
   .app-shell .side-nav.is-collapsed .side-nav-brand {
     gap: 0;
     justify-content: center;
+  }
+  .app-shell .side-nav.is-collapsed .side-nav-brand-logo {
+    display: none;
+  }
+  .app-shell .side-nav.is-collapsed .side-nav-brand-mark {
+    display: inline-block;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand strong,
   .app-shell .side-nav.is-collapsed .nav-label {

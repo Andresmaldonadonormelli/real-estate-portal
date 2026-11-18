@@ -6,6 +6,7 @@ import type { Property } from '@/lib/types';
 import LedgerTab from '@/components/ledger/LedgerTab';
 import StatementsTab from '@/components/ledger/StatementsTab';
 import DocumentsTab from '@/components/ledger/DocumentsTab';
+import RulesTab from '@/components/ledger/RulesTab';
 import PageSkeleton from '@/components/common/PageSkeleton';
 import { withTimeout } from '@/lib/async';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
@@ -13,13 +14,13 @@ import { PageAction, PageHeader, UnderlineTabs } from '@/components/common/Produ
 import MoreBackHeader from '@/components/layout/MoreBackHeader';
 import PropertyPicker from '@/components/common/PropertyPicker';
 
-type Tab='ledger'|'statements'|'documents';
+type Tab='ledger'|'statements'|'documents'|'rules';
 export default function LedgerDocsPage(){
   const router=useRouter();
   const searchParams=useSearchParams();
   const requestedTab=searchParams.get('tab');
   const requestedProperty=searchParams.get('property') || '';
-  const [tab,setTab]=useState<Tab>(requestedTab==='documents'||requestedTab==='statements'?requestedTab:'ledger');
+  const [tab,setTab]=useState<Tab>(requestedTab==='documents'||requestedTab==='statements'||requestedTab==='rules'?requestedTab:'ledger');
   const [properties,setProperties]=useState<Property[]>([]);
   const [selectedPropertyId,setSelectedPropertyId]=useState(requestedProperty);
   const [loading,setLoading]=useState(true);
@@ -30,7 +31,7 @@ export default function LedgerDocsPage(){
     const nextTab=searchParams.get('tab');
     const openAdd=searchParams.get('add')==='1';
     const openUpload=searchParams.get('upload')==='1';
-    setTab(openUpload||nextTab==='documents'?'documents':nextTab==='statements'?'statements':'ledger');
+    setTab(openUpload||nextTab==='documents'?'documents':nextTab==='statements'?'statements':nextTab==='rules'?'rules':'ledger');
     setSelectedPropertyId(searchParams.get('property') || '');
     if(openAdd) setAddRequest(value=>value+1);
     if(openUpload) setUploadRequest(value=>value+1);
@@ -53,11 +54,13 @@ export default function LedgerDocsPage(){
     <MoreBackHeader title="Transactions" action={headerAction()}/>
     <div className="desktop-page-header"><PageHeader title="Transactions" action={headerAction()}/></div>
     <div className="ledger-v230-workspace">
-      <UnderlineTabs primary value={tab} onChange={changeTab} label="Transaction sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Transactions'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'}]}/>
-      {tab!=='ledger'&&!loading&&<PropertyPicker className="ledger-v230-shared-property" value={selectedPropertyId} properties={properties} onChange={setSelectedPropertyId}/>}
+      <UnderlineTabs primary value={tab} onChange={changeTab} label="Transaction sections" className="ledger-v230-tabs" options={[{value:'ledger',label:'Transactions'},{value:'statements',label:'Statements'},{value:'documents',label:'Documents'},{value:'rules',label:'Rules'}]}/>
+      {tab!=='ledger'&&tab!=='rules'&&!loading&&<PropertyPicker className="ledger-v230-shared-property" value={selectedPropertyId} properties={properties} onChange={setSelectedPropertyId}/>}
       {loading?<PageSkeleton variant="ledger"/>:tab==='ledger'
         ?<LedgerTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} addRequest={addRequest} onActionHandled={()=>setAddRequest(0)}/>
-        :tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>:<DocumentsTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} uploadRequest={uploadRequest} onActionHandled={()=>setUploadRequest(0)}/>} 
+        :tab==='statements'?<StatementsTab selectedPropertyId={selectedPropertyId}/>
+        :tab==='rules'?<RulesTab properties={properties}/>
+        :<DocumentsTab selectedPropertyId={selectedPropertyId} onSelectedPropertyChange={setSelectedPropertyId} uploadRequest={uploadRequest} onActionHandled={()=>setUploadRequest(0)}/>} 
     </div>
   </div>
 }

@@ -4,6 +4,7 @@ import { decryptToken, errorMessage, plaidClient, plaidErrorDetails } from './se
 import { adoptableCopies } from './accountIdentity';
 import { needsReconnect, RECONNECT_CODES } from './accountStatus';
 import { idsToDecline, ledgerDraftFromPlaid, matchLinkedAccount, plaidAmount, sameAccountMovement, shouldReplaceLedgerDetails, supersededLedgerIds, type MovementRow, type PlaidTransactionLike } from './mapTransaction';
+import { classifyWithRules, type TransactionRule } from '../transactionRules';
 
 type PlaidItem = { id: string; user_id: string; access_token_encrypted: string; cursor: string | null; institution_name: string; status?: string | null; error_code?: string | null };
 type LinkedAccount = { id: string; plaid_account_id: string; property_id: string | null; mask: string | null; type: string | null; subtype: string | null; import_enabled: boolean; alias_ids?: string[] };
@@ -11,11 +12,13 @@ type SyncOptions = { refresh?: boolean; resync?: boolean };
 type LedgerRow = { id: string; status?: string | null; needs_review?: boolean | null; category?: string | null; archived_at?: string | null };
 
 const ACCOUNT_FIELDS = 'id,plaid_account_id,property_id,mask,type,subtype,import_enabled';
+const RULE_FIELDS = 'id,user_id,enabled,match_text,match_direction,match_account_mask,match_property_id,assign_category,assign_property_id,created_from_transaction_id,archived_at';
 
 export async function backfillPlaidAccount(db: SupabaseClient, item: PlaidItem, accountId: string) {
   const { data: account, error } = await db.from('plaid_accounts').select(ACCOUNT_FIELDS).eq('id', accountId).eq('item_id', item.id).single();
   if (error) throw error;
-  await healAccount(db, item, account as LinkedAccount);
+  const rules = await loadEnabledRules(db, item.user_id);
+  await healAccount(db, item, account as LinkedAccount, rules);
 }
 
 /** While the bank requires a new login, every automatic or manual sync would fail the same way, so none is attempted. */
@@ -74,6 +77,7 @@ async function runSync(db: SupabaseClient, item: PlaidItem, options: SyncOptions
   const startCursor = options.resync ? undefined : item.cursor || undefined;
   const pulled = await pullTransactions(accessToken, startCursor);
   const accounts = await linkedAccounts(db, item.id);
+  const rules = await loadEnabledRules(db, item.user_id);
   const remoteAccounts = new Map((pulled.accounts || []).map(account => [account.account_id, account]));
   const byPlaid = new Map<string, LinkedAccount>();
   for (const account of accounts) byPlaid.set(account.plaid_account_id, account);
@@ -86,7 +90,7 @@ async function runSync(db: SupabaseClient, item: PlaidItem, options: SyncOptions
     const saved = await db.from('plaid_transactions').upsert(plaidRow(item, account, row), { onConflict: 'plaid_transaction_id' });
     if (saved.error) throw new Error(saved.error.message);
     if (!account) continue;
-    const result = await materialize(db, item, row, account);
+    const result = await materialize(db, item, row, account, rules);
     created += result.created;
     if (result.adoptedId) adopted.push(result.adoptedId);
   }
@@ -98,7 +102,7 @@ async function runSync(db: SupabaseClient, item: PlaidItem, options: SyncOptions
     await reconcileMissing(db, item.id, new Set(changed.map(row => String(row.transaction_id || ''))), adopted);
   }
 
-  for (const account of accounts) created += await healAccount(db, item, account);
+  for (const account of accounts) created += await healAccount(db, item, account, rules);
   for (const account of accounts) await collapseAccountDuplicates(db, item.user_id, account);
 
   await updateBalances(db, item.id, accessToken, pulled.accounts || []);
@@ -166,17 +170,30 @@ async function resolveAccount(db: SupabaseClient, accounts: LinkedAccount[], byP
   return matched;
 }
 
-async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransactionLike, account: LinkedAccount) {
+async function loadEnabledRules(db: SupabaseClient, userId: string) {
+  const result = await db.from('transaction_rules').select(RULE_FIELDS).eq('user_id', userId).eq('enabled', true).is('archived_at', null);
+  if (result.error) throw new Error(result.error.message);
+  return (result.data || []) as TransactionRule[];
+}
+
+async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransactionLike, account: LinkedAccount, rules: TransactionRule[] = []) {
   if (!account.property_id || account.import_enabled === false) return { created: 0, adoptedId: null as string | null };
   const draft = ledgerDraftFromPlaid(row);
   if (!draft.transaction_date || !row.transaction_id) return { created: 0, adoptedId: null as string | null };
+  const classified = classifyWithRules(draft, rules, {
+    payee_source: draft.payee_source,
+    description: draft.description,
+    amount: draft.amount,
+    property_id: account.property_id,
+    source_account_mask: account.mask,
+  });
   const payload = {
     user_id: item.user_id,
     property_id: account.property_id,
     unit_id: null,
     transaction_date: draft.transaction_date,
-    type: draft.type,
-    category: draft.category,
+    type: classified.type,
+    category: classified.category,
     description: draft.description,
     payee_source: draft.payee_source,
     amount: draft.amount,
@@ -188,7 +205,7 @@ async function materialize(db: SupabaseClient, item: PlaidItem, row: PlaidTransa
     import_key: draft.import_key,
     status: draft.status,
     confirmed_at: draft.status === 'posted' ? new Date().toISOString() : null,
-    needs_review: draft.needs_review,
+    needs_review: classified.needs_review,
     is_new_import: draft.status === 'posted',
     import_acknowledged_at: null,
   };
@@ -316,7 +333,7 @@ async function reconcileMissing(db: SupabaseClient, itemId: string, liveIds: Set
   await declineLedger(db, idsToDecline(ledgerIds, adoptedIds));
 }
 
-async function healAccount(db: SupabaseClient, item: PlaidItem, account: LinkedAccount) {
+async function healAccount(db: SupabaseClient, item: PlaidItem, account: LinkedAccount, rules: TransactionRule[] = []) {
   if (!account.property_id || account.import_enabled === false) return 0;
   let created = 0;
   for (const plaidAccountId of account.alias_ids?.length ? account.alias_ids : [account.plaid_account_id]) {
@@ -341,7 +358,7 @@ async function healAccount(db: SupabaseClient, item: PlaidItem, account: LinkedA
       const stored = Number(ledger?.amount);
       const signWrong = Boolean(ledger?.needs_review) && Number.isFinite(stored) && Math.abs(stored - draft.amount) > 0.009;
       const misfiled = signWrong || Boolean(ledger?.needs_review && ledger.type === 'transfer' && plaidAmount(raw.amount) < 0 && !String(raw.personal_finance_category?.primary || '').startsWith('TRANSFER_'));
-      if (!ledger || ledger.status === 'declined' || misfiled) created += (await materialize(db, item, raw, account)).created;
+      if (!ledger || ledger.status === 'declined' || misfiled) created += (await materialize(db, item, raw, account, rules)).created;
     }
     if (rows.length < 500) break;
     from += 500;

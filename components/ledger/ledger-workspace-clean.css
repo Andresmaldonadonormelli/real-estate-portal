@@ -166,3 +166,22 @@
   .ledger-date{grid-column:2;grid-row:2;justify-self:end;align-self:start;color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--weight-regular)}
   .ledger-needs{display:block;grid-column:1 / -1;grid-row:3}
 }
+
+.ledger-rules-intro{display:grid;gap:var(--space-1);padding-bottom:var(--space-4);border-bottom:1px solid var(--border-color)}
+.ledger-rules-intro strong{font:var(--font-small);font-weight:var(--weight-semibold)}
+.ledger-rules-intro span,.ledger-rules-error{color:var(--text-secondary);font:var(--font-label)}
+.ledger-rules-error{color:var(--danger);margin-bottom:var(--space-3)}
+.ledger-rules-list{display:grid}
+.ledger-rule-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-4);align-items:center;padding:var(--space-4) 0;border-bottom:1px solid var(--border-color)}
+.ledger-rule-row.is-disabled{opacity:.72}
+.ledger-rule-copy{display:grid;gap:var(--space-1);min-width:0}
+.ledger-rule-copy strong{font:var(--font-small);font-weight:var(--weight-semibold)}
+.ledger-rule-copy span{color:var(--text-secondary);font:var(--font-label)}
+.ledger-rule-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.ledger-rule-toggle,.ledger-rule-edit{min-height:40px;padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-pill);background:transparent;color:var(--text-primary);font:var(--font-button)}
+.ledger-rule-toggle.active{border-color:var(--theme-action);background:var(--theme-action);color:var(--theme-action-text)}
+.ledger-rule-form{display:grid;gap:var(--space-3)}
+.ledger-rule-form label{display:grid;gap:var(--space-2);font:var(--font-small);font-weight:var(--weight-semibold)}
+.ledger-rule-form input{min-height:var(--control-height-desktop);padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--input-bg);color:var(--text-primary)}
+.ledger-rule-form em{font-style:normal;color:var(--text-secondary);font-weight:var(--weight-regular)}
+@media(max-width:767px){.ledger-rule-row{grid-template-columns:1fr}.ledger-rule-actions{justify-content:flex-start}.ledger-rule-toggle,.ledger-rule-edit{min-height:44px}}

@@ -8,9 +8,9 @@ import './product-system.css';
 const themeInitScript = `(function(){try{var saved=localStorage.getItem('theme');var choice=saved==='light'||saved==='dark'||saved==='system'?saved:'system';var resolved=choice==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):choice;var root=document.documentElement;root.setAttribute('data-theme',resolved);root.style.colorScheme=resolved;}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: 'RE Portal',
+  title: 'AM Properties',
   description: 'Manage your rental properties',
-  applicationName: 'RE Portal',
+  applicationName: 'AM Properties',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: 'RE Portal',
+    title: 'AM Properties',
     statusBarStyle: 'default',
   },
   formatDetection: {

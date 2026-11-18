@@ -1,6 +1,6 @@
 {
-  "name": "RE Portal",
-  "short_name": "RE Portal",
+  "name": "AM Properties",
+  "short_name": "AM Properties",
   "description": "Manage your rental properties",
   "start_url": "/",
   "scope": "/",
