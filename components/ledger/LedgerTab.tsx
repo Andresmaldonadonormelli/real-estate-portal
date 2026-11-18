@@ -15,6 +15,7 @@ import { withTimeout } from '@/lib/async';
 import { Paperclip, ChevronDown, Search, SlidersHorizontal, MoreHorizontal, Upload, Download, X } from 'lucide-react';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview, isUncategorized } from '@/lib/accounting';
 import { transactionDisplayName } from '@/lib/transactionLabels';
+import { classifyWithRules, type TransactionRule } from '@/lib/transactionRules';
 import AddTransactionModal from '@/components/transactions/AddTransactionModal';
 import TransactionDetailModal, { ChaseMark } from '@/components/transactions/TransactionDetailModal';
 import Toast from '@/components/common/Toast';
@@ -190,7 +191,14 @@ export default function LedgerTab({ selectedPropertyId, onSelectedPropertyChange
   async function importCsv(){
     if(!previewRows.length || !importPropertyId)return;
     setImporting(true);setError('');setNotice('');
-    const payload=previewRows.map(p=>({user_id:user.id,property_id:p.propertyId,unit_id:p.unitId,transaction_date:p.date,type:p.type,category:p.category,description:p.description,payee_source:p.payee,amount:p.amount,notes:p.notes,source:'doorvest_csv',import_key:p.importKey,status:'posted',confirmed_at:new Date().toISOString(),needs_review:categoryNeedsReview(p.category)}));
+    const rulesResult=await supabase.from('transaction_rules').select('id,user_id,enabled,match_text,match_direction,match_account_mask,match_property_id,assign_category,assign_property_id,archived_at').eq('user_id',user.id).eq('enabled',true).is('archived_at',null);
+    if(rulesResult.error){setError(rulesResult.error.message);setImporting(false);return;}
+    const rules=(rulesResult.data||[]) as TransactionRule[];
+    const payload=previewRows.map(p=>{
+      const draft={category:p.category,type:p.type,needs_review:categoryNeedsReview(p.category)};
+      const classified=classifyWithRules(draft,rules,{payee_source:p.payee,description:p.description,amount:p.amount,property_id:p.propertyId,source_account_mask:null});
+      return {user_id:user.id,property_id:p.propertyId,unit_id:p.unitId,transaction_date:p.date,type:classified.type,category:classified.category,description:p.description,payee_source:p.payee,amount:p.amount,notes:p.notes,source:'doorvest_csv',import_key:p.importKey,status:'posted',confirmed_at:new Date().toISOString(),needs_review:classified.needs_review};
+    });
     const {error:e}=await supabase.from('transactions').upsert(payload,{onConflict:'user_id,import_key',ignoreDuplicates:true});
     if(e)setError(e.message);else{setShowImport(false);setNotice(`Import complete. ${payload.length} CSV rows were processed; existing duplicates were skipped.`);await loadData();}
     setImporting(false);

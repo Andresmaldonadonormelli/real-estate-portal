@@ -8,6 +8,7 @@ import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview, transactionTyp
 import { mortgageBalanceAfterExtraPrincipal, postedExtraPrincipal, type PrincipalTransaction } from '@/lib/extraPrincipal';
 import { formatCurrency } from '@/lib/formatters';
 import { ProductSelect } from '@/components/common/ProductControls';
+import { buildRuleDraftFromTransaction, canCreateRuleFrom, describeRuleAssignment, describeRuleMatch } from '@/lib/transactionRules';
 
 type TxType = 'income' | 'expense' | 'transfer';
 type Doc = {id:string;title:string|null;file_name:string;category:string};
@@ -36,9 +37,29 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [showEditor,setShowEditor]=useState(!viewOnly);
+  const [applyFutureMatches,setApplyFutureMatches]=useState(false);
+  const [pendingCategory,setPendingCategory]=useState<string|null>(null);
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
   const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
+  const ruleCandidate=useMemo(()=>{
+    const entered=Math.abs(Number(form.amount||0));
+    const signed=transaction&&Number.isFinite(Number(transaction.amount))?Number(transaction.amount):form.type==='expense'?-entered:entered;
+    return {
+      payee_source:form.payee_source||transaction?.payee_source||null,
+      description:form.description||transaction?.description||null,
+      amount:signed,
+      property_id:form.property_id||null,
+      source_account_mask:transaction?.source_account_mask||null,
+      category:form.category,
+    };
+  },[form,transaction]);
+  const ruleDraft=useMemo(()=>buildRuleDraftFromTransaction(ruleCandidate),[ruleCandidate]);
+  const showRuleOption=Boolean(editing&&ruleDraft&&canCreateRuleFrom(ruleCandidate));
+  const rulePropertyName=useMemo(()=>{
+    const id=ruleDraft?.assign_property_id||form.property_id;
+    return properties.find(property=>property.id===id)?.address||null;
+  },[ruleDraft,form.property_id,properties]);
   const isMortgage=['Mortgage Payment','Mortgage Payment (Unsplit)','Mortgage Interest','Mortgage Principal'].includes(form.category);
   const [mortgageSplit,setMortgageSplit]=useState({principal:String(Number((transaction as any)?.mortgage_principal_amount||0)||''),interest:String(Number((transaction as any)?.mortgage_interest_amount||0)||''),escrow:String(Number((transaction as any)?.mortgage_escrow_amount||0)||'')});
   const mortgageAllocated=['principal','interest','escrow'].reduce((sum,key)=>sum+Math.max(0,Number((mortgageSplit as any)[key]||0)),0);
@@ -88,6 +109,22 @@ export default function AddTransactionModal({ userId, properties, units, transac
   }
   function toggleDocument(id:string){setLinkedDocumentIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id]);}
   async function syncDocumentLinks(transactionId:string){const del=await supabase.from('transaction_documents').delete().eq('transaction_id',transactionId);if(del.error)throw del.error;if(linkedDocumentIds.length){const ins=await supabase.from('transaction_documents').insert(linkedDocumentIds.map(document_id=>({user_id:userId,transaction_id:transactionId,document_id})));if(ins.error)throw ins.error;}}
+  async function saveRuleFor(category:string,transactionId:string){
+    const draft=buildRuleDraftFromTransaction({...ruleCandidate,category});
+    if(!draft)return;
+    const result=await supabase.from('transaction_rules').insert({
+      user_id:userId,
+      enabled:true,
+      match_text:draft.match_text,
+      match_direction:draft.match_direction,
+      match_account_mask:draft.match_account_mask,
+      match_property_id:draft.match_property_id,
+      assign_category:draft.assign_category,
+      assign_property_id:draft.assign_property_id,
+      created_from_transaction_id:transactionId,
+    });
+    if(result.error)throw result.error;
+  }
 
   async function submit(e:FormEvent){
     e.preventDefault(); setSaving(true); setError('');
@@ -105,12 +142,13 @@ export default function AddTransactionModal({ userId, properties, units, transac
       try{
         if(editing){const result=await supabase.from('transactions').update(payload).eq('id',transaction!.id).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
         else{const result=await supabase.from('transactions').insert(payload).select('id').single();if(result.error)throw result.error;transactionId=result.data.id;}
+        if(applyFutureMatches)await saveRuleFor(category,transactionId);
       }catch(saveError){
         const undone=editing?transaction!:{...payload,archived_at:new Date().toISOString()};
         await syncPrincipalBalance(undone,payload);
         throw saveError;
       }
-      await syncDocumentLinks(transactionId); await onSaved(editing?'Transaction updated':'Transaction added'); onClose();
+      await syncDocumentLinks(transactionId); await onSaved(editing?(applyFutureMatches?'Transaction updated and rule saved':'Transaction updated'):'Transaction added'); onClose();
     }catch(err){setError(err instanceof Error?err.message:'Could not save transaction.');}finally{setSaving(false);}
   }
 
@@ -134,20 +172,29 @@ export default function AddTransactionModal({ userId, properties, units, transac
     setSaving(false);
   }
 
-  async function resolveCategory(category:string){
-    if(!transaction)return;
+  function chooseReviewCategory(category:string){
+    const type=transactionTypeForCategory(category,form.type);
+    setPendingCategory(category);
+    setForm(current=>({...current,category,type,needs_review:categoryNeedsReview(category)}));
+    setApplyFutureMatches(false);
+  }
+
+  async function resolveCategory(){
+    if(!transaction||!pendingCategory)return;
+    const category=pendingCategory;
     const type=transactionTypeForCategory(category,form.type);
     setSaving(true);setError('');
     const needsReview=categoryNeedsReview(category);
     const next={...transaction,category,type};
     try{await syncPrincipalBalance(next,transaction);}catch(err){setError(err instanceof Error?err.message:'Could not update the loan balance.');setSaving(false);return;}
     const r=await supabase.from('transactions').update({category,type,needs_review:needsReview}).eq('id',transaction.id);
-    if(r.error){await syncPrincipalBalance(transaction,next);}
-    if(r.error){setError(r.error.message);}
-    else {
+    if(r.error){await syncPrincipalBalance(transaction,next);setError(r.error.message);setSaving(false);return;}
+    try{
+      if(applyFutureMatches)await saveRuleFor(category,transaction.id);
       setForm(current=>({...current,category,type,needs_review:needsReview}));
-      await onSaved('Category updated');
-    }
+      setPendingCategory(null);
+      await onSaved(applyFutureMatches?'Category updated and rule saved':'Category updated');
+    }catch(err){setError(err instanceof Error?err.message:'Category saved, but the rule could not be created.');}
     setSaving(false);
   }
 
@@ -156,12 +203,13 @@ export default function AddTransactionModal({ userId, properties, units, transac
     <div className="quick-add-modal card" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
       <div className="quick-add-head"><div><h2 id="quick-add-title">{editing?(showEditor?'Edit transaction':'Transaction details'):'Add transaction'}</h2><p>{editing?(showEditor?'Update the accounting details or supporting documents.':'Review the transaction before making changes.'):'Post it now. Categorize it later if needed.'}</p></div><button className="icon-close" type="button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>
       {error&&<div className="quick-add-error">{error}</div>}
-      {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>void resolveCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div><div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
+      {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review||pendingCategory?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>chooseReviewCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div>{pendingCategory&&canCreateRuleFrom({...ruleCandidate,category:pendingCategory})&&<div className="transaction-rule-panel"><label className="review-check"><input type="checkbox" checked={applyFutureMatches} onChange={e=>setApplyFutureMatches(e.target.checked)}/><span><strong>Apply to future matches</strong><small>Create a rule from this payee, direction, and bank account.</small></span></label>{applyFutureMatches&&ruleDraft&&<RulePreview match={describeRuleMatch(ruleDraft,rulePropertyName)} assignment={describeRuleAssignment(ruleDraft,rulePropertyName)}/>}</div>}{pendingCategory&&<div className="transaction-detail-actions"><button type="button" className="quick-add-submit" disabled={saving} onClick={()=>void resolveCategory()}>{saving?'Saving…':applyFutureMatches?'Save category & rule':'Save category'}</button></div>}<div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
         {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}
         <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label>
         <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
         {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
-        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const type=transactionTypeForCategory(category,form.type);setForm({...form,category,type,needs_review:categoryNeedsReview(category)})}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const type=transactionTypeForCategory(category,form.type);setForm({...form,category,type,needs_review:categoryNeedsReview(category)});setApplyFutureMatches(false)}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        {showRuleOption&&<div className="transaction-rule-panel"><label className="review-check"><input type="checkbox" checked={applyFutureMatches} onChange={e=>setApplyFutureMatches(e.target.checked)}/><span><strong>Apply to future matches</strong><small>Create a rule from this payee, direction, and bank account. Amount and date can vary.</small></span></label>{applyFutureMatches&&ruleDraft&&<RulePreview match={describeRuleMatch(ruleDraft,rulePropertyName)} assignment={describeRuleAssignment(ruleDraft,rulePropertyName)}/>}</div>}
         {editing&&<div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>}
         {isMortgage&&<div className="mortgage-split-box">
           <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{formatCurrency(mortgageAllocated)} / {formatCurrency(mortgageAmount)}</span></div></div>
@@ -187,5 +235,12 @@ export default function AddTransactionModal({ userId, properties, units, transac
         <div className="quick-add-footer">{editing&&<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Update':'Post'}</button></div>
       </form>}
     </div>
+  </div>;
+}
+
+function RulePreview({ match, assignment }:{ match:string; assignment:string }){
+  return <div className="transaction-rule-preview" aria-live="polite">
+    <div><span>Will match</span><strong>{match}</strong></div>
+    <div><span>Will assign</span><strong>{assignment}</strong></div>
   </div>;
 }

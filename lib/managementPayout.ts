@@ -36,6 +36,7 @@ const CONFIRMED_SPLIT=/split from (net|Chase\/net) payout|split from net deposit
 
 export function isPropertyManagementDeposit(transaction:PayoutTransaction|null|undefined,feePercent?:number|null){
   if(!transaction||transaction.type!=='income')return false;
+  if(/^pm distribution$/i.test(String(transaction.category||'').trim()))return false;
   if(CONFIRMED_SPLIT.test(String(transaction.notes||'')))return true;
   return transaction.source==='plaid'&&Number(feePercent||0)>0;
 }

@@ -68,3 +68,10 @@
 @media(max-width:767px){.quick-add-overlay.transaction-detail-overlay{place-items:end stretch;padding:0}.transaction-detail-panel{width:100%;height:100dvh;max-height:100dvh;border-left:0;border-radius:var(--radius-card) var(--radius-card) 0 0;transform:translateY(100%);animation:transaction-detail-up 280ms ease forwards}}
 @keyframes transaction-detail-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @media(max-width:767px) and (prefers-reduced-motion:reduce){.transaction-detail-panel{animation:none;transform:none}}
+
+.transaction-rule-panel{display:grid;gap:var(--space-3)}
+.transaction-rule-preview{display:grid;gap:var(--space-2);padding:var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--surface-subtle)}
+.transaction-rule-preview>div{display:grid;gap:2px}
+.transaction-rule-preview span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
+.transaction-rule-preview strong{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
+.transaction-detail-sheet .transaction-rule-panel{padding:var(--space-3) 0;border-bottom:1px solid var(--border-color)}

@@ -64,6 +64,22 @@ export interface Transaction {
   created_at?: string;
 }
 
+export interface TransactionRule {
+  id: string;
+  user_id: string;
+  enabled: boolean;
+  match_text: string;
+  match_direction: 'incoming' | 'outgoing';
+  match_account_mask: string | null;
+  match_property_id: string | null;
+  assign_category: string;
+  assign_property_id: string | null;
+  created_from_transaction_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  archived_at?: string | null;
+}
+
 export interface PropertyDocument {
   id: string;
   user_id?: string | null;

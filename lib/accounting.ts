@@ -8,12 +8,14 @@ export const ACCOUNTING_CATEGORIES = [
   'Leasing Fee',
   'Repairs & Maintenance',
   'Utilities',
+  'Utilities → Electric',
   'Insurance',
   'Property Taxes',
   'Mortgage Payment',
   'Extra Principal Payment',
   'Capital Improvements / CapEx',
   'Legal & Professional',
+  'PM Distribution',
   'Owner Distribution',
   'Owner Contribution',
   'Transfer',
@@ -39,6 +41,7 @@ export function categoryKey(category: string) {
   if (c.includes('tax')) return 'taxes';
   if (c.includes('capital') || c.includes('capex') || c.includes('renovation')) return 'capex';
   if (c.includes('legal') || c.includes('professional')) return 'legal';
+  if (c.includes('pm distribution')) return 'pm-distribution';
   if (c.includes('owner distribution')) return 'distribution';
   if (c.includes('owner contribution')) return 'contribution';
   if (c === 'transfer' || c.includes('loan proceeds') || c.includes('security deposit') || c.includes('credit card payment') || c.includes('uncategorized inflow')) return 'non-operating';
@@ -58,7 +61,7 @@ export type LedgerFlow = 'income' | 'expense' | 'transfer';
 /** Financing and capital movements stay transfers so they never enter operating expenses. */
 export function transactionTypeForCategory(category: string, fallback: LedgerFlow = 'expense'): LedgerFlow {
   const key = categoryKey(category);
-  if (key === 'rent' || key === 'other-income' || key === 'refund') return 'income';
+  if (key === 'rent' || key === 'other-income' || key === 'refund' || key === 'pm-distribution') return 'income';
   if (key === 'contribution' || key === 'distribution' || key === 'non-operating' || key === 'extra-principal') return 'transfer';
   if (category === 'Needs Review') return fallback;
   return 'expense';
