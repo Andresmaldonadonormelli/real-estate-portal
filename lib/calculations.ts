@@ -1,4 +1,5 @@
 import type { Property, Unit, Transaction } from './types';
+import { isTransferTransaction } from './accounting.ts';
 
 export const calculatePortfolioStats = (
   properties: Property[],
@@ -20,7 +21,7 @@ export const calculatePortfolioStats = (
 
   const monthlyTransactions = transactions.filter((t) => {
     const txMonth = t.transaction_date.substring(0, 7);
-    return txMonth === currentMonth && (t.status || 'posted') === 'posted';
+    return txMonth === currentMonth && (t.status || 'posted') === 'posted' && !isTransferTransaction(t);
   });
 
   const monthlyRentIncome = monthlyTransactions
@@ -45,12 +46,18 @@ export const calculatePortfolioStats = (
   };
 };
 
+export function transactionMonthKey(transactionDate: string) {
+  const match = /^(\d{4})-(\d{2})-\d{2}/.exec(transactionDate || '');
+  if (match) return `${match[1]}-${match[2]}`;
+  const date = new Date(transactionDate);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export const groupTransactionsByMonth = (transactions: Transaction[]) => {
   const grouped: Record<string, Transaction[]> = {};
 
   transactions.forEach((t) => {
-    const date = new Date(t.transaction_date);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const key = transactionMonthKey(t.transaction_date);
     if (!grouped[key]) {
       grouped[key] = [];
     }
@@ -61,7 +68,7 @@ export const groupTransactionsByMonth = (transactions: Transaction[]) => {
 };
 
 export const calculateMonthlyTotals = (transactions: Transaction[]) => {
-  const posted = transactions.filter((t) => (t.status || 'posted') === 'posted');
+  const posted = transactions.filter((t) => (t.status || 'posted') === 'posted' && !isTransferTransaction(t));
   const income = posted
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);

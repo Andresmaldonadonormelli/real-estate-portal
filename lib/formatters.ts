@@ -7,13 +7,21 @@ export const formatCurrency = (amount: number): string => {
   }).format(Math.round(amount));
 };
 
+export function calendarParts(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || '').trim());
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+function formatCalendarDate(value: string, options: Intl.DateTimeFormatOptions) {
+  const parts = calendarParts(value);
+  if (!parts) return new Date(value).toLocaleDateString('en-US', options);
+  const noonUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+  return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(noonUtc);
+}
+
 export const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatCalendarDate(dateStr, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 export function shortPropertyName(address?: string | null) {
@@ -55,11 +63,7 @@ function trimThousands(value: number) {
 }
 
 export const formatDateShort = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
 };
 
 export const formatMonthYear = (year: number, month: number): string => {

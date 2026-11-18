@@ -1,6 +1,6 @@
 'use client';
 
-import { categoryKey } from '@/lib/accounting';
+import { categoryKey, isTransferTransaction } from './accounting.ts';
 
 export type PropertyTransaction = {
   id: string;
@@ -23,7 +23,7 @@ const OPERATING_EXCLUSIONS = ['mortgage-interest', 'mortgage-principal', 'mortga
 
 export function isOperatingExpenseCategory(category: string) {
   const key = categoryKey(category || '');
-  return !OPERATING_EXCLUSIONS.includes(key) && key !== 'review';
+  return !OPERATING_EXCLUSIONS.includes(key) && key !== 'review' && !isTransferTransaction({ category });
 }
 
 export const formatKpiCurrency = (value: number) => new Intl.NumberFormat('en-US', {
@@ -35,6 +35,7 @@ export function calculateMetrics(rows: PropertyTransaction[]) {
   let operatingExpenses = 0;
   let cashExpenses = 0;
   for (const transaction of rows) {
+    if (isTransferTransaction(transaction)) continue;
     const amount = Math.abs(Number(transaction.amount || 0));
     if (transaction.type === 'income') income += amount;
     if (transaction.type === 'expense') {

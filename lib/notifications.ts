@@ -1,3 +1,4 @@
+import { isTransferTransaction, isUncategorized } from '@/lib/accounting';
 import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import { isPropertyManagementDeposit } from '@/lib/managementPayout';
 import { unitAttention } from '@/lib/portfolioAttention';
@@ -248,7 +249,7 @@ function transactionNotification(userId: string, transaction: NotificationTransa
       origin: 'app',
     };
   }
-  if (transaction.type === 'expense' && Math.abs(Number(transaction.amount || 0)) >= LARGE_EXPENSE_MIN) {
+  if (transaction.type === 'expense' && !isTransferTransaction(transaction) && Math.abs(Number(transaction.amount || 0)) >= LARGE_EXPENSE_MIN) {
     return {
       user_id: userId,
       type: 'large_expense_posted',
@@ -341,9 +342,7 @@ function isApprovedManagerDeduction(transaction: NotificationTransaction, transa
 }
 
 function needsCategory(transaction: NotificationTransaction) {
-  if (transaction.needs_review) return true;
-  const category = (transaction.category || '').trim();
-  return !category || /needs review|uncategor/i.test(category);
+  return isUncategorized(transaction.category);
 }
 
 function party(transaction: NotificationTransaction) {
