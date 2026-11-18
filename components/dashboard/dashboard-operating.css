@@ -650,6 +650,25 @@
   text-decoration: none;
   cursor: pointer;
 }
+.notification-anchor { position: relative; }
+.notification-popover {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  background: var(--theme-card);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--text-primary) 12%, transparent), 0 2px 8px color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+.notification-popover-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+.notification-popover-head h2 { margin: 0; font-size: var(--type-card-title-size); line-height: var(--type-card-title-line); font-weight: var(--weight-semibold); }
+.notification-popover-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.notifications-embedded .notifications-tabs { margin-bottom: var(--space-2); }
+.notifications-embedded .notifications-board { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.notifications-embedded .dashboard-drawer-list { margin-right: 0; margin-left: 0; }
 .dashboard-bell-count {
   position: absolute;
   top: -4px;
@@ -876,9 +895,6 @@
   .dashboard-operating-controls {
     display: contents;
   }
-  .dashboard-bell {
-    display: none;
-  }
   .dashboard-operating .pulse-add-menu {
     grid-column: 3;
     grid-row: 1;
@@ -951,6 +967,7 @@
     width: 44px;
     min-width: 44px;
     padding: 0;
+    border-radius: var(--radius-control);
   }
   .dashboard-operating .pulse-add-button span,
   .dashboard-operating .pulse-add-button svg:last-child {
