@@ -50,6 +50,7 @@ export type BriefUpdate = {
   id: string;
   title: string;
   context: string;
+  when: string;
   tone: BriefTone;
   priority: number;
   important: boolean;
@@ -127,6 +128,14 @@ function signed(tx: { amount?: number | null }) {
 
 function shortDate(key: string) {
   return new Date(`${key}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function latestKey(rows: BriefTransaction[]) {
+  return rows.map((tx) => dateKey(tx.transaction_date)).filter(Boolean).sort().at(-1) || '';
+}
+
+function insightWhen(key: string) {
+  return key ? `New · ${shortDate(key)}` : '';
 }
 
 function needsReview(tx: BriefTransaction) {
@@ -264,12 +273,11 @@ function financialInsights(
     .sort((a, b) => b.total - a.total)
     .slice(0, 2);
   receiptCards.forEach((card, index) => {
-    const dates = card.rows.map((tx) => dateKey(tx.transaction_date)).filter(Boolean).sort();
-    const dateLabel = dates.length && dates[0] === dates[dates.length - 1] ? shortDate(dates[0]) : dates.length ? `${shortDate(dates[0])}–${shortDate(dates[dates.length - 1])}` : '';
     candidates.push({
       id: index === 0 ? 'money-in' : `money-${card.id}`,
       title: `${formatBriefAmount(card.total)} received`,
-      context: [names.get(card.id) || '', dateLabel].filter(Boolean).join(' · '),
+      context: names.get(card.id) || '',
+      when: insightWhen(latestKey(card.rows)),
       tone: 'positive',
       priority: 0,
       important: false,
@@ -301,6 +309,7 @@ function financialInsights(
         id: `flow-${property.id}`,
         title: `${chip} cash flow ${improved ? 'improved' : 'softened'}`,
         context: `${formatBriefAmount(flowDelta)} vs ${previousLabel}`,
+        when: insightWhen(todayKey(now)),
         tone: improved ? 'positive' : 'negative',
         priority: 1,
         important: false,
@@ -317,13 +326,15 @@ function financialInsights(
       return change ? { pattern, change, prior: utilityTotal(previous, pattern.kind), current: utilityTotal(current, pattern.kind) } : null;
     }).filter((item): item is NonNullable<typeof item> => Boolean(item));
     specific.forEach((item) => {
-      const sample = [...current, ...previous].find((tx) => utilityKind(tx)?.kind === item.pattern.kind);
+      const matches = (rows: BriefTransaction[]) => rows.filter((tx) => utilityKind(tx)?.kind === item.pattern.kind);
+      const sample = [...matches(current)].reverse().find((tx) => (tx.payee_source || '').trim()) || matches(current)[0] || matches(previous)[0];
       const vendor = (sample?.payee_source || '').trim() || item.pattern.label;
       const increased = item.change.delta > 0;
       candidates.push({
         id: `${item.pattern.kind}-${property.id}`,
         title: `${item.pattern.label} cost ${increased ? 'increased' : 'decreased'} ${item.change.percent}%`,
         context: `${vendor} · ${dollars(item.current)} vs ${dollars(item.prior)} last month`,
+        when: insightWhen(latestKey(matches(current)) || latestKey(matches(previous))),
         tone: increased ? 'negative' : 'positive',
         priority: 3,
         important: false,
@@ -336,8 +347,9 @@ function financialInsights(
         const increased = change.delta > 0;
         candidates.push({
           id: `utilities-${property.id}`,
-          title: `Utilities ${increased ? 'up' : 'down'} ${change.percent}%`,
+          title: `Utilities ${increased ? 'increased' : 'decreased'} ${change.percent}%`,
           context: `${chip} · ${dollars(utilityTotal(current))} vs ${dollars(utilityTotal(previous))} last month`,
+          when: insightWhen(latestKey(current.filter((tx) => utilityKind(tx))) || latestKey(previous.filter((tx) => utilityKind(tx)))),
           tone: increased ? 'negative' : 'positive',
           priority: 2,
           important: false,
@@ -358,6 +370,7 @@ function financialInsights(
         id: `expenses-${property.id}`,
         title: expenseChange.delta > 0 ? 'Expenses higher than last month' : 'Expenses lower than last month',
         context: `${chip} · ${formatBriefAmount(expenseChange.delta)}`,
+        when: insightWhen(todayKey(now)),
         tone: expenseChange.delta > 0 ? 'negative' : 'positive',
         priority: 4,
         important: false,
@@ -373,21 +386,24 @@ function financialInsights(
         id: `rent-${property.id}`,
         title: rentChange.delta > 0 ? 'Rent higher than last month' : 'Rent lower than last month',
         context: `${chip} · ${dollars(rent(current))} vs ${dollars(rent(previous))} last month`,
+        when: insightWhen(todayKey(now)),
         tone: rentChange.delta > 0 ? 'positive' : 'negative',
         priority: 5,
         important: false,
       });
     }
 
-    const principal = current.reduce((sum, tx) => {
+    const principalRows = current.filter((tx) => {
       const key = categoryKey(tx.category || '');
-      return key === 'mortgage-principal' || key === 'extra-principal' ? sum + amountOf(tx) : sum;
-    }, 0);
+      return key === 'mortgage-principal' || key === 'extra-principal';
+    });
+    const principal = principalRows.reduce((sum, tx) => sum + amountOf(tx), 0);
     if (principal >= 50) {
       candidates.push({
         id: `principal-${property.id}`,
         title: 'Mortgage principal reduced',
         context: `${chip} · ${dollars(principal)} this month`,
+        when: insightWhen(latestKey(principalRows)),
         tone: 'positive',
         priority: 6,
         important: false,
@@ -402,7 +418,8 @@ function financialInsights(
     candidates.push({
       id: `spent-${tx.id}`,
       title: `${formatBriefAmount(-amountOf(tx))} spent`,
-      context: [names.get(tx.property_id || '') || '', spendLabel(tx.category || ''), shortDate(dateKey(tx.transaction_date))].filter(Boolean).join(' · '),
+      context: [names.get(tx.property_id || '') || '', spendLabel(tx.category || '')].filter(Boolean).join(' · '),
+      when: insightWhen(dateKey(tx.transaction_date)),
       tone: 'negative',
       priority: 0,
       important: false,

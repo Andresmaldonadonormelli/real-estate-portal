@@ -23,26 +23,41 @@ export function DailyBrief({ brief }: { brief: OverviewBrief }) {
 
   return (
     <section className="insight-strip" aria-label="Portfolio insights" aria-roledescription="carousel" data-autoplay="false">
-      <div className={updates.length > 1 ? 'insight-strip-row' : undefined}>
-        {updates.length > 1 ? <button type="button" className="insight-arrow" aria-label="Previous insight" disabled={safePage === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}><ChevronLeft size={16} aria-hidden="true" /></button> : null}
+      <div className="insight-strip-row">
         <div className="insight-scroller" ref={scroller} onScroll={onScroll}>
           {updates.map((update, index) => (
-            <InsightCard key={update.id} update={update} hidden={index !== safePage} />
+            <InsightCard
+              key={update.id}
+              update={update}
+              hidden={index !== safePage}
+              paged={updates.length > 1}
+              atStart={safePage === 0}
+              atEnd={safePage >= updates.length - 1}
+              onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+              onNext={() => setPage((current) => Math.min(updates.length - 1, current + 1))}
+            />
           ))}
         </div>
-        {updates.length > 1 ? <button type="button" className="insight-arrow" aria-label="Next insight" disabled={safePage >= updates.length - 1} onClick={() => setPage((current) => Math.min(updates.length - 1, current + 1))}><ChevronRight size={16} aria-hidden="true" /></button> : null}
       </div>
     </section>
   );
 }
 
-function InsightCard({ update, hidden }: { update: BriefUpdate; hidden: boolean }) {
+function InsightCard({ update, hidden, paged, atStart, atEnd, onPrevious, onNext }: { update: BriefUpdate; hidden: boolean; paged: boolean; atStart: boolean; atEnd: boolean; onPrevious: () => void; onNext: () => void }) {
   const tone = update.tone === 'positive' ? 'amount-positive' : update.tone === 'negative' ? 'amount-negative' : undefined;
-  const Mark = update.tone === 'negative' ? ArrowDown : update.lead ? null : update.tone === 'positive' ? ArrowUp : null;
+  const Mark = update.tone === 'negative' ? ArrowDown : ArrowUp;
   return (
     <article className="insight-card" data-hidden={hidden ? 'true' : undefined}>
-      <strong className={tone}>{Mark ? <Mark size={16} aria-hidden="true" /> : null}<span>{update.title}</span></strong>
-      {update.context ? <small>{update.context}</small> : null}
+      <span className={tone ? `insight-mark ${tone}` : 'insight-mark'} aria-hidden="true"><Mark size={16} /></span>
+      <div className="insight-copy">
+        {update.when ? <span className="insight-meta">{update.when}</span> : null}
+        <strong className={tone}>{update.title}</strong>
+        {update.context ? <small>{update.context}</small> : null}
+      </div>
+      {paged ? <div className="insight-nav">
+        <button type="button" aria-label="Previous insight" disabled={atStart} onClick={onPrevious}><ChevronLeft size={16} aria-hidden="true" /></button>
+        <button type="button" aria-label="Next insight" disabled={atEnd} onClick={onNext}><ChevronRight size={16} aria-hidden="true" /></button>
+      </div> : null}
     </article>
   );
 }

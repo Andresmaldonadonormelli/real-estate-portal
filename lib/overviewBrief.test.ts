@@ -63,7 +63,8 @@ test('daily brief uses posted activity and does not invent a plan', () => {
 
   assert.equal(brief.kicker, 'Since your last visit');
   assert.equal(brief.updates.find((update) => update.id === 'money-in')?.title, '+$2,850 received');
-  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett · Nov 10');
+  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.context, '15334 Triskett');
+  assert.equal(brief.updates.find((update) => update.id === 'money-in')?.when, 'New · Nov 10');
   assert.equal(brief.updates.some((update) => /fee|net cash|mortgage|\$18/i.test(`${update.title} ${update.context}`)), false);
   assert.ok(brief.updates.length <= 6);
   assert.equal(brief.updates.some((update) => /outstanding|attention|review|lease|vacant/i.test(`${update.title} ${update.context}`)), false);
@@ -176,7 +177,11 @@ test('insights are financial observations, not tasks', () => {
   });
   const text = brief.updates.map((update) => `${update.title} ${update.context}`).join('\n');
   assert.equal(brief.updates.some((update) => /outstanding|attention|review|uncategor|lease|vacant/i.test(`${update.title} ${update.context}`)), false);
-  assert.match(text, /Utilities down 18%/);
+  assert.match(text, /Utilities decreased 18%/);
+  assert.equal(brief.updates.find((update) => update.id === 'utilities-p2')?.when, 'New · Nov 8');
+  assert.equal(brief.updates.find((update) => update.id === 'gas-p1')?.when, 'New · Nov 9');
+  assert.equal(brief.updates.find((update) => update.id.startsWith('flow-'))?.when, 'New · Nov 13');
+  assert.equal(brief.updates.find((update) => update.id.startsWith('principal-'))?.when, 'New · Nov 11');
   assert.match(text, /W134 · \$164 vs \$200 last month/);
   assert.match(text, /Gas cost increased 60%/);
   assert.match(text, /Enbridge · \$83 vs \$52 last month/);

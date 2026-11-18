@@ -164,17 +164,19 @@
 .overview-brief-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
 .overview-brief-head h2{margin:0;white-space:nowrap}
 .overview-brief-head span,.overview-brief-head a{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
-.insight-strip{min-width:0}
-.insight-strip-row{display:flex;align-items:center;gap:var(--space-1);width:fit-content;max-width:100%}
-.insight-scroller{width:480px;max-width:100%}
-.insight-card{display:flex;box-sizing:border-box;width:100%;height:92px;flex-direction:column;justify-content:center;gap:var(--space-1);padding:16px 18px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--theme-card);box-shadow:none}
+.insight-strip{width:680px;max-width:100%;min-width:0}
+.insight-strip-row,.insight-scroller{width:100%}
+.insight-card{display:flex;box-sizing:border-box;width:100%;height:80px;align-items:center;gap:var(--space-3);padding:12px 18px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--theme-card);box-shadow:none}
 .insight-card[data-hidden='true']{display:none}
-.insight-card strong{display:flex;align-items:center;gap:6px;min-width:0;font-size:var(--type-body-size);line-height:1.3;font-weight:var(--weight-semibold)}
-.insight-card strong svg{flex:0 0 auto}
-.insight-card strong span,.insight-card small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.insight-card small{color:var(--text-secondary);font-size:var(--type-small-size);line-height:1.35;font-weight:var(--weight-regular)}
-.insight-arrow{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--text-secondary)}
-.insight-arrow:disabled{opacity:.35}
+.insight-mark{display:grid;flex:0 0 auto;place-items:center;color:var(--text-muted)}
+.insight-copy{display:grid;min-width:0;flex:1;gap:2px}
+.insight-meta,.insight-copy small,.insight-copy strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.insight-meta{color:var(--text-muted);font-size:var(--type-label-size);line-height:1.2}
+.insight-copy strong{font-size:var(--type-body-size);line-height:1.2;font-weight:var(--weight-semibold)}
+.insight-copy small{color:var(--text-muted);font-size:var(--type-small-size);line-height:1.2}
+.insight-nav{display:flex;flex:0 0 auto;align-items:center}
+.insight-nav button{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--text-muted)}
+.insight-nav button:disabled{opacity:.35}
 .landing-coming .upcoming-dates{display:grid;gap:0}
 .landing-coming .overview-brief-head a::after{content:" →"}
 .landing-coming .upcoming-dates a{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:var(--space-3);min-height:44px;padding:var(--space-2) 0;border-bottom:1px solid var(--border-color)}
@@ -185,11 +187,11 @@
 .upcoming-date strong{font-size:var(--type-body-size);line-height:1}
 .upcoming-dates b{color:var(--text-secondary);font-size:var(--type-label-size);font-weight:var(--weight-regular);white-space:nowrap}
 @media (max-width:767px){
-  .insight-strip-row{display:block;width:auto}
-  .insight-arrow{display:none}
-  .insight-scroller{display:flex;width:300px;max-width:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:var(--space-3)}
+  .insight-strip{width:100%}
+  .insight-nav{display:none}
+  .insight-scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:var(--space-3)}
   .insight-scroller::-webkit-scrollbar{display:none}
-  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 300px;width:300px;scroll-snap-align:start}
+  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 100%;scroll-snap-align:start}
   .landing-table-head{display:none}
   .landing-property,.landing-totals{grid-template-columns:1fr 1fr}
   .landing-controls{align-items:flex-start}
