@@ -75,3 +75,19 @@
 .transaction-rule-preview span{color:var(--text-secondary);font-size:var(--type-label-size);line-height:var(--type-label-line)}
 .transaction-rule-preview strong{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--weight-semibold)}
 .transaction-detail-sheet .transaction-rule-panel{padding:var(--space-3) 0;border-bottom:1px solid var(--border-color)}
+
+.payout-split-box{gap:var(--space-4)}
+.payout-split-section{display:grid;gap:var(--space-3)}
+.payout-split-section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.payout-split-section-head strong{font-size:var(--type-small-size);line-height:var(--type-small-line)}
+.payout-split-section-head button,.mortgage-default-button{min-height:36px;padding:0 var(--space-3);border:1px solid var(--border-color);border-radius:var(--radius-pill);background:transparent;color:var(--text-primary);font:var(--font-button)}
+.payout-split-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(96px,0.7fr) 36px;gap:var(--space-2);align-items:end}
+.payout-split-expense{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(96px,0.7fr) 36px}
+.payout-split-amount{position:relative;display:grid}
+.payout-split-amount>span{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-secondary);pointer-events:none}
+.payout-split-amount input{padding-left:calc(var(--space-3) + 1em + var(--space-1))!important}
+.payout-split-remove{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:transparent;color:var(--text-secondary)}
+.payout-split-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);padding-top:var(--space-2);border-top:1px solid var(--border-color)}
+.payout-split-summary span{display:grid;gap:2px;color:var(--text-secondary);font-size:var(--type-label-size)}
+.payout-split-summary b{font-size:var(--type-small-size);color:var(--text-primary)}
+@media(max-width:767px){.payout-split-row,.payout-split-expense{grid-template-columns:1fr}.payout-split-summary{grid-template-columns:1fr}.payout-split-remove{width:44px;height:44px}}

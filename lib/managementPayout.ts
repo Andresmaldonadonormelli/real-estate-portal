@@ -72,3 +72,121 @@ export function buildPayoutBreakdown(transaction:PayoutTransaction,feePercent:nu
   const gross=net+fee+deductions.reduce((sum,row)=>sum+row.amount,0);
   return {gross,fee,deductions,net,confirmed};
 }
+
+export type PayoutRentShare={key:string;property_id:string;unit_id:string;amount:string};
+export type PayoutExpenseShare={key:string;property_id:string;category:string;description:string;amount:string};
+export type PayoutSplitDraft={netDeposit:number;rents:PayoutRentShare[];expenses:PayoutExpenseShare[]};
+
+/** Gross rents minus posted expenses must equal the bank net deposit. */
+export function payoutSplitTotals(draft:PayoutSplitDraft){
+  const rentTotal=draft.rents.reduce((sum,row)=>sum+Math.max(0,Math.round(Number(row.amount||0)||0)),0);
+  const expenseTotal=draft.expenses.reduce((sum,row)=>sum+Math.max(0,Math.round(Number(row.amount||0)||0)),0);
+  const impliedNet=rentTotal-expenseTotal;
+  const netDeposit=Math.max(0,Math.round(Math.abs(Number(draft.netDeposit||0))));
+  const difference=impliedNet-netDeposit;
+  return {rentTotal,expenseTotal,impliedNet,netDeposit,difference,balanced:rentTotal>0&&Math.abs(difference)<=0};
+}
+
+export function canOfferPayoutSplit(transaction:{type?:string|null;amount?:number|null;category?:string|null;source?:string|null}|null|undefined){
+  if(!transaction)return false;
+  const amount=Number(transaction.amount||0);
+  if(!(amount>0||transaction.type==='income'))return false;
+  const category=String(transaction.category||'');
+  if(/mortgage|transfer|owner contribution|credit card/i.test(category))return false;
+  return true;
+}
+
+export function emptyRentShare(propertyId:string,amount=''):PayoutRentShare{
+  return {key:cryptoRandom(),property_id:propertyId,unit_id:'',amount};
+}
+
+export function emptyExpenseShare(propertyId:string,category='Management Fee'):PayoutExpenseShare{
+  return {key:cryptoRandom(),property_id:propertyId,category,description:'',amount:''};
+}
+
+export function buildPayoutSplitPayloads(input:{
+  userId:string;
+  parent:PayoutTransaction&{id:string;transaction_date:string;source?:string|null;payee_source?:string|null;description?:string|null;import_key?:string|null};
+  draft:PayoutSplitDraft;
+  netLabel:string;
+}){
+  const totals=payoutSplitTotals(input.draft);
+  if(!totals.balanced)throw new Error('Gross rents minus expenses must equal the bank deposit.');
+  const rents=input.draft.rents.filter(row=>row.property_id&&Math.round(Number(row.amount||0))>0);
+  const expenses=input.draft.expenses.filter(row=>row.property_id&&Math.round(Number(row.amount||0))>0);
+  if(!rents.length)throw new Error('Add at least one property rent share.');
+  const [primary,...rest]=rents;
+  const note=`Confirmed split from net deposit ${input.netLabel}.`;
+  const primaryUpdate={
+    type:'income' as const,
+    category:'Rent',
+    property_id:primary.property_id,
+    unit_id:primary.unit_id||null,
+    amount:Math.round(Number(primary.amount)),
+    description:input.parent.description||'Property management payout',
+    notes:note,
+    needs_review:false,
+    is_new_import:false,
+    import_acknowledged_at:new Date().toISOString(),
+  };
+  type SplitInsert={
+    user_id:string;
+    property_id:string;
+    unit_id:string|null;
+    transaction_date:string;
+    type:'income'|'expense';
+    category:string;
+    description:string;
+    payee_source:string|null;
+    amount:number;
+    notes:string;
+    source:string;
+    import_key:string;
+    status:'posted';
+    confirmed_at:string;
+    needs_review:boolean;
+    is_new_import:boolean;
+  };
+  const rentInserts:SplitInsert[]=rest.map((row,index)=>({
+    user_id:input.userId,
+    property_id:row.property_id,
+    unit_id:row.unit_id||null,
+    transaction_date:input.parent.transaction_date,
+    type:'income',
+    category:'Rent',
+    description:input.parent.description||'Property management payout',
+    payee_source:input.parent.payee_source||null,
+    amount:Math.round(Number(row.amount)),
+    notes:`${note} Linked to ${input.parent.id}.`,
+    source:input.parent.source||'plaid',
+    import_key:`payout-rent-split:${input.parent.id}:${index+1}`,
+    status:'posted',
+    confirmed_at:new Date().toISOString(),
+    needs_review:false,
+    is_new_import:false,
+  }));
+  const expenseInserts:SplitInsert[]=expenses.map((row,index)=>({
+    user_id:input.userId,
+    property_id:row.property_id,
+    unit_id:null,
+    transaction_date:input.parent.transaction_date,
+    type:'expense',
+    category:row.category,
+    description:(row.description||row.category).trim()||row.category,
+    payee_source:input.parent.payee_source||'Property manager',
+    amount:-Math.round(Number(row.amount)),
+    notes:`Deducted on ${input.parent.id}. ${note}`,
+    source:input.parent.source||'plaid',
+    import_key:`payout-expense-split:${input.parent.id}:${index+1}`,
+    status:'posted',
+    confirmed_at:new Date().toISOString(),
+    needs_review:false,
+    is_new_import:false,
+  }));
+  return {primaryUpdate,inserts:[...rentInserts,...expenseInserts],totals};
+}
+
+function cryptoRandom(){
+  if(typeof crypto!=='undefined'&&'randomUUID' in crypto)return crypto.randomUUID();
+  return `row-${Math.random().toString(36).slice(2,10)}`;
+}

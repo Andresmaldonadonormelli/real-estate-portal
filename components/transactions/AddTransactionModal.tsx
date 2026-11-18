@@ -6,13 +6,26 @@ import { supabase } from '@/lib/supabase';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { ACCOUNTING_CATEGORIES, categoryKey, categoryNeedsReview, transactionTypeForCategory } from '@/lib/accounting';
 import { mortgageBalanceAfterExtraPrincipal, postedExtraPrincipal, type PrincipalTransaction } from '@/lib/extraPrincipal';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import { ProductSelect } from '@/components/common/ProductControls';
 import { buildRuleDraftFromTransaction, canCreateRuleFrom, describeRuleAssignment, describeRuleMatch } from '@/lib/transactionRules';
+import {
+  buildPayoutSplitPayloads,
+  canOfferPayoutSplit,
+  emptyExpenseShare,
+  emptyRentShare,
+  payoutSplitTotals,
+  type PayoutExpenseShare,
+  type PayoutRentShare,
+} from '@/lib/managementPayout';
 
 type TxType = 'income' | 'expense' | 'transfer';
 type Doc = {id:string;title:string|null;file_name:string;category:string};
 type EditableTx = Transaction & {needs_review?:boolean|null;receipt_path?:string|null};
+
+const PAYOUT_EXPENSE_CATEGORIES = ACCOUNTING_CATEGORIES.filter(category =>
+  !['Needs Review','Uncategorized Inflow','Rent','Other Income','Refund','Owner Contribution','Owner Distribution','PM Distribution','Transfer','Loan Proceeds','Security Deposit','Credit Card Payment','Balance Forward'].includes(category)
+);
 
 export default function AddTransactionModal({ userId, properties, units, transaction, viewOnly=false, onClose, onSaved, onArchived, onArchiveFailed }:{
   userId:string; properties:Property[]; units:Unit[]; transaction?:EditableTx|null;
@@ -39,9 +52,15 @@ export default function AddTransactionModal({ userId, properties, units, transac
   const [showEditor,setShowEditor]=useState(!viewOnly);
   const [applyFutureMatches,setApplyFutureMatches]=useState(false);
   const [pendingCategory,setPendingCategory]=useState<string|null>(null);
+  const [splitPayout,setSplitPayout]=useState(false);
+  const [rentShares,setRentShares]=useState<PayoutRentShare[]>(()=>[emptyRentShare(transaction?.property_id||properties[0]?.id||'',transaction?String(Math.abs(Number(transaction.amount||0))):'')]);
+  const [expenseShares,setExpenseShares]=useState<PayoutExpenseShare[]>([]);
   const propertyUnits=useMemo(()=>units.filter(u=>u.property_id===form.property_id),[units,form.property_id]);
   const filteredDocs=useMemo(()=>documents.filter(d=>`${d.title||''} ${d.file_name} ${d.category}`.toLowerCase().includes(docSearch.toLowerCase())),[documents,docSearch]);
   const selectedProperty=useMemo(()=>properties.find(p=>p.id===form.property_id),[properties,form.property_id]);
+  const netDeposit=Math.abs(Number(transaction?.amount ?? (form.amount || 0)));
+  const payoutEligible=Boolean(editing&&canOfferPayoutSplit({type:form.type,amount:netDeposit,category:form.category,source:transaction?.source}));
+  const payoutTotals=useMemo(()=>payoutSplitTotals({netDeposit,rents:rentShares,expenses:expenseShares}),[netDeposit,rentShares,expenseShares]);
   const ruleCandidate=useMemo(()=>{
     const entered=Math.abs(Number(form.amount||0));
     const signed=transaction&&Number.isFinite(Number(transaction.amount))?Number(transaction.amount):form.type==='expense'?-entered:entered;
@@ -126,9 +145,39 @@ export default function AddTransactionModal({ userId, properties, units, transac
     if(result.error)throw result.error;
   }
 
+  function enablePayoutSplit(){
+    const first=properties.find(p=>p.id===form.property_id)||properties[0];
+    const second=properties.find(p=>p.id!==first?.id);
+    setSplitPayout(true);
+    setRentShares([
+      emptyRentShare(first?.id||'', ''),
+      ...(second?[emptyRentShare(second.id,'')]:[]),
+    ]);
+    setExpenseShares([emptyExpenseShare(first?.id||'')]);
+    setForm(current=>({...current,type:'income',category:'Rent',needs_review:false}));
+  }
+
   async function submit(e:FormEvent){
     e.preventDefault(); setSaving(true); setError('');
     try{
+      if(splitPayout&&editing&&transaction){
+        const {primaryUpdate,inserts}=buildPayoutSplitPayloads({
+          userId,
+          parent:transaction,
+          draft:{netDeposit,rents:rentShares,expenses:expenseShares},
+          netLabel:formatCurrency(netDeposit),
+        });
+        const updated=await supabase.from('transactions').update(primaryUpdate).eq('id',transaction.id).select('id').single();
+        if(updated.error)throw updated.error;
+        if(inserts.length){
+          const created=await supabase.from('transactions').upsert(inserts,{onConflict:'user_id,import_key',ignoreDuplicates:true});
+          if(created.error)throw created.error;
+        }
+        if(applyFutureMatches)await saveRuleFor('PM Distribution',transaction.id); // future deposits stay as PM Distribution for review/split
+        await onSaved(applyFutureMatches?'Payout split saved and rule created':'Payout split saved');
+        onClose();
+        return;
+      }
       let receiptPath=transaction?.receipt_path||null;
       if(receipt){const safe=receipt.name.replace(/[^a-zA-Z0-9._-]/g,'-');receiptPath=`${userId}/${crypto.randomUUID()}-${safe}`;const upload=await supabase.storage.from('transaction-receipts').upload(receiptPath,receipt,{upsert:false});if(upload.error)throw upload.error;}
       const entered=Math.abs(Number(form.amount||0));
@@ -205,13 +254,58 @@ export default function AddTransactionModal({ userId, properties, units, transac
       {error&&<div className="quick-add-error">{error}</div>}
       {editing&&!showEditor?<div className="transaction-detail-sheet"><div><span>Amount</span><strong className={transaction!.type==='income'?'amount-positive':'amount-negative'}>{formatCurrency(transaction!.amount)}</strong></div><div><span>Property</span><strong>{selectedProperty?.address||'Portfolio'}</strong></div>{transaction!.unit_id&&<div><span>Applies to</span><strong>{propertyUnits.find(unit=>unit.id===transaction!.unit_id)?.unit_number||'Unit'}</strong></div>}<div className="transaction-detail-category"><span>Category</span>{form.needs_review||pendingCategory?<ProductSelect className="needs-category" aria-label="Category" value={form.category} onChange={e=>chooseReviewCategory(e.target.value)} disabled={saving}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect>:<strong>{form.category}</strong>}</div>{pendingCategory&&canCreateRuleFrom({...ruleCandidate,category:pendingCategory})&&<div className="transaction-rule-panel"><label className="review-check"><input type="checkbox" checked={applyFutureMatches} onChange={e=>setApplyFutureMatches(e.target.checked)}/><span><strong>Apply to future matches</strong><small>Create a rule from this payee, direction, and bank account.</small></span></label>{applyFutureMatches&&ruleDraft&&<RulePreview match={describeRuleMatch(ruleDraft,rulePropertyName)} assignment={describeRuleAssignment(ruleDraft,rulePropertyName)}/>}</div>}{pendingCategory&&<div className="transaction-detail-actions"><button type="button" className="quick-add-submit" disabled={saving} onClick={()=>void resolveCategory()}>{saving?'Saving…':applyFutureMatches?'Save category & rule':'Save category'}</button></div>}<div><span>Date</span><strong>{new Date(`${form.transaction_date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</strong></div><div className="transaction-detail-actions"><button type="button" className="quick-add-submit" onClick={()=>setShowEditor(true)}>Edit transaction</button><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div></div>:<form onSubmit={submit} className="quick-add-form">
         {!editing&&<div className="transaction-type-choice" role="group" aria-label="Transaction type"><button type="button" className={form.type==='income'?'active':''} onClick={()=>setForm({...form,type:'income'})}>Income</button><button type="button" className={form.type==='expense'?'active':''} onClick={()=>setForm({...form,type:'expense'})}>Expense</button></div>}
-        <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></label>
-        <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
-        {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
-        <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const type=transactionTypeForCategory(category,form.type);setForm({...form,category,type,needs_review:categoryNeedsReview(category)});setApplyFutureMatches(false)}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
-        {showRuleOption&&<div className="transaction-rule-panel"><label className="review-check"><input type="checkbox" checked={applyFutureMatches} onChange={e=>setApplyFutureMatches(e.target.checked)}/><span><strong>Apply to future matches</strong><small>Create a rule from this payee, direction, and bank account. Amount and date can vary.</small></span></label>{applyFutureMatches&&ruleDraft&&<RulePreview match={describeRuleMatch(ruleDraft,rulePropertyName)} assignment={describeRuleAssignment(ruleDraft,rulePropertyName)}/>}</div>}
-        {editing&&<div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>}
-        {isMortgage&&<div className="mortgage-split-box">
+        <label className="transaction-amount-field">Amount<span aria-hidden="true">$</span><input autoFocus={!editing} required={!splitPayout} inputMode="decimal" type="number" min="0" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} disabled={splitPayout}/></label>
+        {!splitPayout&&<>
+          <div className="transaction-property-choice"><span>Property</span><div>{properties.map(p=><button type="button" key={p.id} className={form.property_id===p.id?'active':''} onClick={()=>{setForm({...form,property_id:p.id,unit_id:''});setLinkedDocumentIds([])}}>{p.address}</button>)}</div></div>
+          {propertyUnits.length>0&&<div className="unit-chip-field"><span>Applies to</span><div className="unit-chips"><button type="button" className={!form.unit_id?'active':''} onClick={()=>setForm({...form,unit_id:''})}>Property-wide</button>{propertyUnits.map(u=><button type="button" key={u.id} className={form.unit_id===u.id?'active':''} onClick={()=>setForm({...form,unit_id:u.id})}>{u.unit_number}</button>)}</div></div>}
+          <div className="quick-add-two"><ProductSelect className={editing&&form.needs_review?'needs-category':''} label="Category" value={form.category} onChange={e=>{const category=e.target.value;const type=transactionTypeForCategory(category,form.type);setForm({...form,category,type,needs_review:categoryNeedsReview(category)});setApplyFutureMatches(false)}}>{ACCOUNTING_CATEGORIES.map(c=><option key={c}>{c}</option>)}</ProductSelect><label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label></div>
+        </>}
+        {splitPayout&&<label>Date<input required type="date" value={form.transaction_date} onChange={e=>setForm({...form,transaction_date:e.target.value})}/></label>}
+        {payoutEligible&&!splitPayout&&<label className="review-check"><input type="checkbox" checked={false} onChange={e=>{if(e.target.checked)enablePayoutSplit();}}/><span><strong>Split across properties</strong><small>Use this when one bank deposit is net rent for multiple properties after expenses were already deducted.</small></span></label>}
+        {splitPayout&&<div className="mortgage-split-box payout-split-box">
+          <div className="mortgage-split-head">
+            <div>
+              <strong>Split net deposit</strong>
+              <small>Enter gross rent per property, then add the expenses already taken out. Gross rents − expenses must equal {formatCurrency(netDeposit)}.</small>
+            </div>
+            <div className="mortgage-split-head-actions">
+              <button type="button" className="mortgage-default-button" onClick={()=>setSplitPayout(false)}>Cancel split</button>
+              <span className={payoutTotals.balanced?'complete':''}>{formatCurrency(payoutTotals.impliedNet)} / {formatCurrency(netDeposit)}</span>
+            </div>
+          </div>
+          <div className="payout-split-section">
+            <div className="payout-split-section-head"><strong>Gross rent by property</strong><button type="button" onClick={()=>setRentShares(rows=>[...rows,emptyRentShare(properties.find(p=>!rows.some(row=>row.property_id===p.id))?.id||properties[0]?.id||'')])}>Add property</button></div>
+            {rentShares.map((row,index)=>{
+              const shareUnits=units.filter(unit=>unit.property_id===row.property_id);
+              return <div className="payout-split-row" key={row.key}>
+                <ProductSelect aria-label={`Rent property ${index+1}`} value={row.property_id} onChange={e=>setRentShares(rows=>rows.map(item=>item.key===row.key?{...item,property_id:e.target.value,unit_id:''}:item))}>{properties.map(p=><option key={p.id} value={p.id}>{shortPropertyName(p.address)}</option>)}</ProductSelect>
+                {shareUnits.length>0&&<ProductSelect aria-label={`Rent unit ${index+1}`} value={row.unit_id} onChange={e=>setRentShares(rows=>rows.map(item=>item.key===row.key?{...item,unit_id:e.target.value}:item))}><option value="">Property-wide</option>{shareUnits.map(unit=><option key={unit.id} value={unit.id}>{unit.unit_number}</option>)}</ProductSelect>}
+                <label className="payout-split-amount"><span>$</span><input inputMode="decimal" type="number" min="0" step="1" placeholder="Gross rent" value={row.amount} onChange={e=>setRentShares(rows=>rows.map(item=>item.key===row.key?{...item,amount:e.target.value}:item))}/></label>
+                {rentShares.length>1&&<button type="button" className="payout-split-remove" aria-label="Remove rent share" onClick={()=>setRentShares(rows=>rows.filter(item=>item.key!==row.key))}><X size={15}/></button>}
+              </div>;
+            })}
+          </div>
+          <div className="payout-split-section">
+            <div className="payout-split-section-head"><strong>Expenses already deducted</strong><button type="button" onClick={()=>setExpenseShares(rows=>[...rows,emptyExpenseShare(rentShares[0]?.property_id||properties[0]?.id||'')])}>Add expense</button></div>
+            {!expenseShares.length&&<small className="mortgage-split-note">Optional. Add repairs, management fees, or other amounts the manager withheld from this deposit.</small>}
+            {expenseShares.map((row,index)=><div className="payout-split-row payout-split-expense" key={row.key}>
+              <ProductSelect aria-label={`Expense property ${index+1}`} value={row.property_id} onChange={e=>setExpenseShares(rows=>rows.map(item=>item.key===row.key?{...item,property_id:e.target.value}:item))}>{properties.map(p=><option key={p.id} value={p.id}>{shortPropertyName(p.address)}</option>)}</ProductSelect>
+              <ProductSelect aria-label={`Expense category ${index+1}`} value={row.category} onChange={e=>setExpenseShares(rows=>rows.map(item=>item.key===row.key?{...item,category:e.target.value}:item))}>{PAYOUT_EXPENSE_CATEGORIES.map(category=><option key={category}>{category}</option>)}</ProductSelect>
+              <input aria-label={`Expense description ${index+1}`} placeholder="Description" value={row.description} onChange={e=>setExpenseShares(rows=>rows.map(item=>item.key===row.key?{...item,description:e.target.value}:item))}/>
+              <label className="payout-split-amount"><span>$</span><input inputMode="decimal" type="number" min="0" step="1" placeholder="Amount" value={row.amount} onChange={e=>setExpenseShares(rows=>rows.map(item=>item.key===row.key?{...item,amount:e.target.value}:item))}/></label>
+              <button type="button" className="payout-split-remove" aria-label="Remove expense" onClick={()=>setExpenseShares(rows=>rows.filter(item=>item.key!==row.key))}><X size={15}/></button>
+            </div>)}
+          </div>
+          <div className="payout-split-summary">
+            <span>Gross rent <b className="amount-positive">{formatCurrency(payoutTotals.rentTotal)}</b></span>
+            <span>Expenses <b className="amount-negative">{formatCurrency(payoutTotals.expenseTotal)}</b></span>
+            <span>Equals deposit <b>{formatCurrency(payoutTotals.impliedNet)}</b></span>
+          </div>
+          <small className={payoutTotals.balanced?'mortgage-split-ok':'mortgage-split-note'}>{payoutTotals.balanced?'Balanced. Saving will post rent to each property and the deducted expenses.':payoutTotals.difference>0?`Still ${formatCurrency(payoutTotals.difference)} above the bank deposit.`:`Still ${formatCurrency(Math.abs(payoutTotals.difference))} below the bank deposit.`}</small>
+        </div>}
+        {showRuleOption&&<div className="transaction-rule-panel"><label className="review-check"><input type="checkbox" checked={applyFutureMatches} onChange={e=>setApplyFutureMatches(e.target.checked)}/><span><strong>Apply to future matches</strong><small>{splitPayout?'Save a rule so future deposits from this payee are categorized as PM Distribution for review.':'Create a rule from this payee, direction, and bank account. Amount and date can vary.'}</small></span></label>{applyFutureMatches&&ruleDraft&&<RulePreview match={describeRuleMatch(ruleDraft,rulePropertyName)} assignment={describeRuleAssignment({assign_category:splitPayout?'PM Distribution':ruleDraft.assign_category,assign_property_id:splitPayout?null:ruleDraft.assign_property_id},splitPayout?null:rulePropertyName)}/>}</div>}
+        {editing&&!splitPayout&&<div className="quick-add-two"><ProductSelect label="Type" value={form.type} onChange={e=>setForm({...form,type:e.target.value as TxType})}><option value="income">Income</option><option value="expense">Expense</option><option value="transfer">Transfer</option></ProductSelect></div>}
+        {isMortgage&&!splitPayout&&<div className="mortgage-split-box">
           <div className="mortgage-split-head"><div><strong>Split mortgage payment</strong><small>{propertyDefaultAvailable?'Uses the property mortgage setup by default. Adjust only if this month differs.':'Allocate this payment between principal, interest and escrow.'}</small></div><div className="mortgage-split-head-actions">{propertyDefaultAvailable&&<button type="button" className="mortgage-default-button" onClick={applyMortgageDefault}>Use mortgage default</button>}<span className={mortgageSplitComplete?'complete':''}>{formatCurrency(mortgageAllocated)} / {formatCurrency(mortgageAmount)}</span></div></div>
           <div className="mortgage-split-fields">
             <label>Principal<input inputMode="decimal" type="number" min="0" step="0.01" value={mortgageSplit.principal} onChange={e=>setMortgageSplit({...mortgageSplit,principal:e.target.value})}/></label>
@@ -232,7 +326,7 @@ export default function AddTransactionModal({ userId, properties, units, transac
           </div>
           <label className="review-check"><input type="checkbox" checked={form.needs_review} onChange={e=>setForm({...form,needs_review:e.target.checked})}/><span><strong>Needs review</strong><small>Turn this on only when you want this transaction to return to the review queue.</small></span></label>
         </div>}
-        <div className="quick-add-footer">{editing&&<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div>}<button className="quick-add-submit" disabled={saving||!properties.length}>{saving?'Saving…':editing?'Update':'Post'}</button></div>
+        <div className="quick-add-footer">{editing&&<div className="quick-add-destructive-actions"><button type="button" className="transaction-archive-button" disabled={saving} onClick={archive}>Delete transaction</button></div>}<button className="quick-add-submit" disabled={saving||!properties.length||(splitPayout&&!payoutTotals.balanced)}>{saving?'Saving…':splitPayout?'Save split':editing?'Update':'Post'}</button></div>
       </form>}
     </div>
   </div>;
