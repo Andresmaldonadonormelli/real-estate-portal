@@ -7,7 +7,6 @@ import { PanelLeft, Settings } from 'lucide-react';
 import OverviewIcon from '@/components/layout/OverviewIcon';
 import PropertiesIcon from '@/components/layout/PropertiesIcon';
 import TransactionsIcon from '@/components/layout/TransactionsIcon';
-import RotatingMascot from '@/components/layout/RotatingMascot';
 import { shortPropertyName } from '@/lib/formatters';
 import { iconSize } from '@/lib/iconSizes';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
@@ -53,8 +52,8 @@ export default function SideNav() {
 
   return <nav className={`side-nav${collapsed ? ' is-collapsed' : ''}`} aria-label="Primary">
     <div className="side-nav-brand">
-      <RotatingMascot embedded />
-      <strong>Portfolio</strong>
+      <img className="side-nav-brand-mark" src="/brand-mark.png" alt="" width={28} height={28} draggable={false} />
+      <img className="side-nav-brand-logo" src="/brand-logo.png" srcSet="/brand-logo.png 1x, /brand-logo@2x.png 2x" alt="AM Properties" width={104} height={28} draggable={false} />
     </div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}><OverviewIcon active={pathname === '/'} size={iconSize.nav} /><span className="nav-label">Overview</span></Link>

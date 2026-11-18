@@ -92,7 +92,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg-primary)' }}>
         <div className="card" style={{ width: '100%', maxWidth: 420, padding: 28 }}>
-          <div style={{ fontSize:'var(--type-compact-size)', color: 'var(--text-secondary)', marginBottom: 8 }}>RE Portal</div>
+          <img src="/brand-logo.png" srcSet="/brand-logo.png 1x, /brand-logo@2x.png 2x" alt="AM Properties" width={104} height={28} style={{ display: 'block', height: 28, width: 'auto', marginBottom: 18 }} />
           <h1 style={{ fontSize:'var(--type-page-title-size)', marginBottom: 8, fontWeight:'var(--weight-semibold)' }}>
             {mode === 'signin' ? 'Sign in' : 'Create account'}
           </h1>

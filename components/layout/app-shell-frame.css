@@ -62,12 +62,15 @@ body {
     min-height: 56px;
     padding: var(--space-3) var(--space-2) var(--space-4);
   }
-  .app-shell .side-nav-brand strong {
-    color: var(--text-primary);
-    font-size: var(--type-card-title-size);
-    line-height: var(--type-card-title-line);
-    font-weight: var(--weight-semibold);
-    letter-spacing: -0.02em;
+  .app-shell .side-nav-brand-logo {
+    display: block;
+    width: auto;
+    height: 22px;
+  }
+  .app-shell .side-nav-brand-mark {
+    display: none;
+    width: 28px;
+    height: 28px;
   }
   .side-nav-mascot,
   .side-nav-mascot img {
@@ -182,6 +185,12 @@ body {
   .app-shell .side-nav.is-collapsed .side-nav-brand {
     gap: 0;
     justify-content: center;
+  }
+  .app-shell .side-nav.is-collapsed .side-nav-brand-logo {
+    display: none;
+  }
+  .app-shell .side-nav.is-collapsed .side-nav-brand-mark {
+    display: block;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand strong,
   .app-shell .side-nav.is-collapsed .nav-label {
