@@ -279,7 +279,7 @@
 .property-edit-bar{position:fixed;z-index:20;right:0;bottom:0;left:228px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-4) var(--space-8);border-top:1px solid var(--border-color);background:var(--theme-page)}
 .property-edit-bar>div{display:flex;align-items:center;gap:var(--space-3)}
 .property-edit-delete{min-height:44px;padding:0;border:0;background:transparent;color:var(--negative);font:var(--font-button);cursor:pointer}
-.property-secondary-action{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--type-compact-size);font-weight:var(--weight-semibold);text-decoration:none;cursor:pointer}
+.property-secondary-action{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid var(--border-color);border-radius:var(--radius-pill);background:var(--bg-secondary);color:var(--text-primary);font-size:var(--type-compact-size);font-weight:var(--weight-semibold);text-decoration:none;cursor:pointer}
 .property-workspace:not(.property-edit-page) .property-module-note,
 .property-workspace:not(.property-edit-page) .property-module tbody td,
 .property-workspace:not(.property-edit-page) .property-module tfoot th,
