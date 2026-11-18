@@ -1,0 +1,16 @@
+# Dependencies
+/node_modules
+
+# Next.js build output
+/.next
+/out
+
+# Local env files (generated for local Supabase; see .cursor/env.local.example)
+.env.local
+.env*.local
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
