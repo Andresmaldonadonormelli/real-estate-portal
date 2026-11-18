@@ -54,7 +54,7 @@ export default function SideNav() {
   return <nav className={`side-nav${collapsed ? ' is-collapsed' : ''}`} aria-label="Primary">
     <div className="side-nav-brand">
       <BrandLogo variant="mark" className="side-nav-brand-mark" height={28} />
-      <BrandLogo variant="wordmark" className="side-nav-brand-logo" height={24} />
+      <BrandLogo variant="wordmark" className="side-nav-brand-logo" height={22} />
     </div>
     <div className="side-nav-scroll">
       <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}><OverviewIcon active={pathname === '/'} size={iconSize.nav} /><span className="nav-label">Overview</span></Link>

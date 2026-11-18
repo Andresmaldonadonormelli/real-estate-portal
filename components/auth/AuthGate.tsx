@@ -93,7 +93,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg-primary)' }}>
         <div className="card" style={{ width: '100%', maxWidth: 420, padding: 28 }}>
-          <BrandLogo variant="wordmark" className="auth-brand-logo" height={32} />
+          <BrandLogo variant="wordmark" className="auth-brand-logo" height={28} />
           <h1 style={{ fontSize:'var(--type-page-title-size)', marginBottom: 8, fontWeight:'var(--weight-semibold)' }}>
             {mode === 'signin' ? 'Sign in' : 'Create account'}
           </h1>

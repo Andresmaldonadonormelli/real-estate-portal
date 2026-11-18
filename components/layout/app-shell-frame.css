@@ -5,40 +5,29 @@ body {
 }
 
 .brand-logo {
-  display: inline-grid;
-  place-items: center start;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
   line-height: 0;
+  overflow: hidden;
+  vertical-align: middle;
 }
-.brand-logo img {
+.brand-logo > .brand-logo-asset {
   display: block;
-  grid-area: 1 / 1;
-  width: auto;
-  height: 100%;
+  object-fit: contain;
   max-width: none;
 }
-.brand-logo-wordmark {
-  height: 24px;
-}
-.brand-logo-mark {
-  width: 28px;
-  height: 28px;
-}
-.brand-logo-mark img {
-  width: 100%;
-  height: 100%;
-}
-.brand-logo-dark {
+/* Theme swap — these selectors must stay more specific than .brand-logo > .brand-logo-asset. */
+.brand-logo > .brand-logo-dark {
   display: none;
 }
-[data-theme="dark"] .brand-logo-light {
+html[data-theme="dark"] .brand-logo > .brand-logo-light {
   display: none;
 }
-[data-theme="dark"] .brand-logo-dark {
+html[data-theme="dark"] .brand-logo > .brand-logo-dark {
   display: block;
 }
 .auth-brand-logo {
-  display: inline-grid;
-  height: 32px;
   margin-bottom: 18px;
 }
 
@@ -102,13 +91,11 @@ body {
     padding: var(--space-3) var(--space-2) var(--space-4);
   }
   .app-shell .side-nav-brand-logo {
-    display: inline-grid;
-    height: 24px;
+    display: inline-block;
+    max-width: 168px;
   }
   .app-shell .side-nav-brand-mark {
     display: none;
-    width: 28px;
-    height: 28px;
   }
   .side-nav-mascot,
   .side-nav-mascot img {
@@ -228,7 +215,7 @@ body {
     display: none;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand-mark {
-    display: inline-grid;
+    display: inline-block;
   }
   .app-shell .side-nav.is-collapsed .side-nav-brand strong,
   .app-shell .side-nav.is-collapsed .nav-label {
