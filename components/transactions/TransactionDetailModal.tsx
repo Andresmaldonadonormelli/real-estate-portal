@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthContext';
 import type { Property, Transaction, Unit } from '@/lib/types';
 import { formatCurrency, shortPropertyName } from '@/lib/formatters';
+import { isTransferTransaction, isUncategorized } from '@/lib/accounting';
 import { buildPayoutBreakdown, estimatePayoutSplit } from '@/lib/managementPayout';
 
 type EditableTx = Transaction & { needs_review?: boolean | null };
@@ -53,7 +54,7 @@ export default function TransactionDetailModal({ transaction, properties, units,
   const property = properties.find((item) => item.id === current.property_id);
   const unit = units.find((item) => item.id === current.unit_id);
   const payout = useMemo(() => buildPayoutBreakdown(current, property?.management_fee_percent, transactions), [current, property?.management_fee_percent, transactions]);
-  const needsReview = Boolean(current.needs_review) || /needs review|uncategor/i.test(current.category || '');
+  const needsReview = isUncategorized(current.category) || (Boolean(current.needs_review) && !isTransferTransaction(current));
   const statusKey = current.status === 'pending' ? 'pending' : needsReview || (payout && !payout.confirmed) ? 'review' : 'confirmed';
   const status = statusKey === 'pending' ? 'Pending' : statusKey === 'review' ? 'Needs review' : 'Confirmed';
   const imported = current.source === 'plaid';

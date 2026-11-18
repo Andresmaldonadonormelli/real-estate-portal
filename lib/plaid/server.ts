@@ -26,4 +26,27 @@ function encryptionKey(){return crypto.createHash('sha256').update(required('PLA
 export function encryptToken(value:string){const iv=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',encryptionKey(),iv);const encrypted=Buffer.concat([cipher.update(value,'utf8'),cipher.final()]);return `${iv.toString('base64')}.${cipher.getAuthTag().toString('base64')}.${encrypted.toString('base64')}`;}
 export function decryptToken(value:string){const [iv,tag,data]=value.split('.');const decipher=crypto.createDecipheriv('aes-256-gcm',encryptionKey(),Buffer.from(iv,'base64'));decipher.setAuthTag(Buffer.from(tag,'base64'));return Buffer.concat([decipher.update(Buffer.from(data,'base64')),decipher.final()]).toString('utf8');}
 
-export function apiError(error:unknown){const message=error instanceof Error?error.message:'Unexpected server error.';return Response.json({error:message},{status:message==='Unauthorized'?401:500});}
+type PlaidErrorBody={error_code?:string;error_type?:string;error_message?:string;display_message?:string|null;request_id?:string};
+
+/** Plaid SDK errors are axios errors whose own message is only "Request failed with status code 400". */
+export function plaidErrorDetails(error:unknown){
+  const response=(error as {response?:{status?:number;data?:PlaidErrorBody}})?.response;
+  const body=response?.data;
+  if(!body?.error_code)return null;
+  return {status:response?.status||400,code:body.error_code,type:body.error_type||'',message:body.display_message||body.error_message||'The bank returned an error.',requestId:body.request_id||''};
+}
+
+export function errorMessage(error:unknown){
+  const plaid=plaidErrorDetails(error);
+  if(plaid)return `${plaid.message} (${plaid.code})`;
+  if(error instanceof Error)return error.message;
+  if(error&&typeof error==='object'&&'message'in error&&typeof error.message==='string')return error.message;
+  return 'Unexpected server error.';
+}
+
+export function apiError(error:unknown){
+  const plaid=plaidErrorDetails(error);
+  const message=errorMessage(error);
+  if(message!=='Unauthorized')console.error('[plaid api]',plaid?{status:plaid.status,code:plaid.code,type:plaid.type,requestId:plaid.requestId,message:plaid.message}:message);
+  return Response.json({error:message,code:plaid?.code||null},{status:message==='Unauthorized'?401:plaid?502:500});
+}
