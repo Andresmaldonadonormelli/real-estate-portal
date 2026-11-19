@@ -46,7 +46,6 @@ export function DailyBrief({ brief }: { brief: OverviewBrief }) {
 function InsightCard({ update, hidden, paged, atStart, atEnd, onPrevious, onNext }: { update: BriefUpdate; hidden: boolean; paged: boolean; atStart: boolean; atEnd: boolean; onPrevious: () => void; onNext: () => void }) {
   const tone = update.tone === 'positive' ? 'amount-positive' : update.tone === 'negative' ? 'amount-negative' : undefined;
   const Mark = update.tone === 'negative' ? ArrowDown : ArrowUp;
-  const actionLabel = update.tone === 'negative' ? 'Review' : 'Open';
   return (
     <article className="insight-card" data-tone={update.tone} data-hidden={hidden ? 'true' : undefined}>
       <span className={tone ? `insight-mark ${tone}` : 'insight-mark'} aria-hidden="true"><Mark size={16} /></span>
@@ -55,7 +54,7 @@ function InsightCard({ update, hidden, paged, atStart, atEnd, onPrevious, onNext
         <strong className={tone}>{update.title}</strong>
         {update.context ? <small>{update.context}</small> : null}
       </div>
-      <Link href="/notifications" className="insight-action">{actionLabel}</Link>
+      <Link href="/reports" className="insight-action">See more</Link>
       {paged ? <div className="insight-nav">
         <button type="button" aria-label="Previous insight" disabled={atStart} onClick={onPrevious}><ChevronLeft size={16} aria-hidden="true" /></button>
         <button type="button" aria-label="Next insight" disabled={atEnd} onClick={onNext}><ChevronRight size={16} aria-hidden="true" /></button>

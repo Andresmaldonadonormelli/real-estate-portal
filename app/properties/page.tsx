@@ -15,8 +15,6 @@ import { cachedSupabaseRequest, historyStart, invalidateSupabaseCache, PROPERTY_
 import { PageHeader } from '@/components/common/ProductControls';
 import { PropertiesList, type PortfolioDocument } from '@/components/property/PortfolioLists';
 
-type DirectoryView = 'cards' | 'table';
-
 const emptyProperty = {
   address: '', city: '', state: 'OH', zip: '', property_type: 'duplex',
   mortgage_balance: '', mortgage_interest_rate: '', purchase_price: '', purchase_date: '', monthly_mortgage_payment: '', mortgage_start_date: '', management_fee_percent: '8', mortgage_recurring_enabled: false,
@@ -34,7 +32,6 @@ export default function PropertiesPage() {
   const [units, setUnits] = useState<PortfolioUnit[]>([]);
   const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
   const [documents, setDocuments] = useState<PortfolioDocument[]>([]);
-  const [view, setView] = useState<DirectoryView>('cards');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPropertyForm, setShowPropertyForm] = useState(false);
@@ -80,15 +77,6 @@ export default function PropertiesPage() {
   }
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => {
-    const saved = window.localStorage.getItem('properties-directory-view');
-    if (saved === 'cards' || saved === 'table') setView(saved);
-  }, []);
-
-  function chooseView(next: DirectoryView) {
-    setView(next);
-    window.localStorage.setItem('properties-directory-view', next);
-  }
 
   useEffect(() => {
     if (searchParams.get('add') !== '1') return;
@@ -238,15 +226,7 @@ export default function PropertiesPage() {
           <button onClick={startAddProperty} className="workspace-primary-button">Add property</button>
         </div>
       ) : (
-        <>
-          <div className="property-directory-toolbar">
-            <div className="property-chart-pills" role="group" aria-label="Property view">
-              <button type="button" className={view === 'cards' ? 'active' : ''} aria-pressed={view === 'cards'} onClick={() => chooseView('cards')}>Cards</button>
-              <button type="button" className={view === 'table' ? 'active' : ''} aria-pressed={view === 'table'} onClick={() => chooseView('table')}>Table</button>
-            </div>
-          </div>
-          <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} view={view} />
-        </>
+        <PropertiesList properties={properties} unitsByProperty={unitsByProperty} transactions={transactions} view="cards" />
       )}
 
       {showPropertyForm && (

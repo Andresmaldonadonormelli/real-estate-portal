@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Banknote, Building2, ChevronDown, FileText, Plus, Receipt } from 'lucide-react';
+import { Banknote, Building2, Check, ChevronDown, FileText, Home, Plus, Receipt, Settings } from 'lucide-react';
 import NotificationBell from '@/components/dashboard/NotificationBell';
-import { ProductSelect } from '@/components/common/ProductControls';
 import { shortPropertyName } from '@/lib/formatters';
 import { cachedSupabaseRequest, PROPERTY_FIELDS } from '@/lib/supabaseData';
 import { supabase } from '@/lib/supabase';
@@ -18,7 +18,12 @@ export default function PortfolioIdentity() {
   const { propertyId, setPropertyId } = usePortfolioScope();
   const [properties, setProperties] = useState<HeaderProperty[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
   const addRef = useRef<HTMLDivElement | null>(null);
+  const scopeRef = useRef<HTMLDivElement | null>(null);
+  const selectedLabel = propertyId
+    ? shortPropertyName(properties.find(property => property.id === propertyId)?.address || 'Property')
+    : 'All properties';
 
   useEffect(() => {
     let active = true;
@@ -27,7 +32,7 @@ export default function PortfolioIdentity() {
         const result = await cachedSupabaseRequest('shared:properties', async () => await supabase.from('properties').select(PROPERTY_FIELDS).is('archived_at', null).order('address'));
         if (!active || result.error) return;
         setProperties((result.data || []) as HeaderProperty[]);
-      } catch { /* The select still offers the whole portfolio. */ }
+      } catch { /* The menu still offers the whole portfolio. */ }
     }
     void load();
     const refresh = () => { void load(); };
@@ -39,20 +44,33 @@ export default function PortfolioIdentity() {
   }, []);
 
   useEffect(() => {
-    if (!addOpen) return;
-    const close = (event: PointerEvent) => { if (!addRef.current?.contains(event.target as Node)) setAddOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setAddOpen(false); };
+    if (!addOpen && !scopeOpen) return;
+    const close = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (addOpen && !addRef.current?.contains(target)) setAddOpen(false);
+      if (scopeOpen && !scopeRef.current?.contains(target)) setScopeOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setAddOpen(false);
+      setScopeOpen(false);
+    };
     document.addEventListener('pointerdown', close);
     document.addEventListener('keydown', escape);
     return () => {
       document.removeEventListener('pointerdown', close);
       document.removeEventListener('keydown', escape);
     };
-  }, [addOpen]);
+  }, [addOpen, scopeOpen]);
 
   function go(href: string) {
     setAddOpen(false);
     router.push(href);
+  }
+
+  function chooseProperty(id: string) {
+    setPropertyId(id);
+    setScopeOpen(false);
   }
 
   return <header className="portfolio-identity">
@@ -61,9 +79,38 @@ export default function PortfolioIdentity() {
       <p>As of {asOf}</p>
     </div>
     <div className="portfolio-identity-actions">
+      <div className="portfolio-scope-menu" ref={scopeRef}>
+        <button
+          type="button"
+          className="portfolio-icon-button"
+          aria-label={`Property filter, ${selectedLabel}`}
+          aria-expanded={scopeOpen}
+          aria-haspopup="menu"
+          data-active={propertyId ? 'true' : undefined}
+          onClick={() => { setScopeOpen(open => !open); setAddOpen(false); }}
+        >
+          <Home size={18} />
+        </button>
+        {scopeOpen && <div className="portfolio-scope-options" role="menu" aria-label="Choose property">
+          <button type="button" role="menuitemradio" aria-checked={!propertyId} data-selected={!propertyId ? 'true' : undefined} onClick={() => chooseProperty('')}>
+            <span>All properties</span>
+            {!propertyId ? <Check size={16} aria-hidden="true" /> : null}
+          </button>
+          {properties.map(property => {
+            const selected = propertyId === property.id;
+            return <button key={property.id} type="button" role="menuitemradio" aria-checked={selected} data-selected={selected ? 'true' : undefined} onClick={() => chooseProperty(property.id)}>
+              <span>{shortPropertyName(property.address)}</span>
+              {selected ? <Check size={16} aria-hidden="true" /> : null}
+            </button>;
+          })}
+        </div>}
+      </div>
       <NotificationBell />
+      <Link href="/account" className="portfolio-icon-button" aria-label="Settings">
+        <Settings size={18} />
+      </Link>
       <div className="pulse-add-menu" ref={addRef}>
-        <button type="button" className="pulse-add-button" aria-expanded={addOpen} aria-haspopup="menu" onClick={() => setAddOpen(open => !open)}><Plus size={18} /><span>Add</span><ChevronDown size={16} aria-hidden="true" /></button>
+        <button type="button" className="pulse-add-button" aria-expanded={addOpen} aria-haspopup="menu" onClick={() => { setAddOpen(open => !open); setScopeOpen(false); }}><Plus size={18} /><span>Add</span><ChevronDown size={16} aria-hidden="true" /></button>
         {addOpen && <div className="pulse-add-options" role="menu">
           <button type="button" onClick={() => go('/ledger?add=1')}><Banknote size={17} />Record rent</button>
           <button type="button" onClick={() => go('/ledger?add=1')}><Receipt size={17} />Add transaction</button>
@@ -71,12 +118,6 @@ export default function PortfolioIdentity() {
           <button type="button" onClick={() => go('/ledger?tab=documents&upload=1')}><FileText size={17} />Upload document</button>
         </div>}
       </div>
-    </div>
-    <div className="portfolio-identity-tools">
-      <ProductSelect aria-label="Property" value={propertyId} onChange={event => setPropertyId(event.target.value)}>
-        <option value="">All properties</option>
-        {properties.map(property => <option key={property.id} value={property.id}>{shortPropertyName(property.address)}</option>)}
-      </ProductSelect>
     </div>
   </header>;
 }

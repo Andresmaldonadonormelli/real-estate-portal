@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PanelLeft, Settings } from 'lucide-react';
+import { FileChartColumn, Landmark, PanelLeft, Settings } from 'lucide-react';
 import BrandLogo from '@/components/layout/BrandLogo';
 import OverviewIcon from '@/components/layout/OverviewIcon';
 import PropertiesIcon from '@/components/layout/PropertiesIcon';
@@ -57,9 +57,11 @@ export default function SideNav() {
       <BrandLogo variant="wordmark" className="side-nav-brand-logo" height={22} />
     </div>
     <div className="side-nav-scroll">
-      <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}><OverviewIcon active={pathname === '/'} size={iconSize.nav} /><span className="nav-label">Overview</span></Link>
+      <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}><OverviewIcon active={pathname === '/'} size={iconSize.nav} /><span className="nav-label">Dashboard</span></Link>
       <Link href="/ledger" className={`nav-link ${pathname.startsWith('/ledger') || pathname.startsWith('/actions') ? 'active' : ''}`}><TransactionsIcon active={pathname.startsWith('/ledger') || pathname.startsWith('/actions')} size={iconSize.nav} /><span className="nav-label">Transactions</span></Link>
       <Link href="/properties" className={`nav-link nav-directory ${pathname === '/properties' ? 'active' : ''}`}><PropertiesIcon active={pathname === '/properties'} size={iconSize.nav} /><span className="nav-label">Properties</span></Link>
+      <Link href="/reports" className={`nav-link ${pathname.startsWith('/reports') ? 'active' : ''}`}><FileChartColumn size={iconSize.nav} strokeWidth={1.75} /><span className="nav-label">Reports</span></Link>
+      <Link href="/taxes" className={`nav-link ${pathname.startsWith('/taxes') ? 'active' : ''}`}><Landmark size={iconSize.nav} strokeWidth={1.75} /><span className="nav-label">Taxes</span></Link>
       {properties.length > 0 && <p className="nav-subheader">Properties</p>}
       {properties.map(property => {
         const href = `/properties/${property.id}`;

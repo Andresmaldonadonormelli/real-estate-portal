@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Ellipsis } from 'lucide-react';
+import { FileChartColumn, Landmark } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import OverviewIcon from '@/components/layout/OverviewIcon';
@@ -17,11 +17,12 @@ export default function BottomNav() {
   useEffect(() => setMounted(true), []);
 
   const items = [
-    { href: '/', label: 'Overview', kind: 'overview' as const },
+    { href: '/', label: 'Dashboard', kind: 'dashboard' as const },
     { href: '/properties', label: 'Properties', kind: 'properties' as const },
     { href: '/ledger', label: 'Transactions', kind: 'transactions' as const },
+    { href: '/reports', label: 'Reports', kind: 'reports' as const },
+    { href: '/taxes', label: 'Taxes', kind: 'taxes' as const },
   ];
-  const moreActive = pathname.startsWith('/account') || pathname.startsWith('/archive') || pathname.startsWith('/utilities');
 
   if (!mounted) return null;
 
@@ -31,15 +32,11 @@ export default function BottomNav() {
         const active = pathname === href || pathname.startsWith(`${href}/`) || (href === '/ledger' && pathname.startsWith('/actions'));
         return (
           <Link key={href} href={href} className={`bottom-nav-link ${active ? 'active' : ''}`}>
-            {kind === 'overview' ? <OverviewIcon active={active} size={iconSize.navMobile} /> : kind === 'properties' ? <PropertiesIcon active={active} size={iconSize.navMobile} /> : <TransactionsIcon active={active} size={iconSize.navMobile} />}
+            {kind === 'dashboard' ? <OverviewIcon active={active} size={iconSize.nav} /> : kind === 'properties' ? <PropertiesIcon active={active} size={iconSize.nav} /> : kind === 'transactions' ? <TransactionsIcon active={active} size={iconSize.nav} /> : kind === 'reports' ? <FileChartColumn size={iconSize.nav} strokeWidth={1.75} /> : <Landmark size={iconSize.nav} strokeWidth={1.75} />}
             <span>{label}</span>
           </Link>
         );
       })}
-      <Link href="/account" className={`bottom-nav-link ${moreActive ? 'active' : ''}`}>
-        <Ellipsis size={iconSize.navMobile} strokeWidth={1.75} fill={moreActive ? 'currentColor' : 'none'} />
-        <span>More</span>
-      </Link>
     </nav>,
     document.body
   );

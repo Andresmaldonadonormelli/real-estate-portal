@@ -194,7 +194,7 @@
   .insight-nav{display:none}
   .insight-scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:var(--space-3)}
   .insight-scroller::-webkit-scrollbar{display:none}
-  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 100%;min-height:64px;padding:10px 12px 10px 14px;scroll-snap-align:start;background:var(--surface-subtle)}
+  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 100%;min-height:64px;padding:10px 12px 10px 14px;scroll-snap-align:start;background:var(--theme-card)}
   .insight-action{min-height:40px;padding:0 var(--space-4);border-radius:var(--radius-pill)}
   .landing-table-head{display:none}
   .landing-property,.landing-totals{grid-template-columns:1fr 1fr}

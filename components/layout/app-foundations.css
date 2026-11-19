@@ -4,9 +4,9 @@
 
 .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border-color); background: var(--bg-secondary); z-index: 50; }
 
-.bottom-nav-link { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); padding: 7px var(--space-2); font-size: var(--type-label-size); line-height: var(--type-label-line); color: var(--text-secondary); text-decoration: none; flex: 1; background: none; border: 0; }
+.bottom-nav-link { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 6px; font-size: var(--type-label-size); line-height: 1.1; color: var(--text-secondary); text-decoration: none; flex: 1; background: none; border: 0; }
 
-.bottom-nav-link.active { color: var(--nav-active-text); background: var(--nav-active-bg); border-radius:var(--radius-control); margin: 5px 3px; }
+.bottom-nav-link.active { color: var(--nav-active-text); background: var(--nav-active-bg); border-radius:var(--radius-control); margin: 3px 2px; }
 
 .skeleton-block {
   display: block;
@@ -120,7 +120,7 @@
 
 @media (max-width: 767px) {
   .bottom-nav { height:var(--bar-height); }
-  .bottom-nav-link.active { margin:7px 5px; border-radius:var(--radius-control); }
+  .bottom-nav-link.active { margin:3px 2px; border-radius:var(--radius-control); }
 }
 
 .nav-link.active,.bottom-nav-link.active{background:var(--nav-active-bg)!important;color:var(--nav-active-text)!important;}
@@ -139,9 +139,9 @@
 
 
 /* Safe-area mobile nav */
-.bottom-nav{height:auto!important;min-height:var(--bar-height);padding-bottom:max(10px,env(safe-area-inset-bottom));}
+.bottom-nav{height:auto!important;min-height:var(--bar-height);padding-top:2px;padding-bottom:max(6px,env(safe-area-inset-bottom));}
 
-.main-content{padding-bottom:calc(82px + env(safe-area-inset-bottom));}
+.main-content{padding-bottom:calc(68px + env(safe-area-inset-bottom));}
 
 
 /* Dark mode: force semantic text variables back through all primary workspaces. */
@@ -180,12 +180,13 @@
     z-index:1000!important;
     transform:none!important;
     translate:none!important;
-    padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+    padding-top:2px!important;
+    padding-bottom:max(6px,env(safe-area-inset-bottom))!important;
     background:var(--bg-secondary)!important;
   }
 
   .main-content{
-    padding-bottom:calc(88px + env(safe-area-inset-bottom))!important;
+    padding-bottom:calc(68px + env(safe-area-inset-bottom))!important;
   }
 
   /* 2. Month labels should read as chart labels, not annotations. */

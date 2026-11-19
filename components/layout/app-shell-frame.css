@@ -273,32 +273,82 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
 }
 
 .portfolio-identity {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas: "copy tools actions";
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3) var(--space-4);
 }
 .portfolio-identity-copy {
-  grid-area: copy;
   min-width: 0;
 }
 .portfolio-identity-actions {
-  grid-area: actions;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
 }
-.portfolio-identity-tools {
-  grid-area: tools;
-  display: flex;
+.portfolio-icon-button,
+a.portfolio-icon-button {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  min-width: 0;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-control-compact);
+  background: var(--theme-card);
+  color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
 }
-.portfolio-identity-tools .product-select { width: 200px; min-width: 0; }
+.portfolio-icon-button[data-active='true'] {
+  border-color: var(--text-primary);
+  background: var(--surface-subtle);
+}
+.portfolio-scope-menu,
+.pulse-add-menu {
+  position: relative;
+}
+.portfolio-scope-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 40;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - var(--space-8)));
+  padding: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  background: var(--theme-card);
+  box-shadow: var(--shadow-popover);
+}
+.portfolio-scope-options button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+}
+.portfolio-scope-options button[data-selected='true'] {
+  background: var(--surface-subtle);
+}
+@media (hover: hover) and (pointer: fine) {
+  .portfolio-scope-options button:hover {
+    background: var(--theme-surface-hover);
+  }
+}
 .portfolio-identity strong {
   display: block;
   color: var(--text-primary);
@@ -315,13 +365,7 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
 }
 @media (max-width: 767px) {
   .portfolio-identity {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "copy actions"
-      "tools tools";
     align-items: start;
-    row-gap: var(--space-3);
-    column-gap: var(--space-2);
     padding: var(--space-4) var(--space-4) var(--space-3);
   }
   .portfolio-identity-actions {
@@ -329,6 +373,8 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
     margin-top: 0;
     min-height: var(--type-card-title-line);
   }
+  .portfolio-identity-actions .portfolio-icon-button,
+  .portfolio-identity-actions a.portfolio-icon-button,
   .portfolio-identity-actions .dashboard-bell {
     width: 44px;
     height: 44px;
@@ -341,8 +387,6 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
   }
   .portfolio-identity-actions .pulse-add-button span,
   .portfolio-identity-actions .pulse-add-button svg:last-child { display: none; }
-  .portfolio-identity-tools { width: 100%; }
-  .portfolio-identity-tools .product-select { flex: 1 1 auto; width: 100%; min-width: 0; max-width: none; }
   .app-frame {
     min-height: 100vh;
     padding: 0;
