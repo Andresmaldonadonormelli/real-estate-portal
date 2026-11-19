@@ -6,7 +6,7 @@ import PageSkeleton from '@/components/common/PageSkeleton';
 import { useAuth } from '@/components/auth/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { calculatePortfolioStats, calculateMonthlyTotals } from '@/lib/calculations';
-import { formatCurrency, propertyChipName, shortPropertyName } from '@/lib/formatters';
+import { formatCurrency, shortPropertyName } from '@/lib/formatters';
 import type { Property, Unit, Transaction, PropertyDocument } from '@/lib/types';
 import { withTimeout } from '@/lib/async';
 import { Banknote, Landmark, Wrench, Zap, ShieldCheck, Receipt, FileText, Building2, Hammer, Scale, WalletCards, CircleDollarSign, ClipboardCheck, RotateCcw, X, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [cashPeriod, setCashPeriod] = useState<HistoryPeriod>('6M');
-  const { propertyId: cashPropertyId, setPropertyId: setCashPropertyId } = usePortfolioScope();
+  const { propertyId: cashPropertyId } = usePortfolioScope();
   const [briefDirection,setBriefDirection]=useState<'next'|'previous'>('next');
   const [catchUpSince, setCatchUpSince] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,7 +222,6 @@ export default function Dashboard() {
   const dailyRent=expectedMonthlyRent/daysInMonth;
   const nonRentIncome=postedThisMonth.filter(tx=>tx.type==='income'&&tx.category!=='Rent'&&!isTransferTransaction(tx)).reduce((sum,tx)=>sum+Math.max(0,Number(tx.amount||0)),0);
   const projectedMonthEnd=expectedMonthlyRent+nonRentIncome-monthlyTotals.expense;
-  const overviewYear=now.getFullYear();
 
   const visibleDailyInsights=briefItems;
   const activeBrief=visibleDailyInsights.length?visibleDailyInsights[Math.min(briefIndex,visibleDailyInsights.length-1)]:null;
@@ -326,17 +325,6 @@ export default function Dashboard() {
   const collectedPercent=collectedRatio===null?null:Math.round(collectedRatio*100);
   const rentBar=collectedRatio===null?0:Math.min(100,collectedRatio*100);
   return <div className="dashboard-operating">
-    <header className="dashboard-operating-header">
-      <strong className="dashboard-mobile-brand">Overview</strong>
-      <div className="dashboard-heading"><h1>Overview</h1></div>
-    </header>
-    {!loading&&<div className="dashboard-mobile-context">
-      <p className="dashboard-mobile-month">{monthLabel} {overviewYear}</p>
-      <div className="dashboard-property-chips" role="tablist" aria-label="Property">
-        <button type="button" role="tab" aria-selected={cashPropertyId===''} onClick={()=>setCashPropertyId('')}>All</button>
-        {properties.map(property=><button type="button" role="tab" key={property.id} aria-selected={cashPropertyId===property.id} onClick={()=>setCashPropertyId(property.id)}>{propertyChipName(property.address)}</button>)}
-      </div>
-    </div>}
     {error&&<div className="dashboard-retry-box" style={errorBox}><span>{error}</span><button type="button" className="product-secondary-button" onClick={()=>location.reload()}>Try again</button></div>}
     {loading?<PageSkeleton variant="dashboard"/>:<div className="landing-stack">
       <DailyBrief brief={overviewBrief} />

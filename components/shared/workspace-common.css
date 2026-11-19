@@ -1,5 +1,24 @@
 .primary-action { background: var(--accent); color: var(--accent-contrast) !important; font: var(--font-button-strong); }
 
+.workspace-empty-panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-6) 0;
+  border-top: 1px solid var(--border-color);
+}
+.workspace-empty-panel strong {
+  font-size: var(--type-section-title-size);
+  line-height: var(--type-section-title-line);
+  font-weight: var(--weight-semibold);
+}
+.workspace-empty-panel p {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--text-secondary);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+}
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: .55; background: var(--skeleton-bg); }
   50% { opacity: 1; background: var(--skeleton-edge); }

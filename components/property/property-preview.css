@@ -1,5 +1,6 @@
 /* Portfolio properties, units, and improvements. One hairline table per tab. */
-.properties-page .product-page-header,.utilities-page .product-page-header{margin-bottom:var(--space-5)}
+.properties-page .product-page-header,.utilities-page .product-page-header{margin-bottom:var(--space-4)}
+.property-directory-toolbar{display:none}
 .portfolio-area-tabs{margin-bottom:var(--space-5)}
 .portfolio-area-tabs-mobile{display:none}
 .portfolio-panel{overflow:hidden;border:1px solid var(--border-color);border-radius:var(--radius-card);background:var(--theme-card)}

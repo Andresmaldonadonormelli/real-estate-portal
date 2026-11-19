@@ -47,13 +47,14 @@ function InsightCard({ update, hidden, paged, atStart, atEnd, onPrevious, onNext
   const tone = update.tone === 'positive' ? 'amount-positive' : update.tone === 'negative' ? 'amount-negative' : undefined;
   const Mark = update.tone === 'negative' ? ArrowDown : ArrowUp;
   return (
-    <article className="insight-card" data-hidden={hidden ? 'true' : undefined}>
+    <article className="insight-card" data-tone={update.tone} data-hidden={hidden ? 'true' : undefined}>
       <span className={tone ? `insight-mark ${tone}` : 'insight-mark'} aria-hidden="true"><Mark size={16} /></span>
       <div className="insight-copy">
         {update.when ? <span className="insight-meta">{update.when}</span> : null}
         <strong className={tone}>{update.title}</strong>
         {update.context ? <small>{update.context}</small> : null}
       </div>
+      <Link href="/reports" className="insight-action">See more</Link>
       {paged ? <div className="insight-nav">
         <button type="button" aria-label="Previous insight" disabled={atStart} onClick={onPrevious}><ChevronLeft size={16} aria-hidden="true" /></button>
         <button type="button" aria-label="Next insight" disabled={atEnd} onClick={onNext}><ChevronRight size={16} aria-hidden="true" /></button>

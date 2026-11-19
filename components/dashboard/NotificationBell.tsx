@@ -25,7 +25,21 @@ export default function NotificationBell() {
       const panel = panelRef.current;
       if (!anchor || !panel) return;
       const rect = anchor.getBoundingClientRect();
+      const mobile = window.innerWidth < 768;
+      if (mobile) {
+        const margin = 12;
+        const top = Math.max(margin, rect.bottom + 8);
+        panel.dataset.placement = 'mobile-sheet';
+        panel.style.top = `${top}px`;
+        panel.style.left = `${margin}px`;
+        panel.style.right = `${margin}px`;
+        panel.style.width = `${Math.max(0, window.innerWidth - margin * 2)}px`;
+        panel.style.maxHeight = `${Math.max(220, window.innerHeight - top - margin - 72)}px`;
+        return;
+      }
       const margin = 8;
+      panel.dataset.placement = 'desktop';
+      panel.style.left = '';
       const alignedRight = Math.max(margin, window.innerWidth - rect.right);
       const available = Math.max(0, window.innerWidth - alignedRight - margin);
       const width = Math.min(380, available || window.innerWidth - margin * 2);
