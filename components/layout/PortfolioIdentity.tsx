@@ -56,15 +56,11 @@ export default function PortfolioIdentity() {
   }
 
   return <header className="portfolio-identity">
-    <div>
+    <div className="portfolio-identity-copy">
       <strong>Your Portfolio</strong>
       <p>As of {asOf}</p>
     </div>
-    <div className="portfolio-identity-tools">
-      <ProductSelect aria-label="Property" value={propertyId} onChange={event => setPropertyId(event.target.value)}>
-        <option value="">All properties</option>
-        {properties.map(property => <option key={property.id} value={property.id}>{shortPropertyName(property.address)}</option>)}
-      </ProductSelect>
+    <div className="portfolio-identity-actions">
       <NotificationBell />
       <div className="pulse-add-menu" ref={addRef}>
         <button type="button" className="pulse-add-button" aria-expanded={addOpen} aria-haspopup="menu" onClick={() => setAddOpen(open => !open)}><Plus size={18} /><span>Add</span><ChevronDown size={16} aria-hidden="true" /></button>
@@ -75,6 +71,12 @@ export default function PortfolioIdentity() {
           <button type="button" onClick={() => go('/ledger?tab=documents&upload=1')}><FileText size={17} />Upload document</button>
         </div>}
       </div>
+    </div>
+    <div className="portfolio-identity-tools">
+      <ProductSelect aria-label="Property" value={propertyId} onChange={event => setPropertyId(event.target.value)}>
+        <option value="">All properties</option>
+        {properties.map(property => <option key={property.id} value={property.id}>{shortPropertyName(property.address)}</option>)}
+      </ProductSelect>
     </div>
   </header>;
 }

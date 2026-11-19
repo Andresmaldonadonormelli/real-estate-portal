@@ -166,14 +166,17 @@
 .overview-brief-head span,.overview-brief-head a{color:var(--text-secondary);font-size:var(--type-small-size);line-height:var(--type-small-line);text-decoration:none}
 .insight-strip{width:680px;max-width:100%;min-width:0}
 .insight-strip-row,.insight-scroller{width:100%}
-.insight-card{display:flex;box-sizing:border-box;width:100%;height:80px;align-items:center;gap:var(--space-3);padding:12px 18px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--theme-card);box-shadow:none}
+.insight-card{display:flex;box-sizing:border-box;width:100%;min-height:72px;align-items:center;gap:var(--space-3);padding:12px 14px 12px 16px;border:1px solid var(--border-color);border-radius:var(--radius-control);background:var(--theme-card);box-shadow:none}
 .insight-card[data-hidden='true']{display:none}
-.insight-mark{display:grid;flex:0 0 auto;place-items:center;color:var(--text-muted)}
+.insight-mark{display:grid;flex:0 0 auto;place-items:center;width:36px;height:36px;border-radius:var(--radius-control);background:var(--surface-subtle);color:var(--text-muted)}
+.insight-card[data-tone='negative'] .insight-mark{background:var(--negative-soft, color-mix(in srgb, var(--negative) 14%, transparent));color:var(--negative)}
+.insight-card[data-tone='positive'] .insight-mark{background:var(--positive-soft, color-mix(in srgb, var(--positive) 14%, transparent));color:var(--positive)}
 .insight-copy{display:grid;min-width:0;flex:1;gap:2px}
 .insight-meta,.insight-copy small,.insight-copy strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .insight-meta{color:var(--text-muted);font-size:var(--type-label-size);line-height:1.2}
 .insight-copy strong{font-size:var(--type-body-size);line-height:1.2;font-weight:var(--weight-semibold)}
 .insight-copy small{color:var(--text-muted);font-size:var(--type-small-size);line-height:1.2}
+.insight-action{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-height:36px;padding:0 var(--space-4);border-radius:var(--radius-control);background:var(--accent);color:var(--accent-contrast);font:var(--font-label);font-weight:var(--weight-semibold);text-decoration:none;white-space:nowrap}
 .insight-nav{display:flex;flex:0 0 auto;align-items:center}
 .insight-nav button{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--text-muted)}
 .insight-nav button:disabled{opacity:.35}
@@ -191,7 +194,8 @@
   .insight-nav{display:none}
   .insight-scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:var(--space-3)}
   .insight-scroller::-webkit-scrollbar{display:none}
-  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 100%;scroll-snap-align:start}
+  .insight-card,.insight-card[data-hidden='true']{display:flex;flex:0 0 100%;min-height:64px;padding:10px 12px 10px 14px;scroll-snap-align:start;background:var(--surface-subtle)}
+  .insight-action{min-height:40px;padding:0 var(--space-4);border-radius:var(--radius-pill)}
   .landing-table-head{display:none}
   .landing-property,.landing-totals{grid-template-columns:1fr 1fr}
   .landing-controls{align-items:flex-start}

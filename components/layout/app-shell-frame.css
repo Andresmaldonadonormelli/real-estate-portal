@@ -273,12 +273,25 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
 }
 
 .portfolio-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "copy tools actions";
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.portfolio-identity-copy {
+  grid-area: copy;
+  min-width: 0;
+}
+.portfolio-identity-actions {
+  grid-area: actions;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 .portfolio-identity-tools {
+  grid-area: tools;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -301,14 +314,35 @@ html[data-theme="dark"] .brand-logo > .brand-logo-dark {
   line-height: var(--type-label-line);
 }
 @media (max-width: 767px) {
-  .portfolio-identity { align-items: flex-start; flex-wrap: wrap; row-gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-3); }
-  .portfolio-identity > div:first-child { flex: 1 0 100%; min-width: 0; }
-  .portfolio-identity-tools { width: 100%; flex-shrink: 0; gap: var(--space-2); }
-  .portfolio-identity-tools .product-select { flex: 1 1 auto; width: auto; min-width: 0; max-width: none; }
-  .portfolio-identity-tools .dashboard-bell { flex-shrink: 0; }
-  .portfolio-identity-tools .pulse-add-button { width: 44px; min-width: 44px; padding: 0; border-radius: var(--radius-control); }
-  .portfolio-identity-tools .pulse-add-button span,
-  .portfolio-identity-tools .pulse-add-button svg:last-child { display: none; }
+  .portfolio-identity {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "copy actions"
+      "tools tools";
+    align-items: start;
+    row-gap: var(--space-3);
+    column-gap: var(--space-2);
+    padding: var(--space-4) var(--space-4) var(--space-3);
+  }
+  .portfolio-identity-actions {
+    align-self: start;
+    margin-top: 0;
+    min-height: var(--type-card-title-line);
+  }
+  .portfolio-identity-actions .dashboard-bell {
+    width: 44px;
+    height: 44px;
+  }
+  .portfolio-identity-actions .pulse-add-button {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    border-radius: var(--radius-control);
+  }
+  .portfolio-identity-actions .pulse-add-button span,
+  .portfolio-identity-actions .pulse-add-button svg:last-child { display: none; }
+  .portfolio-identity-tools { width: 100%; }
+  .portfolio-identity-tools .product-select { flex: 1 1 auto; width: 100%; min-width: 0; max-width: none; }
   .app-frame {
     min-height: 100vh;
     padding: 0;
