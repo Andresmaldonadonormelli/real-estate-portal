@@ -28,6 +28,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   useEffect(() => { setShowNav(false); }, [pathname]);
 
+  if (pathname.startsWith('/ui-lab')) return <>{children}</>;
+
   return (
     <NotificationInboxProvider>
     <PortfolioScopeProvider>

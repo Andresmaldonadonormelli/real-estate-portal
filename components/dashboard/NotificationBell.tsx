@@ -8,9 +8,9 @@ import { NotificationWorkspace } from '@/components/dashboard/NotificationWorksp
 import { useNotificationInbox } from '@/components/dashboard/notificationInbox';
 import type { FeedNotification } from '@/lib/notifications';
 
-export default function NotificationBell() {
+export default function NotificationBell({ startOpen = false, contain = false }: { startOpen?: boolean; contain?: boolean } = {}) {
   const { unreadCount } = useNotificationInbox();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -19,7 +19,7 @@ export default function NotificationBell() {
   useEffect(() => setMounted(true), []);
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || contain) return;
     const place = () => {
       const anchor = rootRef.current;
       const panel = panelRef.current;
@@ -57,7 +57,7 @@ export default function NotificationBell() {
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place, true);
     };
-  }, [open]);
+  }, [open, contain]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,21 +83,23 @@ export default function NotificationBell() {
   }
 
   return <NotificationWorkspace active={open}>
-    {openNotification => <div className="notification-anchor" ref={rootRef}>
-      <button type="button" className="dashboard-bell" aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls="notification-popover" onClick={() => setOpen(value => !value)}>
-        <Bell size={18} />
-        {unreadCount > 0 && <span className="dashboard-bell-count">{unreadCount}</span>}
-      </button>
-      {mounted && open ? createPortal(
+    {openNotification => {
+      const popover = (
         <div id="notification-popover" className="notification-popover" role="dialog" aria-label="Notifications" ref={panelRef}>
           <div className="notification-popover-head">
             <h2>Notifications</h2>
             <button type="button" className="notification-popover-close" aria-label="Close notifications" onClick={() => setOpen(false)}><X size={16} /></button>
           </div>
           <NotificationFeed embedded onOpen={item => openItem(item, openNotification)} />
-        </div>,
-        document.body,
-      ) : null}
-    </div>}
+        </div>
+      );
+      return <div className="notification-anchor" ref={rootRef}>
+        <button type="button" className="dashboard-bell" aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls="notification-popover" onClick={() => setOpen(value => !value)}>
+          <Bell size={18} />
+          {unreadCount > 0 && <span className="dashboard-bell-count">{unreadCount}</span>}
+        </button>
+        {contain ? (open ? popover : null) : mounted && open ? createPortal(popover, document.body) : null}
+      </div>;
+    }}
   </NotificationWorkspace>;
 }

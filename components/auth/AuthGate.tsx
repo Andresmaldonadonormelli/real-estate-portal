@@ -1,12 +1,14 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { AuthSessionProvider } from '@/components/auth/AuthContext';
 import BrandLogo from '@/components/layout/BrandLogo';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -84,6 +86,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
     setSubmitting(false);
   }
+
+  if (pathname === '/ui-lab' || pathname.startsWith('/ui-lab/')) return <>{children}</>;
 
   if (loading) {
     return <div className="auth-loading-shell" role="status" aria-label="Loading portal"><div className="auth-loading-card"><div className="skeleton-block" style={{width:110,height:16,marginBottom:18}}/><div className="skeleton-block" style={{width:'58%',height:30,marginBottom:12}}/><div className="skeleton-block" style={{width:'82%',height:14,marginBottom:26}}/><div className="skeleton-block" style={{height:44,marginBottom:12}}/><div className="skeleton-block" style={{height:44,marginBottom:18}}/><div className="skeleton-block" style={{height:44}}/></div></div>;

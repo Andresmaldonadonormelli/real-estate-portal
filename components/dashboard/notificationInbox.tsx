@@ -18,7 +18,28 @@ type NotificationInbox = {
 
 const NotificationInboxContext = createContext<NotificationInbox | null>(null);
 
-export function NotificationInboxProvider({ children }: { children: ReactNode }) {
+export function NotificationInboxProvider({ children, preview }: { children: ReactNode; preview?: Notification[] }) {
+  if (preview) return <PreviewInbox preview={preview}>{children}</PreviewInbox>;
+  return <LiveInbox>{children}</LiveInbox>;
+}
+
+function PreviewInbox({ children, preview }: { children: ReactNode; preview: Notification[] }) {
+  const [items, setItems] = useState(preview);
+  const markRead = useCallback(async (id: string) => {
+    const readAt = new Date().toISOString();
+    setItems(rows => rows.map(row => row.id === id && !row.read_at ? { ...row, read_at: readAt } : row));
+  }, []);
+  const markAllRead = useCallback(async () => {
+    const readAt = new Date().toISOString();
+    setItems(rows => rows.map(row => row.read_at ? row : { ...row, read_at: readAt }));
+  }, []);
+  const refresh = useCallback(async () => {}, []);
+  const unreadCount = items.filter(row => !row.read_at).length;
+  const value = { items, unreadCount, loading: false, error: '', markRead, markAllRead, refresh };
+  return <NotificationInboxContext.Provider value={value}>{children}</NotificationInboxContext.Provider>;
+}
+
+function LiveInbox({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
