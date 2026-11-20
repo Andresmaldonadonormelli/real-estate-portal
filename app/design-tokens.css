@@ -4,9 +4,12 @@
   Semantic tokens are the source of truth. Legacy names (--theme-*,
   --bg-*, --text-*, --positive, --chart-*) alias these so existing
   styles keep the approved light and dark colors.
+  Light values also live on [data-theme="light"] so a light panel can
+  sit inside a dark document.
 */
 
-:root {
+:root,
+[data-theme="light"] {
   --font-family-primary: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --type-page-title-size: 36px;
@@ -188,7 +191,94 @@
   --color-category-capex: #bd4c9d;
   --color-category-legal: #7659c7;
   --color-category-review: #b88700;
+}
 
+
+[data-theme="dark"] {
+  --color-page: #0c0b10;
+  --color-surface: #16141c;
+  --color-surface-subtle: #1e1e22;
+  --color-surface-hover: #2a2a2e;
+  --color-surface-raised: #1c1c20;
+  --color-input: #141416;
+  --color-text-primary: #f4f5f3;
+  --color-text-secondary: #aeb5b1;
+  --color-text-muted: #7f8782;
+  --color-text-inverse: #101210;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-hover-control: #2a2a2e;
+  --color-active: #2a2a2e;
+  --color-active-text: #f4f5f3;
+  --color-overlay: rgba(0, 0, 0, 0.66);
+  --color-action: #f3f4f2;
+  --color-action-text: #101210;
+  --color-action-hover: #dfe3df;
+  --color-link: #e6e6e1;
+  --color-accent-soft: rgba(255, 255, 255, 0.075);
+  --color-skeleton: #1a1d1b;
+  --color-skeleton-edge: #252927;
+  --color-slider-thumb: #f7f7f7;
+  --color-slider-thumb-border: rgba(255, 255, 255, 0.08);
+  /* Keep elevation shadows black in dark mode — mixing text-primary turns them into glows. */
+  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.45);
+  --shadow-card-hover: 0 10px 28px rgba(0, 0, 0, 0.55);
+  --shadow-overlay: 0 18px 48px rgba(0, 0, 0, 0.72), 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 14px 36px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-toast: 0 14px 38px rgba(0, 0, 0, 0.6);
+  --shadow-slider: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --color-slider-fill: #f4f5f4;
+  --color-slider-track: #343837;
+  --color-brand: #c4b0ff;
+  --color-brand-strong: #d6c8ff;
+  --color-brand-soft: rgba(186, 161, 247, 0.16);
+  --color-brand-border: rgba(186, 161, 247, 0.34);
+  --color-on-brand: #120c24;
+  --color-positive: #3dce74;
+  --color-on-positive: #062412;
+  --color-positive-soft: rgba(61, 190, 106, 0.16);
+  --color-positive-border: rgba(61, 190, 106, 0.34);
+  --color-negative: #ff7d64;
+  --color-negative-soft: rgba(255, 101, 66, 0.16);
+  --color-negative-border: rgba(255, 125, 100, 0.40);
+  --color-warning: #eeba0b;
+  --color-warning-soft: rgba(238, 186, 11, 0.14);
+  --color-warning-border: rgba(238, 186, 11, 0.34);
+  --color-information: #c4b0ff;
+  --chart-income: #c084fc;
+  --chart-expense: #4d495c;
+  --chart-expense-muted: #8a8596;
+  --chart-muted: #3a3742;
+  --chart-quiet: #1e1c26;
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-category-neutral: #8b928e;
+  --chart-series-uncategorized: #f0c14a;
+  --chart-series-track: #2a2832;
+  --chart-series-maintenance: #f0a04a;
+  --chart-series-management: #c4a2ff;
+  --chart-series-utilities: #8eb0ff;
+  --chart-series-insurance: #9aabff;
+  --chart-series-taxes: #f0c15a;
+  --chart-series-legal: #f0a0c4;
+  --chart-series-leasing: #6dcea0;
+  --chart-expense-maintenance: #f0a04a;
+  --chart-expense-management: #c4a2ff;
+  --chart-expense-utilities: #8eb0ff;
+  --chart-expense-other: #b7b4bf;
+  --chart-expense-uncategorized: #f0c14a;
+  --color-category-maintenance: #ff9638;
+  --color-category-management: #9c79ff;
+  --color-category-mortgage: #69a0ff;
+  --color-category-utilities: #3ac1dc;
+  --color-category-insurance: #8291ff;
+  --color-category-taxes: #f3b447;
+  --color-category-capex: #ed74c8;
+  --color-category-legal: #a382ff;
+  --color-category-review: #f4c84a;
+}
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
   /* Legacy names resolve to the semantic tokens above. */
   --theme-page: var(--color-page);
   --theme-sidebar: var(--color-page);
@@ -336,88 +426,6 @@
   --range-track: var(--color-slider-track);
 }
 
-[data-theme="dark"] {
-  --color-page: #0c0b10;
-  --color-surface: #16141c;
-  --color-surface-subtle: #1e1e22;
-  --color-surface-hover: #2a2a2e;
-  --color-surface-raised: #1c1c20;
-  --color-input: #141416;
-  --color-text-primary: #f4f5f3;
-  --color-text-secondary: #aeb5b1;
-  --color-text-muted: #7f8782;
-  --color-text-inverse: #101210;
-  --color-border: rgba(255, 255, 255, 0.10);
-  --color-border-strong: rgba(255, 255, 255, 0.18);
-  --color-hover-control: #2a2a2e;
-  --color-active: #2a2a2e;
-  --color-active-text: #f4f5f3;
-  --color-overlay: rgba(0, 0, 0, 0.66);
-  --color-action: #f3f4f2;
-  --color-action-text: #101210;
-  --color-action-hover: #dfe3df;
-  --color-link: #e6e6e1;
-  --color-accent-soft: rgba(255, 255, 255, 0.075);
-  --color-skeleton: #1a1d1b;
-  --color-skeleton-edge: #252927;
-  --color-slider-thumb: #f7f7f7;
-  --color-slider-thumb-border: rgba(255, 255, 255, 0.08);
-  /* Keep elevation shadows black in dark mode — mixing text-primary turns them into glows. */
-  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.45);
-  --shadow-card-hover: 0 10px 28px rgba(0, 0, 0, 0.55);
-  --shadow-overlay: 0 18px 48px rgba(0, 0, 0, 0.72), 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-popover: 0 14px 36px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45);
-  --shadow-toast: 0 14px 38px rgba(0, 0, 0, 0.6);
-  --shadow-slider: 0 2px 8px rgba(0, 0, 0, 0.5);
-  --color-slider-fill: #f4f5f4;
-  --color-slider-track: #343837;
-  --color-brand: #c4b0ff;
-  --color-brand-strong: #d6c8ff;
-  --color-brand-soft: rgba(186, 161, 247, 0.16);
-  --color-brand-border: rgba(186, 161, 247, 0.34);
-  --color-on-brand: #120c24;
-  --color-positive: #3dce74;
-  --color-on-positive: #062412;
-  --color-positive-soft: rgba(61, 190, 106, 0.16);
-  --color-positive-border: rgba(61, 190, 106, 0.34);
-  --color-negative: #ff7d64;
-  --color-negative-soft: rgba(255, 101, 66, 0.16);
-  --color-negative-border: rgba(255, 125, 100, 0.40);
-  --color-warning: #eeba0b;
-  --color-warning-soft: rgba(238, 186, 11, 0.14);
-  --color-warning-border: rgba(238, 186, 11, 0.34);
-  --color-information: #c4b0ff;
-  --chart-income: #c084fc;
-  --chart-expense: #4d495c;
-  --chart-expense-muted: #8a8596;
-  --chart-muted: #3a3742;
-  --chart-quiet: #1e1c26;
-  --chart-grid: rgba(255, 255, 255, 0.08);
-  --chart-category-neutral: #8b928e;
-  --chart-series-uncategorized: #f0c14a;
-  --chart-series-track: #2a2832;
-  --chart-series-maintenance: #f0a04a;
-  --chart-series-management: #c4a2ff;
-  --chart-series-utilities: #8eb0ff;
-  --chart-series-insurance: #9aabff;
-  --chart-series-taxes: #f0c15a;
-  --chart-series-legal: #f0a0c4;
-  --chart-series-leasing: #6dcea0;
-  --chart-expense-maintenance: #f0a04a;
-  --chart-expense-management: #c4a2ff;
-  --chart-expense-utilities: #8eb0ff;
-  --chart-expense-other: #b7b4bf;
-  --chart-expense-uncategorized: #f0c14a;
-  --color-category-maintenance: #ff9638;
-  --color-category-management: #9c79ff;
-  --color-category-mortgage: #69a0ff;
-  --color-category-utilities: #3ac1dc;
-  --color-category-insurance: #8291ff;
-  --color-category-taxes: #f3b447;
-  --color-category-capex: #ed74c8;
-  --color-category-legal: #a382ff;
-  --color-category-review: #f4c84a;
-}
 
 @media (max-width: 767px) {
   :root {

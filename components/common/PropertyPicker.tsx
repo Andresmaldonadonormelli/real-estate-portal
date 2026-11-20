@@ -8,13 +8,14 @@ import { propertyChipName } from '@/lib/formatters';
 
 type PropertyOption = { id: string; address: string };
 
-export default function PropertyPicker({ value, properties, onChange, className = '' }: {
+export default function PropertyPicker({ value, properties, onChange, className = '', startOpen = false }: {
   value: string;
   properties: PropertyOption[];
   onChange: (value: string) => void;
   className?: string;
+  startOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [mounted, setMounted] = useState(false);
   const selected = properties.find((property) => property.id === value);
   const label = selected ? propertyChipName(selected.address) : 'All properties';

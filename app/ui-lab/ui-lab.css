@@ -1,0 +1,206 @@
+.ui-lab {
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-6) var(--space-10);
+  background: var(--color-page);
+  color: var(--color-text-primary);
+}
+
+.ui-lab-header {
+  display: grid;
+  gap: var(--space-2);
+  width: min(1120px, 100%);
+  margin: 0 auto var(--space-6);
+}
+
+.ui-lab-kicker,
+.ui-lab-header p,
+.ui-lab-meta,
+.ui-lab-state > span,
+.ui-lab-panel > h3,
+.ui-lab-frame figcaption {
+  color: var(--color-text-secondary);
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-line);
+}
+
+.ui-lab-header h1,
+.ui-lab-section > h2 {
+  font-weight: var(--weight-semibold);
+}
+
+.ui-lab-header h1 {
+  font-size: var(--type-page-title-size);
+  line-height: var(--type-page-title-line);
+}
+
+.ui-lab-header p {
+  max-width: 68ch;
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+}
+
+.ui-lab-section {
+  width: min(1120px, 100%);
+  margin: 0 auto var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.ui-lab-section > h2 {
+  font-size: var(--type-section-title-size);
+  line-height: var(--type-section-title-line);
+}
+
+.ui-lab-section > p {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+}
+
+.ui-lab-themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.ui-lab-panel,
+.ui-lab-frame {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-page);
+  color: var(--color-text-primary);
+}
+
+.ui-lab-panel > h3,
+.ui-lab-frame figcaption {
+  margin-bottom: var(--space-4);
+  font-weight: var(--weight-medium);
+}
+
+.ui-lab-group + .ui-lab-group {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.ui-lab-group h4 {
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-lab-meta {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.ui-lab code {
+  font-family: inherit;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+}
+
+.ui-lab-states,
+.ui-lab-row,
+.ui-lab-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.ui-lab-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.ui-lab-stack {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.ui-lab-stage {
+  position: relative;
+  height: 680px;
+  margin-top: var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-page);
+  isolation: isolate;
+}
+
+.ui-lab-stage .notification-anchor {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 2;
+}
+
+.ui-lab-stage .dashboard-bell {
+  display: inline-flex;
+}
+
+.ui-lab-stage .notification-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  left: auto;
+  width: min(380px, 100%);
+  max-height: 520px;
+}
+
+.ui-lab-frame iframe {
+  display: block;
+  width: 390px;
+  max-width: 100%;
+  height: 560px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-page);
+}
+
+.ui-lab-embed {
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: var(--color-page);
+  color: var(--color-text-primary);
+}
+
+.ui-lab .property-picker-select,
+.ui-lab-embed .property-picker-select {
+  width: min(280px, 100%);
+}
+
+.ui-lab .utility-property-picker {
+  margin-top: var(--space-3);
+}
+
+.ui-lab-panel .product-segmented,
+.ui-lab-panel .segmented,
+.ui-lab-panel .ledger-view-toggle {
+  width: max-content;
+  max-width: 100%;
+}
+
+@media (max-width: 800px) {
+  .ui-lab {
+    padding: var(--space-4);
+  }
+  .ui-lab-themes {
+    grid-template-columns: 1fr;
+  }
+  .ui-lab-stage {
+    height: 640px;
+  }
+}
